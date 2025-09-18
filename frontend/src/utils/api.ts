@@ -17,8 +17,6 @@ api.interceptors.request.use(
     const groupId = localStorage.getItem('group_id')
     const apiKey = localStorage.getItem('api_key')
 
-    console.log('API Request:', config.url, 'Data type:', config.data?.constructor?.name)
-    console.log('Initial Content-Type:', config.headers['Content-Type'])
 
     if (groupId && apiKey) {
       config.headers['X-Group-ID'] = groupId
@@ -27,11 +25,8 @@ api.interceptors.request.use(
 
     // 对于FormData，确保不设置Content-Type，让浏览器自动设置
     if (config.data instanceof FormData) {
-      console.log('Detected FormData, removing Content-Type')
       delete config.headers['Content-Type']
     }
-
-    console.log('Final Content-Type:', config.headers['Content-Type'])
 
     return config
   },

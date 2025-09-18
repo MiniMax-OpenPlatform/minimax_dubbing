@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import AuthSetup from './components/AuthSetup.vue'
 import ProjectList from './components/ProjectList.vue'
-import ProjectDetail from './components/ProjectDetail.vue'
+import ProjectDetailContainer from './components/project/ProjectDetailContainer.vue'
 import SystemLogs from './components/SystemLogs.vue'
 import SystemSettings from './components/SystemSettings.vue'
 import { Document, Setting, List, Monitor, SwitchButton } from '@element-plus/icons-vue'
@@ -122,7 +122,7 @@ onMounted(() => {
         />
 
         <!-- 项目详情页面 -->
-        <ProjectDetail
+        <ProjectDetailContainer
           v-if="currentView === 'detail' && selectedProjectId"
           :project-id="selectedProjectId"
           @back="backToProjects"

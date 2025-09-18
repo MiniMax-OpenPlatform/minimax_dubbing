@@ -8,13 +8,13 @@ import time
 import logging
 from typing import Dict, Any, Optional
 from django.conf import settings
+from backend.exceptions import ExternalAPIError
 
 logger = logging.getLogger(__name__)
 
 
-class MiniMaxAPIError(Exception):
-    """MiniMax API异常"""
-    pass
+# 使用统一异常处理
+# MiniMaxAPIError 已被 ExternalAPIError 替代
 
 
 class MiniMaxClient:
@@ -79,13 +79,13 @@ class MiniMaxClient:
                     error_msg = f"API请求失败: {response.status_code} - {response.text}"
                     logger.error(error_msg)
                     if attempt == max_retries:
-                        raise MiniMaxAPIError(error_msg)
+                        raise ExternalAPIError(error_msg, service="minimax")
 
             except requests.exceptions.RequestException as e:
                 error_msg = f"请求异常: {str(e)}"
                 logger.error(error_msg)
                 if attempt == max_retries:
-                    raise MiniMaxAPIError(error_msg)
+                    raise ExternalAPIError(error_msg, service="minimax")
 
             # 重试前等待
             if attempt < max_retries:
@@ -151,7 +151,7 @@ class MiniMaxClient:
                 'success': True
             }
         else:
-            raise MiniMaxAPIError(f"翻译响应格式错误: {result}")
+            raise ExternalAPIError(f"翻译响应格式错误: {result}")
 
     def optimize_translation(self, original_text: str, current_translation: str,
                            target_language: str, target_char_count: int,
@@ -215,7 +215,7 @@ class MiniMaxClient:
                 'success': True
             }
         else:
-            raise MiniMaxAPIError(f"翻译优化响应格式错误: {result}")
+            raise ExternalAPIError(f"翻译优化响应格式错误: {result}")
 
     def text_to_speech(self, text: str, voice_id: str, speed: float = 1.0,
                       emotion: str = "auto", language_boost: str = "Chinese") -> Dict[str, Any]:
@@ -268,7 +268,7 @@ class MiniMaxClient:
                 'success': True
             }
         else:
-            raise MiniMaxAPIError(f"TTS响应格式错误: {result}")
+            raise ExternalAPIError(f"TTS响应格式错误: {result}")
 
     def upload_for_clone(self, audio_file_path: str) -> Dict[str, Any]:
         """
@@ -302,7 +302,7 @@ class MiniMaxClient:
                 'success': True
             }
         else:
-            raise MiniMaxAPIError(f"文件上传响应格式错误: {result}")
+            raise ExternalAPIError(f"文件上传响应格式错误: {result}")
 
     def voice_clone(self, file_id: str, voice_id: str, text: str,
                    model: str = "speech-2.5-hd-preview",

@@ -164,11 +164,9 @@ const progressPercentage = computed(() => {
 })
 
 const onAudioLoaded = async () => {
-  console.log('[AudioTrack] 音频加载事件触发', props.audioUrl, audioRef.value)
   if (audioRef.value) {
     duration.value = audioRef.value.duration
     audioRef.value.volume = volume.value / 100
-    console.log('[AudioTrack] 音频时长:', duration.value)
     await generateWaveform()
   }
 }
@@ -189,11 +187,10 @@ const onAudioEnded = () => {
 }
 
 const onLoadStart = () => {
-  console.log('[AudioTrack] 开始加载音频:', props.title, props.audioUrl)
+  // Audio loading started
 }
 
 const onCanPlay = () => {
-  console.log('[AudioTrack] 音频可以播放:', props.title, audioRef.value?.duration)
   if (audioRef.value && duration.value === 0) {
     duration.value = audioRef.value.duration
     generateWaveform()
@@ -282,7 +279,6 @@ const downloadAudio = () => {
 
 // 生成波形数据（使用Web Audio API分析真实音频）
 const generateWaveform = async () => {
-  console.log('[AudioTrack] 开始生成波形数据:', props.title)
 
   // 重置重试计数器
   retryCount.value = 0
@@ -292,7 +288,6 @@ const generateWaveform = async () => {
 
   // 如果没有音频URL，生成默认波形用于展示
   if (!props.audioUrl) {
-    console.log('[AudioTrack] 没有音频URL，生成默认波形:', props.title)
     const sampleCount = 200
     const samples: number[] = []
 
@@ -303,7 +298,6 @@ const generateWaveform = async () => {
     }
 
     waveformData.value = samples
-    console.log('[AudioTrack] 默认波形数据生成完成:', samples.length, '个样本')
 
     // 结束加载状态
     isAnalyzingWaveform.value = false
@@ -315,7 +309,6 @@ const generateWaveform = async () => {
 
   // 检查缓存
   if (globalWaveformCache.has(props.audioUrl)) {
-    console.log('[AudioTrack] 使用缓存的波形数据:', props.title)
     waveformData.value = globalWaveformCache.get(props.audioUrl)!
     isAnalyzingWaveform.value = false
     await nextTick()
@@ -325,7 +318,6 @@ const generateWaveform = async () => {
 
   // 使用Web Audio API分析真实音频文件
   try {
-    console.log('[AudioTrack] 开始分析真实音频文件:', props.audioUrl)
 
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
     const response = await fetch(props.audioUrl)
@@ -354,7 +346,6 @@ const generateWaveform = async () => {
     }
 
     waveformData.value = samples
-    console.log('[AudioTrack] 真实波形数据生成完成:', samples.length, '个样本，音频时长:', audioBuffer.duration, '秒')
 
     // 缓存波形数据
     globalWaveformCache.set(props.audioUrl, samples)
@@ -381,7 +372,6 @@ const generateWaveform = async () => {
     }
 
     waveformData.value = samples
-    console.log('[AudioTrack] 使用默认波形（分析失败）:', samples.length, '个样本')
 
     // 结束加载状态（即使失败）
     isAnalyzingWaveform.value = false
@@ -397,13 +387,10 @@ const drawWaveform = () => {
   const container = waveformContainer.value
 
   if (!canvas || !container || waveformData.value.length === 0) {
-    console.log('[AudioTrack] 无法绘制波形:', props.title, 'canvas:', !!canvas, 'container:', !!container, 'data:', waveformData.value.length)
-
     // 如果Canvas或容器不存在，且组件可见且未超过重试次数，稍后重试
     if (waveformData.value.length > 0 && (!canvas || !container) && isVisible.value && retryCount.value < maxRetries) {
       retryCount.value++
       setTimeout(() => {
-        console.log('[AudioTrack] 重试绘制波形:', props.title, '第', retryCount.value, '次')
         drawWaveform()
       }, 200 + retryCount.value * 100) // 递增延迟
     }
@@ -412,7 +399,6 @@ const drawWaveform = () => {
 
   const ctx = canvas.getContext('2d')
   if (!ctx) {
-    console.log('[AudioTrack] 无法获取canvas上下文:', props.title)
     return
   }
 
@@ -431,8 +417,6 @@ const drawWaveform = () => {
   const height = canvas.height
   const barWidth = width / waveformData.value.length
   const progressPoint = (currentTime.value / duration.value) * width
-
-  console.log('[AudioTrack] 绘制波形:', props.title, 'size:', width, 'x', height, 'bars:', waveformData.value.length)
 
   // 重置重试计数器（成功绘制）
   retryCount.value = 0
@@ -459,7 +443,6 @@ const drawWaveform = () => {
 
 // 监听音频URL变化
 watch(() => props.audioUrl, (newUrl, oldUrl) => {
-  console.log('[AudioTrack] 音频URL变化:', { title: props.title, oldUrl, newUrl })
   isPlaying.value = false
   currentTime.value = 0
   duration.value = 0
@@ -490,14 +473,11 @@ watch(isVisible, async (visible) => {
 })
 
 onMounted(() => {
-  console.log('[AudioTrack] 组件挂载:', props.title, 'audioUrl:', props.audioUrl)
-
   // 监听窗口大小变化，重新绘制波形
   window.addEventListener('resize', drawWaveform)
 
   // 如果没有音频URL，也生成默认波形用于测试
   if (!props.audioUrl) {
-    console.log('[AudioTrack] 没有音频URL，生成默认波形:', props.title)
     // 使用更长的延迟确保DOM完全渲染
     setTimeout(() => {
       generateWaveform()

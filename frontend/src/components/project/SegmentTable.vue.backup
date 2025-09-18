@@ -1,0 +1,407 @@
+<template>
+  <div class="segment-table-container">
+    <!-- 批量操作工具栏 -->
+    <div class="batch-operations" v-if="selectedSegments.length > 0">
+      <span class="selected-count">已选择 {{ selectedSegments.length }} 项</span>
+      <div class="batch-actions">
+        <el-button
+          type="primary"
+          size="small"
+          @click="$emit('batchTts')"
+          :loading="batchTtsLoading"
+        >
+          批量TTS
+        </el-button>
+        <el-button
+          size="small"
+          @click="clearSelection"
+        >
+          取消选择
+        </el-button>
+      </div>
+    </div>
+
+    <!-- 数据表格 -->
+    <el-table
+      ref="segmentTable"
+      :data="segments"
+      style="width: 100%"
+      :height="tableHeight"
+      stripe
+      border
+      @selection-change="handleSelectionChange"
+      @row-click="handleRowClick"
+      :row-class-name="getRowClassName"
+    >
+      <el-table-column type="selection" width="55" />
+
+      <!-- 序号 -->
+      <el-table-column prop="index" label="序号" width="60">
+        <template #default="{ row }">
+          <span class="segment-index">{{ row.index }}</span>
+        </template>
+      </el-table-column>
+
+      <!-- 时间 -->
+      <el-table-column label="时间" width="220">
+        <template #default="{ row }">
+          <div class="time-display">
+            <div class="time-group">
+              <label>开始:</label>
+              <el-input
+                v-model="row.start_time"
+                size="small"
+                @blur="() => $emit('updateSegment', row)"
+                style="width: 80px;"
+              />
+            </div>
+            <div class="time-group">
+              <label>结束:</label>
+              <el-input
+                v-model="row.end_time"
+                size="small"
+                @blur="() => $emit('updateSegment', row)"
+                style="width: 80px;"
+              />
+            </div>
+            <div class="duration-display">
+              时长: {{ formatDuration(row.duration) }}s
+            </div>
+          </div>
+        </template>
+      </el-table-column>
+
+      <!-- 说话人 -->
+      <el-table-column prop="speaker" label="说话人" width="100">
+        <template #default="{ row }">
+          <el-input
+            v-model="row.speaker"
+            size="small"
+            @blur="() => $emit('updateSegment', row)"
+          />
+        </template>
+      </el-table-column>
+
+      <!-- 原文本 -->
+      <el-table-column prop="original_text" label="原文本" min-width="250">
+        <template #default="{ row }">
+          <el-input
+            v-model="row.original_text"
+            type="textarea"
+            :rows="2"
+            size="small"
+            @blur="() => $emit('updateSegment', row)"
+          />
+        </template>
+      </el-table-column>
+
+      <!-- 翻译文本 -->
+      <el-table-column prop="translated_text" label="翻译文本" min-width="250">
+        <template #default="{ row }">
+          <el-input
+            v-model="row.translated_text"
+            type="textarea"
+            :rows="2"
+            size="small"
+            @blur="() => $emit('updateSegment', row)"
+          />
+        </template>
+      </el-table-column>
+
+      <!-- 音频 -->
+      <el-table-column label="音频" width="80">
+        <template #default="{ row }">
+          <audio
+            v-if="row.translated_audio_url"
+            :src="row.translated_audio_url"
+            controls
+            style="width: 60px; height: 30px;"
+          />
+          <span v-else class="no-audio">无</span>
+        </template>
+      </el-table-column>
+
+      <!-- 音色ID -->
+      <el-table-column prop="voice_id" label="音色ID" width="110">
+        <template #default="{ row }">
+          <el-input
+            v-model="row.voice_id"
+            size="small"
+            @blur="() => $emit('updateSegment', row)"
+          />
+        </template>
+      </el-table-column>
+
+      <!-- 情绪 -->
+      <el-table-column prop="emotion" label="情绪" width="90">
+        <template #default="{ row }">
+          <el-select
+            v-model="row.emotion"
+            size="small"
+            @change="() => $emit('updateSegment', row)"
+          >
+            <el-option label="neutral" value="neutral" />
+            <el-option label="happy" value="happy" />
+            <el-option label="sad" value="sad" />
+            <el-option label="angry" value="angry" />
+          </el-select>
+        </template>
+      </el-table-column>
+
+      <!-- 语速 -->
+      <el-table-column prop="speed" label="语速" width="100">
+        <template #default="{ row }">
+          <el-input-number
+            v-model="row.speed"
+            size="small"
+            :min="0.5"
+            :max="3"
+            :step="0.1"
+            :precision="1"
+            @change="() => $emit('updateSegment', row)"
+            style="width: 80px;"
+          />
+        </template>
+      </el-table-column>
+
+      <!-- 时长信息 -->
+      <el-table-column label="时长信息" width="160">
+        <template #default="{ row }">
+          <div class="duration-info">
+            <div>TTS: {{ formatDuration(row.t_tts_duration) }}s</div>
+            <div>目标: {{ formatDuration(row.target_duration) }}s</div>
+            <div>比例: {{ formatRatio(row.ratio) }}</div>
+          </div>
+        </template>
+      </el-table-column>
+
+      <!-- 对齐状态 -->
+      <el-table-column label="对齐" width="80">
+        <template #default="{ row }">
+          <el-tag
+            :type="row.is_aligned ? 'success' : 'warning'"
+            size="small"
+          >
+            {{ row.is_aligned ? '已对齐' : '未对齐' }}
+          </el-tag>
+        </template>
+      </el-table-column>
+
+      <!-- 状态 -->
+      <el-table-column prop="status" label="状态" width="100">
+        <template #default="{ row }">
+          <el-tag
+            :type="getStatusType(row.status)"
+            size="small"
+          >
+            {{ getStatusText(row.status) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+
+      <!-- 更新时间 -->
+      <el-table-column prop="updated_at" label="更新时间" width="160">
+        <template #default="{ row }">
+          <span class="update-time">{{ formatTime(row.updated_at) }}</span>
+        </template>
+      </el-table-column>
+    </el-table>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+
+interface Segment {
+  id: number
+  index: number
+  start_time: string
+  end_time: string
+  time_display: string
+  duration: number
+  speaker: string
+  original_text: string
+  translated_text: string
+  voice_id: string
+  emotion: string
+  speed: number
+  translated_audio_url: string
+  t_tts_duration: number
+  target_duration: number
+  ratio: number
+  is_aligned: boolean
+  status: string
+  updated_at: string
+}
+
+const props = defineProps<{
+  segments: Segment[]
+  tableHeight?: number
+  batchTtsLoading?: boolean
+}>()
+
+defineEmits<{
+  updateSegment: [segment: Segment]
+  batchTts: []
+  rowClick: [segment: Segment]
+}>()
+
+const segmentTable = ref()
+const selectedSegments = ref<Segment[]>([])
+
+const handleSelectionChange = (selection: Segment[]) => {
+  selectedSegments.value = selection
+}
+
+const handleRowClick = (segment: Segment) => {
+  // 处理行点击事件，发送到父组件
+  // 可以在这里添加更多的行点击逻辑
+}
+
+const clearSelection = () => {
+  segmentTable.value?.clearSelection()
+}
+
+const getRowClassName = ({ row }: { row: Segment }) => {
+  if (row.status === 'error') return 'error-row'
+  if (row.status === 'completed') return 'completed-row'
+  if (row.status === 'processing') return 'processing-row'
+  return ''
+}
+
+const getStatusType = (status: string) => {
+  switch (status) {
+    case 'completed': return 'success'
+    case 'processing': return 'warning'
+    case 'error': return 'danger'
+    default: return 'info'
+  }
+}
+
+const getStatusText = (status: string) => {
+  switch (status) {
+    case 'completed': return '已完成'
+    case 'processing': return '处理中'
+    case 'error': return '错误'
+    case 'pending': return '待处理'
+    default: return '未知'
+  }
+}
+
+const formatDuration = (duration: number) => {
+  return duration ? duration.toFixed(2) : '0.00'
+}
+
+const formatRatio = (ratio: number) => {
+  return ratio ? ratio.toFixed(2) : '0.00'
+}
+
+const formatTime = (timeStr: string) => {
+  if (!timeStr) return ''
+  return new Date(timeStr).toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+</script>
+
+<style scoped>
+.segment-table-container {
+  margin-bottom: 20px;
+}
+
+.batch-operations {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f0f9ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.selected-count {
+  color: #1d4ed8;
+  font-weight: 500;
+}
+
+.batch-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.segment-index {
+  font-weight: 500;
+  color: #409eff;
+}
+
+.time-display {
+  font-size: 12px;
+}
+
+.time-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.time-group label {
+  font-size: 11px;
+  color: #666;
+  min-width: 30px;
+}
+
+.duration-display {
+  color: #909399;
+  font-size: 11px;
+}
+
+.duration-info {
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.duration-info div {
+  margin-bottom: 2px;
+}
+
+.no-audio {
+  color: #909399;
+  font-size: 12px;
+}
+
+.update-time {
+  font-size: 11px;
+  color: #909399;
+}
+
+/* 行状态样式 */
+:deep(.error-row) {
+  background-color: #fef2f2 !important;
+}
+
+:deep(.completed-row) {
+  background-color: #f0f9ff !important;
+}
+
+:deep(.processing-row) {
+  background-color: #fffbeb !important;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .batch-operations {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .batch-actions {
+    justify-content: center;
+  }
+}
+</style>

@@ -20,6 +20,10 @@ from services.parsers.srt_parser import SRTParser
 from services.clients.minimax_client import MiniMaxClient
 from services.algorithms.timestamp_aligner import TimestampAligner
 from services.audio_processor import AudioProcessor
+from backend.exceptions import (
+    ValidationError, BusinessLogicError, ExternalAPIError,
+    ResourceNotFoundError, handle_external_api_error, handle_business_logic_error
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +43,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         else:
             return ProjectDetailSerializer
 
+    @handle_business_logic_error
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
     def upload_srt(self, request):
         """
@@ -46,19 +51,30 @@ class ProjectViewSet(viewsets.ModelViewSet):
         """
         serializer = SRTUploadSerializer(data=request.data)
         if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError("SRT文件验证失败", details=serializer.errors)
 
         srt_file = serializer.validated_data['srt_file']
         project_name = serializer.validated_data.get('project_name') or srt_file.name.replace('.srt', '')
 
         try:
-            with transaction.atomic():
-                # 解析SRT文件
-                srt_content = srt_file.read().decode('utf-8')
-                segments_data = SRTParser.parse_srt_content(srt_content)
+            # 解析SRT文件内容
+            srt_content = srt_file.read().decode('utf-8')
+        except UnicodeDecodeError:
+            raise ValidationError("SRT文件编码不正确，请使用UTF-8编码")
 
-                # 创建项目
-                project = Project.objects.create(
+        # 解析SRT内容
+        try:
+            segments_data = SRTParser.parse_srt_content(srt_content)
+        except Exception as e:
+            raise ValidationError(f"SRT文件格式错误: {str(e)}")
+
+        if not segments_data:
+            raise ValidationError("SRT文件中没有找到有效的段落数据")
+
+        # 创建项目和段落
+        with transaction.atomic():
+
+            project = Project.objects.create(
                     user=request.user,
                     name=project_name,
                     source_lang='zh',  # 默认中文
@@ -66,9 +82,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
                     status='draft'
                 )
 
-                # 创建段落
-                for segment_data in segments_data:
-                    Segment.objects.create(
+            # 创建段落
+            for segment_data in segments_data:
+                Segment.objects.create(
                         project=project,
                         index=segment_data['index'],
                         start_time=segment_data['start_time'],
@@ -78,21 +94,15 @@ class ProjectViewSet(viewsets.ModelViewSet):
                         status='pending'
                     )
 
-                logger.info(f"SRT上传成功: 项目{project.name}, 共{len(segments_data)}个段落")
+            logger.info(f"SRT上传成功: 项目{project.name}, 共{len(segments_data)}个段落")
 
-                return Response({
-                    'success': True,
-                    'project_id': project.id,
-                    'project_name': project.name,
-                    'segment_count': len(segments_data),
-                    'message': f'SRT文件上传成功，创建了{len(segments_data)}个段落'
-                }, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            logger.error(f"SRT上传失败: {str(e)}")
             return Response({
-                'error': f'SRT文件解析失败: {str(e)}'
-            }, status=status.HTTP_400_BAD_REQUEST)
+                'success': True,
+                'project_id': project.id,
+                'project_name': project.name,
+                'segment_count': len(segments_data),
+                'message': f'SRT文件上传成功，创建了{len(segments_data)}个段落'
+            }, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
     def batch_translate(self, request, pk=None):
