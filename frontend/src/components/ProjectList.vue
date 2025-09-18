@@ -40,10 +40,12 @@ const loadProjects = async () => {
   }
 }
 
-const handleFileChange = (file: File) => {
-  uploadForm.value.srt_file = file
+const handleFileChange = (file: any) => {
+  // Element Plus返回的是包装对象，需要获取原始File
+  const rawFile = file.raw || file
+  uploadForm.value.srt_file = rawFile
   if (!uploadForm.value.project_name) {
-    uploadForm.value.project_name = file.name.replace('.srt', '')
+    uploadForm.value.project_name = rawFile.name.replace('.srt', '')
   }
 }
 
@@ -58,6 +60,10 @@ const handleUpload = async () => {
   if (uploadForm.value.project_name) {
     formData.append('project_name', uploadForm.value.project_name)
   }
+
+  console.log('Created FormData:', formData)
+  console.log('File:', uploadForm.value.srt_file)
+  console.log('Project name:', uploadForm.value.project_name)
 
   try {
     await api.post('/projects/upload_srt/', formData)
