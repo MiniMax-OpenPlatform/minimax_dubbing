@@ -28,7 +28,10 @@ const saveAuth = () => {
 
 const testAuth = async () => {
   try {
-    await api.get('/auth/test-auth/')
+    await api.post('/auth/test-auth/', {
+      group_id: authForm.value.group_id,
+      api_key: authForm.value.api_key
+    })
     ElMessage.success('认证成功')
     isAuthenticated.value = true
     emit('authenticated')
