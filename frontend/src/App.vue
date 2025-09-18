@@ -169,8 +169,8 @@ onMounted(() => {
                   :border="true"
                   style="width: 100%;"
                 >
-                  <el-table-column prop="timestamp" label="时间" width="200" show-overflow-tooltip />
-                  <el-table-column prop="level" label="级别" width="120" align="center">
+                  <el-table-column prop="timestamp" label="时间" width="180" show-overflow-tooltip />
+                  <el-table-column prop="level" label="级别" width="100" align="center">
                     <template #default="{ row }">
                       <el-tag
                         :type="row.level === 'error' ? 'danger' : row.level === 'success' ? 'success' : row.level === 'warning' ? 'warning' : 'info'"
@@ -180,14 +180,14 @@ onMounted(() => {
                       </el-tag>
                     </template>
                   </el-table-column>
-                  <el-table-column prop="module" label="模块" width="150" align="center">
+                  <el-table-column prop="module" label="模块" width="120" align="center">
                     <template #default="{ row }">
                       <el-tag v-if="row.module" size="small" type="info">
                         {{ row.module }}
                       </el-tag>
                     </template>
                   </el-table-column>
-                  <el-table-column prop="message" label="消息" show-overflow-tooltip />
+                  <el-table-column prop="message" label="消息" min-width="200" show-overflow-tooltip />
                 </el-table>
 
                 <div v-if="logger.logs.value.length === 0" class="empty-logs">
@@ -301,6 +301,8 @@ onMounted(() => {
 /* 页面内容通用样式 */
 .page-content {
   width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
 }
 
 .page-header {
@@ -333,6 +335,8 @@ onMounted(() => {
 /* 日志页面样式 - 简化版本 */
 .logs-page {
   width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
 }
 
 .logs-container {
