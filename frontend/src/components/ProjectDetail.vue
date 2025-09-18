@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import { Download, Refresh, Setting } from '@element-plus/icons-vue'
 import api from '../utils/api'
@@ -95,6 +95,12 @@ const translatedAudioUrl = ref('')
 const originalAudioUrl = ref('')
 const backgroundAudioUrl = ref('')
 const compositeAudioUrl = ref('')
+
+// 添加调试信息
+console.log('[ProjectDetail] 组件初始化，音频URL状态:', {
+  translatedAudioUrl: translatedAudioUrl.value,
+  lastConcatenatedAudioUrl: lastConcatenatedAudioUrl.value
+})
 
 // 播放同步相关
 const currentPlayTime = ref(0)
@@ -265,20 +271,13 @@ const concatenateAudio = async () => {
         }
       })
 
-      // 提供在线播放
-      await ElMessageBox.confirm(
-        '音频拼接完成，是否立即播放？',
-        '播放音频',
-        { type: 'success' }
-      )
-
       // 保存音频URL用于后续下载
       lastConcatenatedAudioUrl.value = response.data.audio_url
 
-      // 在线播放拼接后的音频
-      playAudio(response.data.audio_url)
+      // 同时更新翻译音频预览URL
+      translatedAudioUrl.value = response.data.audio_url
 
-      logger.endTrace(traceId, 'success', `音频拼接和播放完成，共处理${response.data.segments_count}个段落`)
+      logger.endTrace(traceId, 'success', `音频拼接完成，共处理${response.data.segments_count}个段落，已更新到翻译音频预览`)
 
     } else {
       ElMessage.error('音频拼接失败')
@@ -613,11 +612,18 @@ const onCompositeAudioVisibilityChange = (visible: boolean) => {
 
 // 加载多媒体文件URL
 const loadMediaUrls = () => {
-  // 这里应该从后端API获取各种音频和视频文件的URL
-  // 暂时使用项目中已有的音频URL作为示例
+  // 从已有的拼接音频URL更新翻译音频预览
   if (lastConcatenatedAudioUrl.value) {
     translatedAudioUrl.value = lastConcatenatedAudioUrl.value
+    logger.addLog('info', `加载翻译音频URL: ${translatedAudioUrl.value}`, 'ProjectDetail')
+  } else {
+    // 临时测试：使用一个示例音频URL进行测试
+    console.log('[ProjectDetail] 没有拼接音频，使用示例音频测试AudioTrack组件')
+    // 暂时注释掉测试URL，避免404错误影响调试
+    // translatedAudioUrl.value = 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav'
   }
+
+  console.log('[ProjectDetail] loadMediaUrls完成，translatedAudioUrl:', translatedAudioUrl.value)
 
   // TODO: 实现从后端获取其他音频文件URL的逻辑
   // originalAudioUrl.value = ...
@@ -625,6 +631,20 @@ const loadMediaUrls = () => {
   // compositeAudioUrl.value = ...
   // translatedVideoUrl.value = ...
 }
+
+// 监听拼接音频URL变化，自动更新翻译音频预览
+watch(lastConcatenatedAudioUrl, (newUrl) => {
+  if (newUrl) {
+    translatedAudioUrl.value = newUrl
+    console.log('[ProjectDetail] 翻译音频URL更新:', newUrl)
+    logger.addLog('info', `翻译音频预览已更新: ${newUrl}`, 'ProjectDetail')
+  }
+})
+
+// 添加调试：监听翻译音频URL变化
+watch(translatedAudioUrl, (newUrl) => {
+  console.log('[ProjectDetail] translatedAudioUrl变化:', newUrl)
+})
 
 onMounted(() => {
   loadProject()

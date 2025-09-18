@@ -21,18 +21,27 @@
     </div>
 
     <div v-if="isVisible" class="track-content">
-      <div v-if="audioUrl" class="audio-wrapper">
+      <div class="audio-wrapper">
         <!-- 音频播放器 -->
         <div class="audio-controls">
           <el-button-group>
-            <el-button @click="togglePlay" :type="isPlaying ? 'danger' : 'primary'" size="small">
+            <el-button
+              @click="togglePlay"
+              :type="isPlaying ? 'danger' : 'primary'"
+              :disabled="!audioUrl"
+              size="small"
+            >
               <el-icon>
                 <VideoPlay v-if="!isPlaying" />
                 <VideoPause v-else />
               </el-icon>
               {{ isPlaying ? '暂停' : '播放' }}
             </el-button>
-            <el-button @click="stopAudio" size="small">
+            <el-button
+              @click="stopAudio"
+              :disabled="!audioUrl"
+              size="small"
+            >
               <el-icon><CircleClose /></el-icon>
               停止
             </el-button>
@@ -53,6 +62,11 @@
               style="width: 80px; margin-left: 8px;"
             />
           </div>
+        </div>
+
+        <!-- 当没有音频时显示提示 -->
+        <div v-if="!audioUrl" class="no-audio-notice">
+          <el-text type="info" size="small">暂无音频文件，显示示例波形</el-text>
         </div>
 
         <!-- 波形图区域 -->
@@ -91,11 +105,10 @@
           @loadedmetadata="onAudioLoaded"
           @timeupdate="onTimeUpdate"
           @ended="onAudioEnded"
+          @loadstart="onLoadStart"
+          @canplay="onCanPlay"
+          @error="onAudioError"
         ></audio>
-      </div>
-
-      <div v-else class="no-audio">
-        <el-empty description="暂无音频文件" :image-size="60" />
       </div>
     </div>
   </div>
@@ -139,9 +152,11 @@ const progressPercentage = computed(() => {
 })
 
 const onAudioLoaded = async () => {
+  console.log('[AudioTrack] 音频加载事件触发', props.audioUrl, audioRef.value)
   if (audioRef.value) {
     duration.value = audioRef.value.duration
     audioRef.value.volume = volume.value / 100
+    console.log('[AudioTrack] 音频时长:', duration.value)
     await generateWaveform()
   }
 }
@@ -159,6 +174,23 @@ const onAudioEnded = () => {
   isPlaying.value = false
   currentTime.value = 0
   progressValue.value = 0
+}
+
+const onLoadStart = () => {
+  console.log('[AudioTrack] 开始加载音频:', props.title, props.audioUrl)
+}
+
+const onCanPlay = () => {
+  console.log('[AudioTrack] 音频可以播放:', props.title, audioRef.value?.duration)
+  if (audioRef.value && duration.value === 0) {
+    duration.value = audioRef.value.duration
+    generateWaveform()
+  }
+}
+
+const onAudioError = (event: Event) => {
+  console.error('[AudioTrack] 音频加载错误:', props.title, event, props.audioUrl)
+  ElMessage.error(`音频加载失败: ${props.title}`)
 }
 
 const togglePlay = () => {
@@ -238,6 +270,8 @@ const downloadAudio = () => {
 
 // 生成波形数据（简化版本，实际项目中可能需要Web Audio API）
 const generateWaveform = async () => {
+  console.log('[AudioTrack] 开始生成波形数据:', props.title)
+
   // 模拟波形数据生成
   const sampleCount = 200
   const samples: number[] = []
@@ -249,6 +283,8 @@ const generateWaveform = async () => {
   }
 
   waveformData.value = samples
+  console.log('[AudioTrack] 波形数据生成完成:', samples.length, '个样本')
+
   await nextTick()
   drawWaveform()
 }
@@ -256,15 +292,35 @@ const generateWaveform = async () => {
 // 绘制波形图
 const drawWaveform = () => {
   const canvas = waveformCanvas.value
-  if (!canvas || waveformData.value.length === 0) return
+  const container = waveformContainer.value
+
+  if (!canvas || !container || waveformData.value.length === 0) {
+    console.log('[AudioTrack] 无法绘制波形:', props.title, 'canvas:', !!canvas, 'container:', !!container, 'data:', waveformData.value.length)
+
+    // 如果Canvas或容器不存在，稍后重试
+    if (waveformData.value.length > 0 && (!canvas || !container)) {
+      setTimeout(() => {
+        console.log('[AudioTrack] 重试绘制波形:', props.title)
+        drawWaveform()
+      }, 100)
+    }
+    return
+  }
 
   const ctx = canvas.getContext('2d')
-  if (!ctx) return
+  if (!ctx) {
+    console.log('[AudioTrack] 无法获取canvas上下文:', props.title)
+    return
+  }
 
   // 设置canvas尺寸
-  const container = waveformContainer.value
-  if (container) {
-    canvas.width = container.clientWidth
+  const containerWidth = container.clientWidth
+  if (containerWidth > 0) {
+    canvas.width = containerWidth
+    canvas.height = 60
+  } else {
+    // 如果容器宽度为0，使用默认宽度
+    canvas.width = 600
     canvas.height = 60
   }
 
@@ -272,6 +328,8 @@ const drawWaveform = () => {
   const height = canvas.height
   const barWidth = width / waveformData.value.length
   const progressPoint = (currentTime.value / duration.value) * width
+
+  console.log('[AudioTrack] 绘制波形:', props.title, 'size:', width, 'x', height, 'bars:', waveformData.value.length)
 
   // 清空画布
   ctx.clearRect(0, 0, width, height)
@@ -294,12 +352,22 @@ const drawWaveform = () => {
 }
 
 // 监听音频URL变化
-watch(() => props.audioUrl, () => {
+watch(() => props.audioUrl, (newUrl, oldUrl) => {
+  console.log('[AudioTrack] 音频URL变化:', { title: props.title, oldUrl, newUrl })
   isPlaying.value = false
   currentTime.value = 0
   duration.value = 0
   progressValue.value = 0
   waveformData.value = []
+
+  // 如果有新的URL，等待下一个tick后重新加载
+  if (newUrl && audioRef.value) {
+    nextTick(() => {
+      if (audioRef.value) {
+        audioRef.value.load()
+      }
+    })
+  }
 })
 
 // 监听可见性变化，重新绘制波形
@@ -311,8 +379,19 @@ watch(isVisible, async (visible) => {
 })
 
 onMounted(() => {
+  console.log('[AudioTrack] 组件挂载:', props.title, 'audioUrl:', props.audioUrl)
+
   // 监听窗口大小变化，重新绘制波形
   window.addEventListener('resize', drawWaveform)
+
+  // 如果没有音频URL，也生成默认波形用于测试
+  if (!props.audioUrl) {
+    console.log('[AudioTrack] 没有音频URL，生成默认波形:', props.title)
+    // 使用更长的延迟确保DOM完全渲染
+    setTimeout(() => {
+      generateWaveform()
+    }, 300 + Math.random() * 200) // 随机延迟避免同时执行
+  }
 })
 
 // 暴露方法给父组件
@@ -415,12 +494,13 @@ defineExpose({
   margin-top: 8px;
 }
 
-.no-audio {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 80px;
-  color: #909399;
+.no-audio-notice {
+  text-align: center;
+  padding: 8px;
+  background: #f0f9ff;
+  border: 1px dashed #409eff;
+  border-radius: 4px;
+  margin-bottom: 12px;
 }
 
 /* 响应式设计 */
