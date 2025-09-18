@@ -107,7 +107,7 @@ onMounted(() => {
 
     <el-container>
       <!-- 左侧导航栏 -->
-      <el-aside :width="sidebarCollapsed ? '60px' : '200px'" style="background-color: #f0f2f5; transition: width 0.3s;">
+      <el-aside :width="sidebarCollapsed ? '60px' : '200px'" style="background-color: #f0f2f5; transition: width 0.2s ease;">
         <el-menu
           :default-active="currentView"
           :collapse="sidebarCollapsed"
@@ -162,12 +162,13 @@ onMounted(() => {
             <el-card class="table-card">
               <el-table
                 :data="logger.logs.value"
-                style="width: 100%"
+                class="logs-table"
                 max-height="calc(100vh - 300px)"
                 stripe
+                table-layout="fixed"
               >
-                <el-table-column prop="timestamp" label="时间" width="180" />
-                <el-table-column prop="level" label="级别" width="100">
+                <el-table-column prop="timestamp" label="时间" width="180" fixed />
+                <el-table-column prop="level" label="级别" width="100" fixed>
                   <template #default="{ row }">
                     <el-tag
                       :type="row.level === 'error' ? 'danger' : row.level === 'success' ? 'success' : row.level === 'warning' ? 'warning' : 'info'"
@@ -177,14 +178,14 @@ onMounted(() => {
                     </el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column prop="module" label="模块" width="120">
+                <el-table-column prop="module" label="模块" width="120" fixed>
                   <template #default="{ row }">
                     <el-tag v-if="row.module" size="small" type="info">
                       {{ row.module }}
                     </el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column prop="message" label="消息" min-width="300" />
+                <el-table-column prop="message" label="消息" />
               </el-table>
 
               <el-empty v-if="logger.logs.value.length === 0" description="暂无日志记录" />
@@ -322,6 +323,79 @@ onMounted(() => {
   width: 100%;
   max-width: 1600px;
   margin: 0 auto;
+}
+
+/* 日志表格样式 - 防止横向展开动画 */
+.logs-table {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.logs-table :deep(.el-table__header-wrapper) {
+  width: 100% !important;
+}
+
+.logs-table :deep(.el-table__body-wrapper) {
+  width: 100% !important;
+}
+
+.logs-table :deep(.el-table__header) {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.logs-table :deep(.el-table__body) {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.logs-table :deep(.el-table) {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+/* 禁用表格的过渡动画 */
+.logs-table :deep(.el-table--enable-row-transition .el-table__body td) {
+  transition: none !important;
+}
+
+.logs-table :deep(.el-table__column-resize-proxy) {
+  display: none !important;
+}
+
+/* 确保表格列宽度立即生效 */
+.logs-table :deep(.el-table .el-table__cell) {
+  transition: none !important;
+}
+
+/* 强制表格立即适应容器宽度 */
+.page-content .table-card {
+  opacity: 1;
+  transform: none;
+  transition: none !important;
+}
+
+.page-content .logs-table {
+  opacity: 1;
+  transform: none;
+  transition: none !important;
+}
+
+/* 禁用Element Plus默认的表格动画 */
+.logs-table :deep(.el-table__expand-column .el-table__expand-icon) {
+  transition: none !important;
+}
+
+.logs-table :deep(.el-table__row) {
+  transition: none !important;
+}
+
+.logs-table :deep(.el-table th) {
+  transition: none !important;
+}
+
+.logs-table :deep(.el-table td) {
+  transition: none !important;
 }
 
 /* 设置页面网格布局 */
