@@ -31,7 +31,7 @@ const loadProjects = async () => {
   loading.value = true
   try {
     const response = await api.get('/projects/')
-    projects.value = response.data
+    projects.value = response.data.results || []
   } catch (error) {
     ElMessage.error('加载项目列表失败')
     console.error('Load projects error:', error)
