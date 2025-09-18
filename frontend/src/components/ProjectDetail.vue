@@ -54,7 +54,19 @@ const loading = ref(false)
 const segmentsLoading = ref(false)
 
 const editingSegments = ref<Set<number>>(new Set())
-const editingValues = ref<Record<number, {original_text?: string, translated_text?: string, speaker?: string}>>({})
+const editingValues = ref<Record<number, {
+  original_text?: string,
+  translated_text?: string,
+  speaker?: string,
+  start_minutes?: number,
+  start_seconds?: number,
+  start_milliseconds?: number,
+  end_minutes?: number,
+  end_seconds?: number,
+  end_milliseconds?: number,
+  emotion?: string,
+  speed?: number
+}>>({})
 const lastConcatenatedAudioUrl = ref<string>('')
 const showProjectSettings = ref(false)
 
@@ -321,6 +333,27 @@ const pendingCount = computed(() => segments.value.filter(s => s.status === 'pen
 const translatedCount = computed(() => segments.value.filter(s => s.status === 'translated').length)
 const audioSegmentsCount = computed(() => segments.value.filter(s => s.translated_audio_url && s.translated_audio_url.trim() !== '').length)
 
+// 时间格式转换辅助函数
+const parseTimeToComponents = (timeString: string) => {
+  const time = parseFloat(timeString)
+  const totalMs = Math.round(time * 1000)
+  const minutes = Math.floor(totalMs / 60000)
+  const seconds = Math.floor((totalMs % 60000) / 1000)
+  const milliseconds = totalMs % 1000
+  return { minutes, seconds, milliseconds }
+}
+
+const componentsToTimeString = (minutes: number, seconds: number, milliseconds: number) => {
+  const totalMs = (minutes * 60 + seconds) * 1000 + milliseconds
+  return (totalMs / 1000).toFixed(3)
+}
+
+// 获取自动匹配的音色ID
+const getVoiceIdForSpeaker = (speaker: string) => {
+  const mapping = projectSettings.value.voice_mappings.find(m => m.speaker === speaker)
+  return mapping?.voice_id || 'ai_default'
+}
+
 const playAudio = (audioUrl: string) => {
   window.open(audioUrl)
 }
@@ -345,10 +378,23 @@ const downloadAudio = () => {
 
 const startEdit = (segmentId: number, segment: Segment) => {
   editingSegments.value.add(segmentId)
+
+  // 分解开始和结束时间
+  const startTime = parseTimeToComponents(segment.start_time)
+  const endTime = parseTimeToComponents(segment.end_time)
+
   editingValues.value[segmentId] = {
     original_text: segment.original_text,
     translated_text: segment.translated_text,
-    speaker: segment.speaker
+    speaker: segment.speaker,
+    start_minutes: startTime.minutes,
+    start_seconds: startTime.seconds,
+    start_milliseconds: startTime.milliseconds,
+    end_minutes: endTime.minutes,
+    end_seconds: endTime.seconds,
+    end_milliseconds: endTime.milliseconds,
+    emotion: segment.emotion || 'auto',
+    speed: segment.speed || 1.0
   }
 }
 
@@ -362,8 +408,30 @@ const saveEdit = async (segmentId: number) => {
     const editData = editingValues.value[segmentId]
     if (!editData) return
 
+    // 合并时间组件为字符串格式
+    const startTime = componentsToTimeString(
+      editData.start_minutes || 0,
+      editData.start_seconds || 0,
+      editData.start_milliseconds || 0
+    )
+    const endTime = componentsToTimeString(
+      editData.end_minutes || 0,
+      editData.end_seconds || 0,
+      editData.end_milliseconds || 0
+    )
+
+    const apiData = {
+      original_text: editData.original_text,
+      translated_text: editData.translated_text,
+      speaker: editData.speaker,
+      start_time: startTime,
+      end_time: endTime,
+      emotion: editData.emotion,
+      speed: editData.speed
+    }
+
     logger.addLog('info', `开始保存段落编辑: ID ${segmentId}`, 'ProjectDetail')
-    const response = await api.patch(`/projects/${props.projectId}/segments/${segmentId}/`, editData)
+    const response = await api.patch(`/projects/${props.projectId}/segments/${segmentId}/`, apiData)
 
     ElMessage.success('保存成功')
     logger.addLog('success', `段落编辑保存成功: ID ${segmentId}`, 'ProjectDetail')
@@ -849,47 +917,93 @@ onMounted(() => {
       <el-table-column type="selection" width="55" />
 
       <!-- 序号 -->
-      <el-table-column prop="index" label="序号" width="80">
+      <el-table-column prop="index" label="序号" width="60">
         <template #default="{ row }">
-          <el-input
-            v-if="editingSegments.has(row.id)"
-            v-model="editingValues[row.id].index"
-            size="small"
-            type="number"
-            @keydown="handleKeydown($event, row.id)"
-          />
-          <span v-else class="editable-text" @click="startEdit(row.id, row)">{{ row.index }}</span>
+          <span>{{ row.index }}</span>
         </template>
       </el-table-column>
 
       <!-- 时间 -->
-      <el-table-column label="时间" width="160">
+      <el-table-column label="时间" width="220">
         <template #default="{ row }">
-          <div v-if="editingSegments.has(row.id)" style="display: flex; gap: 5px;">
-            <el-input
-              v-model="editingValues[row.id].start_time"
-              size="small"
-              type="number"
-              step="0.1"
-              style="width: 70px;"
-              @keydown="handleKeydown($event, row.id)"
-            />
-            <span>-</span>
-            <el-input
-              v-model="editingValues[row.id].end_time"
-              size="small"
-              type="number"
-              step="0.1"
-              style="width: 70px;"
-              @keydown="handleKeydown($event, row.id)"
-            />
+          <div v-if="editingSegments.has(row.id)" class="time-editor">
+            <!-- 开始时间 -->
+            <div class="time-group">
+              <label>开始:</label>
+              <el-input
+                v-model.number="editingValues[row.id].start_minutes"
+                size="small"
+                type="number"
+                :min="0"
+                placeholder="分"
+                style="width: 45px;"
+                @keydown="handleKeydown($event, row.id)"
+              />
+              <span>:</span>
+              <el-input
+                v-model.number="editingValues[row.id].start_seconds"
+                size="small"
+                type="number"
+                :min="0"
+                :max="59"
+                placeholder="秒"
+                style="width: 45px;"
+                @keydown="handleKeydown($event, row.id)"
+              />
+              <span>.</span>
+              <el-input
+                v-model.number="editingValues[row.id].start_milliseconds"
+                size="small"
+                type="number"
+                :min="0"
+                :max="999"
+                placeholder="毫秒"
+                style="width: 55px;"
+                @keydown="handleKeydown($event, row.id)"
+              />
+            </div>
+            <!-- 结束时间 -->
+            <div class="time-group">
+              <label>结束:</label>
+              <el-input
+                v-model.number="editingValues[row.id].end_minutes"
+                size="small"
+                type="number"
+                :min="0"
+                placeholder="分"
+                style="width: 45px;"
+                @keydown="handleKeydown($event, row.id)"
+              />
+              <span>:</span>
+              <el-input
+                v-model.number="editingValues[row.id].end_seconds"
+                size="small"
+                type="number"
+                :min="0"
+                :max="59"
+                placeholder="秒"
+                style="width: 45px;"
+                @keydown="handleKeydown($event, row.id)"
+              />
+              <span>.</span>
+              <el-input
+                v-model.number="editingValues[row.id].end_milliseconds"
+                size="small"
+                type="number"
+                :min="0"
+                :max="999"
+                placeholder="毫秒"
+                style="width: 55px;"
+                @keydown="handleKeydown($event, row.id)"
+              />
+            </div>
           </div>
           <span v-else class="editable-text" @click="startEdit(row.id, row)">{{ row.time_display }}</span>
         </template>
       </el-table-column>
 
       <!-- 说话人 -->
-      <el-table-column prop="speaker" label="说话人" width="120">
+      <el-table-column prop="speaker" label="说话人" width="100">
         <template #default="{ row }">
           <el-input
             v-if="editingSegments.has(row.id)"
@@ -902,7 +1016,7 @@ onMounted(() => {
       </el-table-column>
 
       <!-- 原文本 -->
-      <el-table-column prop="original_text" label="原文本" min-width="200">
+      <el-table-column prop="original_text" label="原文本" min-width="250">
         <template #default="{ row }">
           <el-input
             v-if="editingSegments.has(row.id)"
@@ -919,7 +1033,7 @@ onMounted(() => {
       </el-table-column>
 
       <!-- 翻译文本 -->
-      <el-table-column prop="translated_text" label="翻译文本" min-width="200">
+      <el-table-column prop="translated_text" label="翻译文本" min-width="250">
         <template #default="{ row }">
           <el-input
             v-if="editingSegments.has(row.id)"
@@ -937,7 +1051,7 @@ onMounted(() => {
       </el-table-column>
 
       <!-- 翻译音频 -->
-      <el-table-column label="翻译音频" width="100">
+      <el-table-column label="音频" width="80">
         <template #default="{ row }">
           <el-button
             v-if="row.translated_audio_url"
@@ -947,31 +1061,27 @@ onMounted(() => {
           >
             播放
           </el-button>
-          <span v-else style="color: #999;">无音频</span>
+          <span v-else style="color: #999; font-size: 12px;">无</span>
         </template>
       </el-table-column>
 
       <!-- voice_id -->
-      <el-table-column prop="voice_id" label="音色ID" width="120">
+      <el-table-column prop="voice_id" label="音色ID" width="110">
         <template #default="{ row }">
-          <el-input
-            v-if="editingSegments.has(row.id)"
-            v-model="editingValues[row.id].voice_id"
-            size="small"
-            @keydown="handleKeydown($event, row.id)"
-          />
-          <span v-else class="editable-text" @click="startEdit(row.id, row)">{{ row.voice_id || '-' }}</span>
+          <span class="voice-id-display" :title="getVoiceIdForSpeaker(row.speaker)">
+            {{ getVoiceIdForSpeaker(row.speaker) }}
+          </span>
         </template>
       </el-table-column>
 
       <!-- 情绪参数 -->
-      <el-table-column prop="emotion" label="情绪" width="100">
+      <el-table-column prop="emotion" label="情绪" width="90">
         <template #default="{ row }">
           <el-select
             v-if="editingSegments.has(row.id)"
             v-model="editingValues[row.id].emotion"
             size="small"
-            @keydown="handleKeydown($event, row.id)"
+            style="width: 100%;"
           >
             <el-option label="自动" value="auto" />
             <el-option label="高兴" value="happy" />
@@ -987,15 +1097,17 @@ onMounted(() => {
       </el-table-column>
 
       <!-- 语速参数 -->
-      <el-table-column prop="speed" label="语速" width="80">
+      <el-table-column prop="speed" label="语速" width="70">
         <template #default="{ row }">
-          <el-input-number
+          <el-input
             v-if="editingSegments.has(row.id)"
-            v-model="editingValues[row.id].speed"
+            v-model.number="editingValues[row.id].speed"
             size="small"
+            type="number"
             :min="0.5"
             :max="2.0"
             :step="0.1"
+            style="width: 100%;"
             @keydown="handleKeydown($event, row.id)"
           />
           <span v-else class="editable-text" @click="startEdit(row.id, row)">{{ row.speed || 1.0 }}</span>
@@ -1254,6 +1366,40 @@ onMounted(() => {
   max-width: 200px;
   word-break: break-all;
   line-height: 1.4;
+}
+
+/* 时间编辑器样式 */
+.time-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.time-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.time-group label {
+  font-size: 11px;
+  color: #666;
+  width: 28px;
+  text-align: right;
+}
+
+.time-group span {
+  color: #909399;
+  font-weight: bold;
+}
+
+/* 音色ID显示样式 */
+.voice-id-display {
+  font-size: 12px;
+  color: #409eff;
+  font-family: monospace;
+  cursor: help;
 }
 
 .segment-actions {
