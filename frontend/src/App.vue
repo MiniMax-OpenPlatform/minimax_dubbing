@@ -11,7 +11,6 @@ import { logger } from './utils/logger'
 const isAuthenticated = ref(false)
 const currentView = ref('projects')
 const selectedProjectId = ref<number | null>(null)
-const sidebarCollapsed = ref(false)
 
 const handleAuthenticated = () => {
   isAuthenticated.value = true
@@ -71,22 +70,41 @@ onMounted(() => {
   <el-container v-else style="height: 100vh">
     <!-- 顶部导航栏 -->
     <el-header style="background-color: #001529; color: white; padding: 0 20px; border-bottom: 1px solid #f0f0f0;">
-      <div style="display: flex; align-items: center; height: 100%;">
-        <el-icon style="font-size: 24px; margin-right: 12px; color: #1890ff;">
-          <Document />
-        </el-icon>
-        <h1 style="margin: 0; font-size: 20px;">MiniMax 翻译工具</h1>
+      <div style="display: flex; align-items: center; justify-content: space-between; height: 100%;">
+        <!-- 左侧标题 -->
+        <div style="display: flex; align-items: center;">
+          <el-icon style="font-size: 24px; margin-right: 12px; color: #1890ff;">
+            <Document />
+          </el-icon>
+          <h1 style="margin: 0; font-size: 20px;">MiniMax 翻译工具</h1>
+        </div>
 
-        <div style="margin-left: auto; display: flex; align-items: center;">
-          <el-button
-            type="text"
-            style="color: white;"
-            @click="sidebarCollapsed = !sidebarCollapsed"
-          >
-            <el-icon><List /></el-icon>
-            {{ sidebarCollapsed ? '展开' : '收起' }}菜单
-          </el-button>
-          <el-button type="danger" @click="logout" style="margin-left: 10px;">
+        <!-- 中间导航菜单 -->
+        <el-menu
+          :default-active="currentView"
+          mode="horizontal"
+          style="background-color: transparent; border-bottom: none; flex: 1; justify-content: center;"
+          @select="navigateTo"
+        >
+          <el-menu-item index="projects" style="color: white;">
+            <el-icon><Document /></el-icon>
+            <span>项目管理</span>
+          </el-menu-item>
+
+          <el-menu-item index="logs" style="color: white;">
+            <el-icon><Monitor /></el-icon>
+            <span>系统日志</span>
+          </el-menu-item>
+
+          <el-menu-item index="settings" style="color: white;">
+            <el-icon><Setting /></el-icon>
+            <span>系统设置</span>
+          </el-menu-item>
+        </el-menu>
+
+        <!-- 右侧操作按钮 -->
+        <div style="display: flex; align-items: center;">
+          <el-button type="danger" @click="logout">
             <el-icon><SwitchButton /></el-icon>
             退出登录
           </el-button>
@@ -94,56 +112,29 @@ onMounted(() => {
       </div>
     </el-header>
 
-    <el-container>
-      <!-- 左侧导航栏 -->
-      <el-aside :width="sidebarCollapsed ? '60px' : '200px'" style="background-color: #f0f2f5; transition: width 0.2s ease;">
-        <el-menu
-          :default-active="currentView"
-          :collapse="sidebarCollapsed"
-          style="height: 100%; border-right: none;"
-          @select="navigateTo"
-        >
-          <el-menu-item index="projects">
-            <el-icon><Document /></el-icon>
-            <span>项目管理</span>
-          </el-menu-item>
+    <!-- 主内容区域 -->
+    <el-main class="main-content" style="padding: 20px;">
+      <div class="content-container">
+        <!-- 项目列表页面 -->
+        <ProjectList
+          v-if="currentView === 'projects'"
+          @show-detail="showProjectDetail"
+        />
 
-          <el-menu-item index="logs">
-            <el-icon><Monitor /></el-icon>
-            <span>系统日志</span>
-          </el-menu-item>
+        <!-- 项目详情页面 -->
+        <ProjectDetail
+          v-if="currentView === 'detail' && selectedProjectId"
+          :project-id="selectedProjectId"
+          @back="backToProjects"
+        />
 
-          <el-menu-item index="settings">
-            <el-icon><Setting /></el-icon>
-            <span>系统设置</span>
-          </el-menu-item>
-        </el-menu>
-      </el-aside>
+        <!-- 系统日志页面 -->
+        <SystemLogs v-if="currentView === 'logs'" />
 
-      <!-- 主内容区域 -->
-      <el-main class="main-content">
-        <div class="content-container">
-          <!-- 项目列表页面 -->
-          <ProjectList
-            v-if="currentView === 'projects'"
-            @show-detail="showProjectDetail"
-          />
-
-          <!-- 项目详情页面 -->
-          <ProjectDetail
-            v-if="currentView === 'detail' && selectedProjectId"
-            :project-id="selectedProjectId"
-            @back="backToProjects"
-          />
-
-          <!-- 系统日志页面 -->
-          <SystemLogs v-if="currentView === 'logs'" />
-
-          <!-- 系统设置页面 -->
-          <SystemSettings v-if="currentView === 'settings'" @logout="logout" />
-        </div>
-      </el-main>
-    </el-container>
+        <!-- 系统设置页面 -->
+        <SystemSettings v-if="currentView === 'settings'" @logout="logout" />
+      </div>
+    </el-main>
   </el-container>
 </template>
 
@@ -157,6 +148,23 @@ onMounted(() => {
 .el-header {
   display: flex;
   align-items: center;
+}
+
+/* 顶部导航菜单样式 */
+.el-menu--horizontal .el-menu-item {
+  color: rgba(255, 255, 255, 0.65) !important;
+  border-bottom: 2px solid transparent !important;
+}
+
+.el-menu--horizontal .el-menu-item:hover {
+  color: #fff !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.el-menu--horizontal .el-menu-item.is-active {
+  color: #1890ff !important;
+  border-bottom-color: #1890ff !important;
+  background-color: rgba(24, 144, 255, 0.1) !important;
 }
 
 /* 主内容区域 */

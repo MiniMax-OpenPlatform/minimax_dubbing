@@ -58,6 +58,7 @@ class Project(models.Model):
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='projects')
     name = models.CharField(max_length=200, help_text="项目名称")
+    description = models.TextField(blank=True, help_text="项目描述")
     source_lang = models.CharField(max_length=10, choices=LANGUAGE_CHOICES, default='zh', help_text="源语言")
     target_lang = models.CharField(max_length=10, choices=LANGUAGE_CHOICES, default='en', help_text="目标语言")
 
@@ -67,7 +68,7 @@ class Project(models.Model):
 
     # 项目级配置
     tts_model = models.CharField(max_length=50, default="speech-01-turbo", help_text="TTS模型")
-    voice_mappings = models.JSONField(default=dict, help_text="角色音色映射表")
+    voice_mappings = models.JSONField(default=list, help_text="角色音色映射表")
     custom_vocabulary = models.JSONField(default=list, help_text="专有词汇表")
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')

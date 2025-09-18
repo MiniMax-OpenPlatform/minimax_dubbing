@@ -30,7 +30,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = [
-            'id', 'name', 'source_lang', 'target_lang',
+            'id', 'name', 'description', 'source_lang', 'target_lang',
             'srt_file_path', 'video_file_path', 'tts_model',
             'voice_mappings', 'custom_vocabulary', 'status',
             'created_at', 'updated_at', 'segment_count',
@@ -44,7 +44,7 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = [
-            'name', 'source_lang', 'target_lang',
+            'name', 'description', 'source_lang', 'target_lang',
             'tts_model', 'voice_mappings', 'custom_vocabulary'
         ]
 

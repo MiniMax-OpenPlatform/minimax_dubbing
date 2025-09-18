@@ -1,6 +1,7 @@
 """
 项目管理视图
 """
+import os
 import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -18,6 +19,7 @@ from segments.models import Segment
 from services.parsers.srt_parser import SRTParser
 from services.clients.minimax_client import MiniMaxClient
 from services.algorithms.timestamp_aligner import TimestampAligner
+from services.audio_processor import AudioProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -256,3 +258,80 @@ class ProjectViewSet(viewsets.ModelViewSet):
         }
 
         return Response(stats)
+
+    @action(detail=True, methods=['post'])
+    def concatenate_audio(self, request, pk=None):
+        """
+        拼接项目中所有音频段落为完整音频文件
+        """
+        import uuid
+        from django.conf import settings
+
+        project = self.get_object()
+        trace_id = str(uuid.uuid4())[:8]
+
+        try:
+            logger.info(f"[{trace_id}] 开始拼接项目音频: {project.name}")
+
+            # 获取所有有音频的段落
+            segments = project.segments.filter(
+                translated_audio_url__isnull=False
+            ).exclude(
+                translated_audio_url__exact=''
+            ).order_by('index')
+
+            if not segments.exists():
+                return Response({
+                    'error': '没有可用的音频段落进行拼接'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # 准备音频段落数据
+            audio_segments = []
+            for segment in segments:
+                audio_segments.append({
+                    'start_time': segment.start_time,
+                    'end_time': segment.end_time,
+                    'audio_url': segment.translated_audio_url,
+                    'index': segment.index
+                })
+
+            # 创建输出文件路径
+            output_dir = os.path.join(settings.MEDIA_ROOT, 'concatenated')
+            os.makedirs(output_dir, exist_ok=True)
+
+            output_filename = f"{project.name}_{trace_id}_complete.mp3"
+            output_path = os.path.join(output_dir, output_filename)
+
+            # 执行音频拼接
+            processor = AudioProcessor()
+            success = processor.concatenate_audios(
+                audio_segments=audio_segments,
+                output_path=output_path,
+                trace_id=trace_id
+            )
+
+            if success:
+                # 生成访问URL
+                audio_url = request.build_absolute_uri(
+                    f'/media/concatenated/{output_filename}'
+                )
+
+                logger.info(f"[{trace_id}] 音频拼接成功: {audio_url}")
+
+                return Response({
+                    'success': True,
+                    'audio_url': audio_url,
+                    'segments_count': len(audio_segments),
+                    'trace_id': trace_id,
+                    'message': f'成功拼接{len(audio_segments)}个音频段落'
+                })
+            else:
+                return Response({
+                    'error': '音频拼接失败，请查看日志'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        except Exception as e:
+            logger.error(f"[{trace_id}] 音频拼接异常: {str(e)}")
+            return Response({
+                'error': f'音频拼接失败: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
