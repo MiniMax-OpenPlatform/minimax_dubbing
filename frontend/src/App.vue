@@ -120,86 +120,132 @@ onMounted(() => {
       </el-aside>
 
       <!-- 主内容区域 -->
-      <el-main style="padding: 20px; background-color: white;">
-        <!-- 项目列表页面 -->
-        <ProjectList
-          v-if="currentView === 'projects'"
-          @show-detail="showProjectDetail"
-        />
+      <el-main class="main-content">
+        <div class="content-container">
+          <!-- 项目列表页面 -->
+          <ProjectList
+            v-if="currentView === 'projects'"
+            @show-detail="showProjectDetail"
+          />
 
-        <!-- 项目详情页面 -->
-        <ProjectDetail
-          v-if="currentView === 'detail' && selectedProjectId"
-          :project-id="selectedProjectId"
-          @back="backToProjects"
-        />
+          <!-- 项目详情页面 -->
+          <ProjectDetail
+            v-if="currentView === 'detail' && selectedProjectId"
+            :project-id="selectedProjectId"
+            @back="backToProjects"
+          />
 
-        <!-- 系统日志页面 -->
-        <div v-if="currentView === 'logs'">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h2 style="margin: 0;">系统日志</h2>
-            <el-button @click="logger.clearLogs" type="danger">
-              <el-icon><Delete /></el-icon>
-              清空日志
-            </el-button>
+          <!-- 系统日志页面 -->
+          <div v-if="currentView === 'logs'" class="page-content">
+            <div class="page-header">
+              <h2>系统日志</h2>
+              <el-button @click="logger.clearLogs" type="danger">
+                <el-icon><Delete /></el-icon>
+                清空日志
+              </el-button>
+            </div>
+
+            <el-card class="table-card">
+              <el-table
+                :data="logger.logs.value"
+                style="width: 100%"
+                max-height="calc(100vh - 300px)"
+                stripe
+              >
+                <el-table-column prop="timestamp" label="时间" width="180" />
+                <el-table-column prop="level" label="级别" width="100">
+                  <template #default="{ row }">
+                    <el-tag
+                      :type="row.level === 'error' ? 'danger' : row.level === 'success' ? 'success' : row.level === 'warning' ? 'warning' : 'info'"
+                      size="small"
+                    >
+                      {{ row.level.toUpperCase() }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="module" label="模块" width="120">
+                  <template #default="{ row }">
+                    <el-tag v-if="row.module" size="small" type="info">
+                      {{ row.module }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="message" label="消息" min-width="300" />
+              </el-table>
+
+              <el-empty v-if="logger.logs.value.length === 0" description="暂无日志记录" />
+            </el-card>
           </div>
 
-          <el-table :data="logger.logs.value" style="width: 100%" max-height="600">
-            <el-table-column prop="timestamp" label="时间" width="180" />
-            <el-table-column prop="level" label="级别" width="100">
-              <template #default="{ row }">
-                <el-tag
-                  :type="row.level === 'error' ? 'danger' : row.level === 'success' ? 'success' : row.level === 'warning' ? 'warning' : 'info'"
-                  size="small"
-                >
-                  {{ row.level.toUpperCase() }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="module" label="模块" width="120">
-              <template #default="{ row }">
-                <el-tag v-if="row.module" size="small" type="info">
-                  {{ row.module }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="message" label="消息" />
-          </el-table>
+          <!-- 系统设置页面 -->
+          <div v-if="currentView === 'settings'" class="page-content">
+            <h2>系统设置</h2>
 
-          <el-empty v-if="logger.logs.value.length === 0" description="暂无日志记录" />
-        </div>
+            <div class="settings-grid">
+              <el-card class="settings-card">
+                <template #header>
+                  <span>认证信息</span>
+                </template>
+                <el-descriptions :column="1" border>
+                  <el-descriptions-item label="Group ID">
+                    {{ localStorage.getItem('group_id') || '未设置' }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="API Key">
+                    {{ localStorage.getItem('api_key') ? '已设置' : '未设置' }}
+                  </el-descriptions-item>
+                </el-descriptions>
+                <el-button @click="logout" type="warning" style="margin-top: 15px; width: 100%;">
+                  重新设置认证信息
+                </el-button>
+              </el-card>
 
-        <!-- 系统设置页面 -->
-        <div v-if="currentView === 'settings'">
-          <h2>系统设置</h2>
-          <el-card style="margin-bottom: 20px;">
-            <template #header>
-              <span>认证信息</span>
-            </template>
-            <el-descriptions :column="1">
-              <el-descriptions-item label="Group ID">
-                {{ localStorage.getItem('group_id') || '未设置' }}
-              </el-descriptions-item>
-              <el-descriptions-item label="API Key">
-                {{ localStorage.getItem('api_key') ? '已设置' : '未设置' }}
-              </el-descriptions-item>
-            </el-descriptions>
-            <el-button @click="logout" type="warning" style="margin-top: 10px;">
-              重新设置认证信息
-            </el-button>
-          </el-card>
+              <el-card class="settings-card">
+                <template #header>
+                  <span>应用信息</span>
+                </template>
+                <el-descriptions :column="1" border>
+                  <el-descriptions-item label="应用名称">MiniMax 翻译工具</el-descriptions-item>
+                  <el-descriptions-item label="版本">v1.0.0</el-descriptions-item>
+                  <el-descriptions-item label="后端地址">http://10.11.17.19:5172</el-descriptions-item>
+                  <el-descriptions-item label="前端地址">http://10.11.17.19:5174</el-descriptions-item>
+                </el-descriptions>
+              </el-card>
 
-          <el-card>
-            <template #header>
-              <span>应用信息</span>
-            </template>
-            <el-descriptions :column="1">
-              <el-descriptions-item label="应用名称">MiniMax 翻译工具</el-descriptions-item>
-              <el-descriptions-item label="版本">v1.0.0</el-descriptions-item>
-              <el-descriptions-item label="后端地址">http://10.11.17.19:5172</el-descriptions-item>
-              <el-descriptions-item label="前端地址">http://10.11.17.19:5173</el-descriptions-item>
-            </el-descriptions>
-          </el-card>
+              <el-card class="settings-card">
+                <template #header>
+                  <span>系统状态</span>
+                </template>
+                <el-descriptions :column="1" border>
+                  <el-descriptions-item label="日志条数">
+                    {{ logger.logs.value.length }} / 100
+                  </el-descriptions-item>
+                  <el-descriptions-item label="当前页面">
+                    {{ currentView }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="认证状态">
+                    <el-tag type="success">已认证</el-tag>
+                  </el-descriptions-item>
+                </el-descriptions>
+              </el-card>
+
+              <el-card class="settings-card">
+                <template #header>
+                  <span>浏览器信息</span>
+                </template>
+                <el-descriptions :column="1" border>
+                  <el-descriptions-item label="浏览器">
+                    {{ navigator.userAgent.split(' ').slice(-2).join(' ') }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="屏幕分辨率">
+                    {{ screen.width }} × {{ screen.height }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="视口大小">
+                    {{ window.innerWidth }} × {{ window.innerHeight }}
+                  </el-descriptions-item>
+                </el-descriptions>
+              </el-card>
+            </div>
+          </div>
         </div>
       </el-main>
     </el-container>
@@ -214,5 +260,138 @@ onMounted(() => {
 .el-header {
   display: flex;
   align-items: center;
+}
+
+/* 主内容区域样式 */
+.main-content {
+  padding: 0;
+  background-color: #f5f5f5;
+  overflow: auto;
+}
+
+.content-container {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 页面内容通用样式 */
+.page-content {
+  width: 100%;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.page-header h2 {
+  margin: 0;
+  color: #303133;
+  font-weight: 600;
+}
+
+/* 表格卡片样式 */
+.table-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* 设置页面网格布局 */
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+
+.settings-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  transition: box-shadow 0.3s ease;
+}
+
+.settings-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .content-container {
+    max-width: 100%;
+    padding: 15px;
+  }
+
+  .settings-grid {
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 15px;
+  }
+}
+
+@media (max-width: 768px) {
+  .content-container {
+    padding: 10px;
+  }
+
+  .settings-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+
+  .page-header h2 {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-card {
+    margin: 0;
+  }
+}
+
+/* 确保表格在小屏幕上的响应式 */
+@media (max-width: 768px) {
+  .table-card :deep(.el-table) {
+    font-size: 12px;
+  }
+
+  .table-card :deep(.el-table .el-table__cell) {
+    padding: 8px 4px;
+  }
+}
+
+/* 深色主题适配 */
+@media (prefers-color-scheme: dark) {
+  .main-content {
+    background-color: #1a1a1a;
+  }
+
+  .page-header {
+    background: #2a2a2a;
+    color: #e4e7ed;
+  }
+
+  .page-header h2 {
+    color: #e4e7ed;
+  }
 }
 </style>
