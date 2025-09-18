@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Download, Refresh } from '@element-plus/icons-vue'
 import api from '../utils/api'
 import { logger } from '../utils/logger'
 

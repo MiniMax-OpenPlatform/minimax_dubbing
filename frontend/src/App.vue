@@ -3,7 +3,9 @@ import { ref, onMounted } from 'vue'
 import AuthSetup from './components/AuthSetup.vue'
 import ProjectList from './components/ProjectList.vue'
 import ProjectDetail from './components/ProjectDetail.vue'
-import { Document, Setting, List, Monitor, Delete, SwitchButton } from '@element-plus/icons-vue'
+import SystemLogs from './components/SystemLogs.vue'
+import SystemSettings from './components/SystemSettings.vue'
+import { Document, Setting, List, Monitor, SwitchButton } from '@element-plus/icons-vue'
 import { logger } from './utils/logger'
 
 const isAuthenticated = ref(false)
@@ -49,20 +51,7 @@ const navigateTo = (view: string) => {
   logger.addLog('info', `导航到: ${viewNames[view] || view}`, 'Navigation')
 }
 
-// 为模板提供localStorage访问
-const getStorageItem = (key: string) => {
-  return localStorage.getItem(key)
-}
-
-// 系统信息
-const systemInfo = {
-  browser: navigator.userAgent.split(' ').slice(-2).join(' '),
-  screenResolution: `${screen.width} × ${screen.height}`,
-  viewportSize: `${window.innerWidth} × ${window.innerHeight}`
-}
-
 onMounted(() => {
-  // 检查是否已有认证信息
   const groupId = localStorage.getItem('group_id')
   const apiKey = localStorage.getItem('api_key')
   if (groupId && apiKey) {
@@ -137,275 +126,59 @@ onMounted(() => {
           <!-- 项目列表页面 -->
           <ProjectList
             v-if="currentView === 'projects'"
-            :key="'projects'"
             @show-detail="showProjectDetail"
           />
 
           <!-- 项目详情页面 -->
           <ProjectDetail
             v-if="currentView === 'detail' && selectedProjectId"
-            :key="`detail-${selectedProjectId}`"
             :project-id="selectedProjectId"
             @back="backToProjects"
           />
 
           <!-- 系统日志页面 -->
-          <div v-if="currentView === 'logs'" :key="'logs'" class="page-content logs-page">
-            <div class="page-header">
-              <h2>系统日志</h2>
-              <el-button @click="logger.clearLogs" type="danger">
-                <el-icon><Delete /></el-icon>
-                清空日志
-              </el-button>
-            </div>
-
-            <div class="logs-container">
-              <div class="logs-table-wrapper">
-                <el-table
-                  :data="logger.logs.value"
-                  class="logs-table"
-                  height="calc(100vh - 300px)"
-                  stripe
-                  :border="true"
-                  style="width: 100%;"
-                >
-                  <el-table-column prop="timestamp" label="时间" width="180" show-overflow-tooltip />
-                  <el-table-column prop="level" label="级别" width="100" align="center">
-                    <template #default="{ row }">
-                      <el-tag
-                        :type="row.level === 'error' ? 'danger' : row.level === 'success' ? 'success' : row.level === 'warning' ? 'warning' : 'info'"
-                        size="small"
-                      >
-                        {{ row.level.toUpperCase() }}
-                      </el-tag>
-                    </template>
-                  </el-table-column>
-                  <el-table-column prop="module" label="模块" width="120" align="center">
-                    <template #default="{ row }">
-                      <el-tag v-if="row.module" size="small" type="info">
-                        {{ row.module }}
-                      </el-tag>
-                    </template>
-                  </el-table-column>
-                  <el-table-column prop="message" label="消息" min-width="200" show-overflow-tooltip />
-                </el-table>
-
-                <div v-if="logger.logs.value.length === 0" class="empty-logs">
-                  <el-empty description="暂无日志记录" />
-                </div>
-              </div>
-            </div>
-          </div>
+          <SystemLogs v-if="currentView === 'logs'" />
 
           <!-- 系统设置页面 -->
-          <div v-if="currentView === 'settings'" :key="'settings'" class="page-content">
-            <h2>系统设置</h2>
-
-            <div class="settings-grid">
-              <el-card class="settings-card">
-                <template #header>
-                  <span>认证信息</span>
-                </template>
-                <el-descriptions :column="1" border>
-                  <el-descriptions-item label="Group ID">
-                    {{ getStorageItem('group_id') || '未设置' }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="API Key">
-                    {{ getStorageItem('api_key') ? '已设置' : '未设置' }}
-                  </el-descriptions-item>
-                </el-descriptions>
-                <el-button @click="logout" type="warning" style="margin-top: 15px; width: 100%;">
-                  重新设置认证信息
-                </el-button>
-              </el-card>
-
-              <el-card class="settings-card">
-                <template #header>
-                  <span>应用信息</span>
-                </template>
-                <el-descriptions :column="1" border>
-                  <el-descriptions-item label="应用名称">MiniMax 翻译工具</el-descriptions-item>
-                  <el-descriptions-item label="版本">v1.0.0</el-descriptions-item>
-                  <el-descriptions-item label="后端地址">http://10.11.17.19:5172</el-descriptions-item>
-                  <el-descriptions-item label="前端地址">http://10.11.17.19:5174</el-descriptions-item>
-                </el-descriptions>
-              </el-card>
-
-              <el-card class="settings-card">
-                <template #header>
-                  <span>系统状态</span>
-                </template>
-                <el-descriptions :column="1" border>
-                  <el-descriptions-item label="日志条数">
-                    {{ logger.logs.value.length }} / 100
-                  </el-descriptions-item>
-                  <el-descriptions-item label="当前页面">
-                    {{ currentView }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="认证状态">
-                    <el-tag type="success">已认证</el-tag>
-                  </el-descriptions-item>
-                </el-descriptions>
-              </el-card>
-
-              <el-card class="settings-card">
-                <template #header>
-                  <span>浏览器信息</span>
-                </template>
-                <el-descriptions :column="1" border>
-                  <el-descriptions-item label="浏览器">
-                    {{ systemInfo.browser }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="屏幕分辨率">
-                    {{ systemInfo.screenResolution }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="视口大小">
-                    {{ systemInfo.viewportSize }}
-                  </el-descriptions-item>
-                </el-descriptions>
-              </el-card>
-            </div>
-          </div>
+          <SystemSettings v-if="currentView === 'settings'" @logout="logout" />
         </div>
       </el-main>
     </el-container>
   </el-container>
 </template>
 
-<style>
+<style scoped>
+/* 全局字体设置 */
 #app {
   font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
 }
 
+/* 头部导航栏 */
 .el-header {
   display: flex;
   align-items: center;
 }
 
-/* 主内容区域样式 */
+/* 主内容区域 */
 .main-content {
   padding: 0;
   background-color: #f5f5f5;
   overflow: auto;
 }
 
+/* 内容容器 - 统一宽度管理 */
 .content-container {
-  max-width: 1600px;
-  margin: 0 auto;
+  margin: 0;
   padding: 20px;
   width: 100%;
   box-sizing: border-box;
   min-height: calc(100vh - 60px);
 }
 
-/* 页面内容通用样式 */
-.page-content {
-  width: 100%;
-  max-width: 1600px;
-  margin: 0 auto;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.page-header h2 {
-  margin: 0;
-  color: #303133;
-  font-weight: 600;
-}
-
-/* 表格卡片样式 */
-.table-card {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  overflow: hidden;
-  width: 100%;
-  max-width: 1600px;
-  margin: 0 auto;
-}
-
-/* 日志页面样式 - 简化版本 */
-.logs-page {
-  width: 100%;
-  max-width: 1600px;
-  margin: 0 auto;
-}
-
-.logs-container {
-  width: 100%;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
-.logs-table-wrapper {
-  width: 100%;
-  position: relative;
-}
-
-/* 表格样式优化 - 使用Element Plus默认行为但确保宽度 */
-.logs-table {
-  width: 100%;
-}
-
-.logs-table :deep(.el-table) {
-  width: 100%;
-}
-
-.logs-table :deep(.el-table__header-wrapper),
-.logs-table :deep(.el-table__body-wrapper) {
-  width: 100%;
-}
-
-/* 只禁用可能影响宽度展开的动画 */
-.logs-table :deep(.el-table__column-resize-proxy) {
-  display: none;
-}
-
-.empty-logs {
-  padding: 40px;
-  text-align: center;
-}
-
-/* 设置页面网格布局 */
-.settings-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 20px;
-  width: 100%;
-  max-width: 1600px;
-  margin: 0 auto;
-}
-
-.settings-card {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  transition: box-shadow 0.3s ease;
-}
-
-.settings-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
 /* 响应式设计 */
 @media (max-width: 1200px) {
   .content-container {
-    max-width: 100%;
     padding: 15px;
-  }
-
-  .settings-grid {
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 15px;
   }
 }
 
@@ -413,58 +186,12 @@ onMounted(() => {
   .content-container {
     padding: 10px;
   }
-
-  .settings-grid {
-    grid-template-columns: 1fr;
-    gap: 15px;
-  }
-
-  .page-header {
-    flex-direction: column;
-    gap: 15px;
-    text-align: center;
-  }
-
-  .page-header h2 {
-    font-size: 1.5rem;
-  }
 }
-
-@media (max-width: 480px) {
-  .settings-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .settings-card {
-    margin: 0;
-  }
-}
-
-/* 确保表格在小屏幕上的响应式 */
-@media (max-width: 768px) {
-  .table-card :deep(.el-table) {
-    font-size: 12px;
-  }
-
-  .table-card :deep(.el-table .el-table__cell) {
-    padding: 8px 4px;
-  }
-}
-
 
 /* 深色主题适配 */
 @media (prefers-color-scheme: dark) {
   .main-content {
     background-color: #1a1a1a;
-  }
-
-  .page-header {
-    background: #2a2a2a;
-    color: #e4e7ed;
-  }
-
-  .page-header h2 {
-    color: #e4e7ed;
   }
 }
 </style>

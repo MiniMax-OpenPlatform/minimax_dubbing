@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Upload, Refresh, UploadFilled } from '@element-plus/icons-vue'
 import api from '../utils/api'
 import { logger } from '../utils/logger'
 
