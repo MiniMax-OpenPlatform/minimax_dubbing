@@ -47,6 +47,30 @@ const navigateTo = (view: string) => {
     'settings': '系统设置'
   }
   logger.addLog('info', `导航到: ${viewNames[view] || view}`, 'Navigation')
+
+  // 强制表格立即适应宽度
+  if (view === 'logs') {
+    setTimeout(() => {
+      const tables = document.querySelectorAll('.logs-table .el-table')
+      tables.forEach(table => {
+        const htmlTable = table as HTMLElement
+        htmlTable.style.width = '100%'
+        htmlTable.style.tableLayout = 'fixed'
+
+        // 强制重新计算表格布局
+        const headers = htmlTable.querySelectorAll('.el-table__header-wrapper')
+        const bodies = htmlTable.querySelectorAll('.el-table__body-wrapper')
+
+        headers.forEach(header => {
+          (header as HTMLElement).style.width = '100%'
+        })
+
+        bodies.forEach(body => {
+          (body as HTMLElement).style.width = '100%'
+        })
+      })
+    }, 0)
+  }
 }
 
 // 为模板提供localStorage访问
@@ -150,7 +174,7 @@ onMounted(() => {
           />
 
           <!-- 系统日志页面 -->
-          <div v-if="currentView === 'logs'" :key="'logs'" class="page-content">
+          <div v-if="currentView === 'logs'" :key="'logs'" class="page-content logs-page">
             <div class="page-header">
               <h2>系统日志</h2>
               <el-button @click="logger.clearLogs" type="danger">
@@ -159,37 +183,44 @@ onMounted(() => {
               </el-button>
             </div>
 
-            <el-card class="table-card">
-              <el-table
-                :data="logger.logs.value"
-                class="logs-table"
-                max-height="calc(100vh - 300px)"
-                stripe
-                table-layout="fixed"
-              >
-                <el-table-column prop="timestamp" label="时间" width="180" fixed />
-                <el-table-column prop="level" label="级别" width="100" fixed>
-                  <template #default="{ row }">
-                    <el-tag
-                      :type="row.level === 'error' ? 'danger' : row.level === 'success' ? 'success' : row.level === 'warning' ? 'warning' : 'info'"
-                      size="small"
-                    >
-                      {{ row.level.toUpperCase() }}
-                    </el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="module" label="模块" width="120" fixed>
-                  <template #default="{ row }">
-                    <el-tag v-if="row.module" size="small" type="info">
-                      {{ row.module }}
-                    </el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="message" label="消息" />
-              </el-table>
+            <div class="logs-container">
+              <div class="logs-table-wrapper">
+                <el-table
+                  :data="logger.logs.value"
+                  class="logs-table"
+                  height="calc(100vh - 300px)"
+                  stripe
+                  size="small"
+                  :show-header="true"
+                  :border="false"
+                  style="width: 100%; --el-table-border-color: transparent;"
+                >
+                  <el-table-column prop="timestamp" label="时间" width="180" show-overflow-tooltip />
+                  <el-table-column prop="level" label="级别" width="100" align="center">
+                    <template #default="{ row }">
+                      <el-tag
+                        :type="row.level === 'error' ? 'danger' : row.level === 'success' ? 'success' : row.level === 'warning' ? 'warning' : 'info'"
+                        size="small"
+                      >
+                        {{ row.level.toUpperCase() }}
+                      </el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="module" label="模块" width="120" align="center">
+                    <template #default="{ row }">
+                      <el-tag v-if="row.module" size="small" type="info">
+                        {{ row.module }}
+                      </el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="message" label="消息" show-overflow-tooltip />
+                </el-table>
 
-              <el-empty v-if="logger.logs.value.length === 0" description="暂无日志记录" />
-            </el-card>
+                <div v-if="logger.logs.value.length === 0" class="empty-logs">
+                  <el-empty description="暂无日志记录" />
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- 系统设置页面 -->
@@ -325,36 +356,76 @@ onMounted(() => {
   margin: 0 auto;
 }
 
-/* 日志表格样式 - 防止横向展开动画 */
+/* 日志页面样式 */
+.logs-page {
+  width: 100% !important;
+}
+
+.logs-container {
+  width: 100% !important;
+  max-width: 1600px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.logs-table-wrapper {
+  width: 100% !important;
+  position: relative;
+}
+
+/* 彻底禁用Element Plus表格的所有动画和过渡 */
 .logs-table {
   width: 100% !important;
-  table-layout: fixed !important;
+  animation: none !important;
+  transition: none !important;
 }
 
-.logs-table :deep(.el-table__header-wrapper) {
-  width: 100% !important;
-}
-
-.logs-table :deep(.el-table__body-wrapper) {
-  width: 100% !important;
-}
-
-.logs-table :deep(.el-table__header) {
-  width: 100% !important;
-  table-layout: fixed !important;
-}
-
-.logs-table :deep(.el-table__body) {
-  width: 100% !important;
-  table-layout: fixed !important;
+.logs-table * {
+  animation: none !important;
+  transition: none !important;
+  animation-duration: 0s !important;
+  transition-duration: 0s !important;
 }
 
 .logs-table :deep(.el-table) {
   width: 100% !important;
-  table-layout: fixed !important;
+  animation: none !important;
+  transition: none !important;
 }
 
-/* 禁用表格的过渡动画 */
+.logs-table :deep(.el-table__header-wrapper),
+.logs-table :deep(.el-table__body-wrapper),
+.logs-table :deep(.el-table__footer-wrapper) {
+  width: 100% !important;
+  animation: none !important;
+  transition: none !important;
+}
+
+.logs-table :deep(.el-table__header),
+.logs-table :deep(.el-table__body),
+.logs-table :deep(.el-table__footer) {
+  width: 100% !important;
+  animation: none !important;
+  transition: none !important;
+}
+
+.logs-table :deep(.el-table th),
+.logs-table :deep(.el-table td),
+.logs-table :deep(.el-table__cell) {
+  animation: none !important;
+  transition: none !important;
+  animation-duration: 0s !important;
+  transition-duration: 0s !important;
+}
+
+.logs-table :deep(.el-table__row) {
+  animation: none !important;
+  transition: none !important;
+}
+
 .logs-table :deep(.el-table--enable-row-transition .el-table__body td) {
   transition: none !important;
 }
@@ -363,39 +434,16 @@ onMounted(() => {
   display: none !important;
 }
 
-/* 确保表格列宽度立即生效 */
-.logs-table :deep(.el-table .el-table__cell) {
-  transition: none !important;
+/* 强制立即显示 */
+.logs-page .logs-container {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
 }
 
-/* 强制表格立即适应容器宽度 */
-.page-content .table-card {
-  opacity: 1;
-  transform: none;
-  transition: none !important;
-}
-
-.page-content .logs-table {
-  opacity: 1;
-  transform: none;
-  transition: none !important;
-}
-
-/* 禁用Element Plus默认的表格动画 */
-.logs-table :deep(.el-table__expand-column .el-table__expand-icon) {
-  transition: none !important;
-}
-
-.logs-table :deep(.el-table__row) {
-  transition: none !important;
-}
-
-.logs-table :deep(.el-table th) {
-  transition: none !important;
-}
-
-.logs-table :deep(.el-table td) {
-  transition: none !important;
+.empty-logs {
+  padding: 40px;
+  text-align: center;
 }
 
 /* 设置页面网格布局 */
@@ -471,6 +519,31 @@ onMounted(() => {
   .table-card :deep(.el-table .el-table__cell) {
     padding: 8px 4px;
   }
+}
+
+/* 全局禁用动画 - 仅针对日志页面 */
+.logs-page * {
+  animation-delay: 0s !important;
+  animation-duration: 0s !important;
+  animation-fill-mode: none !important;
+  transition-delay: 0s !important;
+  transition-duration: 0s !important;
+  transition-property: none !important;
+}
+
+/* 强制禁用Element Plus的内置动画类 */
+.logs-page .el-table,
+.logs-page .el-table *,
+.logs-page .el-card,
+.logs-page .el-card * {
+  animation: none !important;
+  transition: none !important;
+  -webkit-animation: none !important;
+  -webkit-transition: none !important;
+  -moz-animation: none !important;
+  -moz-transition: none !important;
+  -o-animation: none !important;
+  -o-transition: none !important;
 }
 
 /* 深色主题适配 */
