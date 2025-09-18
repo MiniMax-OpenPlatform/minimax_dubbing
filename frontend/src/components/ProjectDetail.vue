@@ -4,6 +4,8 @@ import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import { Download, Refresh, Setting } from '@element-plus/icons-vue'
 import api from '../utils/api'
 import { logger } from '../utils/logger'
+import VideoPlayer from './VideoPlayer.vue'
+import AudioTrack from './AudioTrack.vue'
 
 interface Segment {
   id: number
@@ -51,7 +53,6 @@ const segments = ref<Segment[]>([])
 const loading = ref(false)
 const segmentsLoading = ref(false)
 
-const selectedSegments = ref<number[]>([])
 const editingSegments = ref<Set<number>>(new Set())
 const editingValues = ref<Record<number, {original_text?: string, translated_text?: string, speaker?: string}>>({})
 const lastConcatenatedAudioUrl = ref<string>('')
@@ -86,6 +87,26 @@ const batchRoleForm = ref({
   visible: false,
   newRole: '',
   selectedCount: 0
+})
+
+// 视频和音频相关状态
+const translatedVideoUrl = ref('')
+const translatedAudioUrl = ref('')
+const originalAudioUrl = ref('')
+const backgroundAudioUrl = ref('')
+const compositeAudioUrl = ref('')
+
+// 播放同步相关
+const currentPlayTime = ref(0)
+const isVideoVisible = ref({
+  original: true,
+  translated: false
+})
+const isAudioVisible = ref({
+  translated: true,
+  original: false,
+  background: false,
+  composite: false
 })
 
 const loadProject = async () => {
@@ -547,9 +568,68 @@ const saveProjectSettings = async () => {
   }
 }
 
+// 视频和音频事件处理方法
+const onVideoTimeUpdate = (time: number) => {
+  currentPlayTime.value = time
+  logger.addLog('debug', `视频播放时间更新: ${time}s`, 'VideoPlayer')
+}
+
+const onAudioTimeUpdate = (time: number) => {
+  currentPlayTime.value = time
+  logger.addLog('debug', `音频播放时间更新: ${time}s`, 'AudioTrack')
+}
+
+// 视频可见性控制
+const onOriginalVideoVisibilityChange = (visible: boolean) => {
+  isVideoVisible.value.original = visible
+  logger.addLog('info', `原始视频${visible ? '显示' : '隐藏'}`, 'ProjectDetail')
+}
+
+const onTranslatedVideoVisibilityChange = (visible: boolean) => {
+  isVideoVisible.value.translated = visible
+  logger.addLog('info', `翻译视频${visible ? '显示' : '隐藏'}`, 'ProjectDetail')
+}
+
+// 音频可见性控制
+const onTranslatedAudioVisibilityChange = (visible: boolean) => {
+  isAudioVisible.value.translated = visible
+  logger.addLog('info', `翻译音频${visible ? '显示' : '隐藏'}`, 'ProjectDetail')
+}
+
+const onOriginalAudioVisibilityChange = (visible: boolean) => {
+  isAudioVisible.value.original = visible
+  logger.addLog('info', `原始音频${visible ? '显示' : '隐藏'}`, 'ProjectDetail')
+}
+
+const onBackgroundAudioVisibilityChange = (visible: boolean) => {
+  isAudioVisible.value.background = visible
+  logger.addLog('info', `背景音频${visible ? '显示' : '隐藏'}`, 'ProjectDetail')
+}
+
+const onCompositeAudioVisibilityChange = (visible: boolean) => {
+  isAudioVisible.value.composite = visible
+  logger.addLog('info', `合成音频${visible ? '显示' : '隐藏'}`, 'ProjectDetail')
+}
+
+// 加载多媒体文件URL
+const loadMediaUrls = () => {
+  // 这里应该从后端API获取各种音频和视频文件的URL
+  // 暂时使用项目中已有的音频URL作为示例
+  if (lastConcatenatedAudioUrl.value) {
+    translatedAudioUrl.value = lastConcatenatedAudioUrl.value
+  }
+
+  // TODO: 实现从后端获取其他音频文件URL的逻辑
+  // originalAudioUrl.value = ...
+  // backgroundAudioUrl.value = ...
+  // compositeAudioUrl.value = ...
+  // translatedVideoUrl.value = ...
+}
+
 onMounted(() => {
   loadProject()
   loadSegments()
+  loadMediaUrls()
 })
 </script>
 
@@ -651,6 +731,30 @@ onMounted(() => {
         <el-icon><Refresh /></el-icon>
         刷新
       </el-button>
+    </div>
+
+    <!-- 视频预览区域 -->
+    <div class="video-preview-section">
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <VideoPlayer
+            title="原始视频预览"
+            :video-url="project?.video_file_path"
+            :default-visible="true"
+            @visibility-change="onOriginalVideoVisibilityChange"
+            @time-update="onVideoTimeUpdate"
+          />
+        </el-col>
+        <el-col :span="12">
+          <VideoPlayer
+            title="翻译视频预览"
+            :video-url="translatedVideoUrl"
+            :default-visible="false"
+            @visibility-change="onTranslatedVideoVisibilityChange"
+            @time-update="onVideoTimeUpdate"
+          />
+        </el-col>
+      </el-row>
     </div>
 
     <!-- 数据集展示表格 -->
@@ -860,6 +964,47 @@ onMounted(() => {
         layout="total, sizes, prev, pager, next, jumper"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
+      />
+    </div>
+
+    <!-- 音频轨道区域 -->
+    <div class="audio-tracks-section">
+      <h3 style="margin-bottom: 20px; color: #303133;">音频轨道</h3>
+
+      <AudioTrack
+        title="翻译音频预览"
+        :audio-url="translatedAudioUrl"
+        :default-visible="true"
+        color="#409eff"
+        @visibility-change="onTranslatedAudioVisibilityChange"
+        @time-update="onAudioTimeUpdate"
+      />
+
+      <AudioTrack
+        title="原始音频预览"
+        :audio-url="originalAudioUrl"
+        :default-visible="false"
+        color="#67c23a"
+        @visibility-change="onOriginalAudioVisibilityChange"
+        @time-update="onAudioTimeUpdate"
+      />
+
+      <AudioTrack
+        title="原始背景音预览"
+        :audio-url="backgroundAudioUrl"
+        :default-visible="false"
+        color="#e6a23c"
+        @visibility-change="onBackgroundAudioVisibilityChange"
+        @time-update="onAudioTimeUpdate"
+      />
+
+      <AudioTrack
+        title="翻译音频+背景音合成预览"
+        :audio-url="compositeAudioUrl"
+        :default-visible="false"
+        color="#f56c6c"
+        @visibility-change="onCompositeAudioVisibilityChange"
+        @time-update="onAudioTimeUpdate"
       />
     </div>
 
@@ -1097,7 +1242,6 @@ onMounted(() => {
 .el-pagination {
   justify-content: center;
 }
-}
 
 /* 项目设置对话框样式 */
 .voice-config, .vocabulary-config {
@@ -1142,5 +1286,51 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+/* 视频预览区域样式 */
+.video-preview-section {
+  margin: 20px 0;
+  padding: 20px;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+}
+
+/* 音频轨道区域样式 */
+.audio-tracks-section {
+  margin: 30px 0;
+  padding: 20px;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+}
+
+.audio-tracks-section h3 {
+  margin: 0 0 20px 0;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #409eff;
+  color: #303133;
+  font-weight: 600;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .video-preview-section .el-row {
+    flex-direction: column;
+  }
+
+  .video-preview-section .el-col {
+    width: 100% !important;
+    margin-bottom: 15px;
+  }
+}
+
+@media (max-width: 768px) {
+  .video-preview-section,
+  .audio-tracks-section {
+    margin: 15px 0;
+    padding: 15px;
+  }
 }
 </style>

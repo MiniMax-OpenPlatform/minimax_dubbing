@@ -34,3 +34,4 @@ When the codebase is populated, update this file to include:
 2. Specific build/test/lint commands from package.json, Makefile, or other config files
 3. Directory structure and architectural patterns
 4. Any project-specific conventions or patterns
+- 前端固定端口5173
