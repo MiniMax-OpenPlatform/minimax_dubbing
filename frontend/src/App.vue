@@ -47,30 +47,6 @@ const navigateTo = (view: string) => {
     'settings': '系统设置'
   }
   logger.addLog('info', `导航到: ${viewNames[view] || view}`, 'Navigation')
-
-  // 强制表格立即适应宽度
-  if (view === 'logs') {
-    setTimeout(() => {
-      const tables = document.querySelectorAll('.logs-table .el-table')
-      tables.forEach(table => {
-        const htmlTable = table as HTMLElement
-        htmlTable.style.width = '100%'
-        htmlTable.style.tableLayout = 'fixed'
-
-        // 强制重新计算表格布局
-        const headers = htmlTable.querySelectorAll('.el-table__header-wrapper')
-        const bodies = htmlTable.querySelectorAll('.el-table__body-wrapper')
-
-        headers.forEach(header => {
-          (header as HTMLElement).style.width = '100%'
-        })
-
-        bodies.forEach(body => {
-          (body as HTMLElement).style.width = '100%'
-        })
-      })
-    }, 0)
-  }
 }
 
 // 为模板提供localStorage访问
@@ -190,13 +166,11 @@ onMounted(() => {
                   class="logs-table"
                   height="calc(100vh - 300px)"
                   stripe
-                  size="small"
-                  :show-header="true"
-                  :border="false"
-                  style="width: 100%; --el-table-border-color: transparent;"
+                  :border="true"
+                  style="width: 100%;"
                 >
-                  <el-table-column prop="timestamp" label="时间" width="180" show-overflow-tooltip />
-                  <el-table-column prop="level" label="级别" width="100" align="center">
+                  <el-table-column prop="timestamp" label="时间" width="200" show-overflow-tooltip />
+                  <el-table-column prop="level" label="级别" width="120" align="center">
                     <template #default="{ row }">
                       <el-tag
                         :type="row.level === 'error' ? 'danger' : row.level === 'success' ? 'success' : row.level === 'warning' ? 'warning' : 'info'"
@@ -206,7 +180,7 @@ onMounted(() => {
                       </el-tag>
                     </template>
                   </el-table-column>
-                  <el-table-column prop="module" label="模块" width="120" align="center">
+                  <el-table-column prop="module" label="模块" width="150" align="center">
                     <template #default="{ row }">
                       <el-tag v-if="row.module" size="small" type="info">
                         {{ row.module }}
@@ -356,15 +330,13 @@ onMounted(() => {
   margin: 0 auto;
 }
 
-/* 日志页面样式 */
+/* 日志页面样式 - 简化版本 */
 .logs-page {
-  width: 100% !important;
+  width: 100%;
 }
 
 .logs-container {
-  width: 100% !important;
-  max-width: 1600px;
-  margin: 0 auto;
+  width: 100%;
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -372,73 +344,27 @@ onMounted(() => {
 }
 
 .logs-table-wrapper {
-  width: 100% !important;
+  width: 100%;
   position: relative;
 }
 
-/* 彻底禁用Element Plus表格的所有动画和过渡 */
+/* 表格样式优化 - 使用Element Plus默认行为但确保宽度 */
 .logs-table {
-  width: 100% !important;
-  animation: none !important;
-  transition: none !important;
-}
-
-.logs-table * {
-  animation: none !important;
-  transition: none !important;
-  animation-duration: 0s !important;
-  transition-duration: 0s !important;
+  width: 100%;
 }
 
 .logs-table :deep(.el-table) {
-  width: 100% !important;
-  animation: none !important;
-  transition: none !important;
+  width: 100%;
 }
 
 .logs-table :deep(.el-table__header-wrapper),
-.logs-table :deep(.el-table__body-wrapper),
-.logs-table :deep(.el-table__footer-wrapper) {
-  width: 100% !important;
-  animation: none !important;
-  transition: none !important;
+.logs-table :deep(.el-table__body-wrapper) {
+  width: 100%;
 }
 
-.logs-table :deep(.el-table__header),
-.logs-table :deep(.el-table__body),
-.logs-table :deep(.el-table__footer) {
-  width: 100% !important;
-  animation: none !important;
-  transition: none !important;
-}
-
-.logs-table :deep(.el-table th),
-.logs-table :deep(.el-table td),
-.logs-table :deep(.el-table__cell) {
-  animation: none !important;
-  transition: none !important;
-  animation-duration: 0s !important;
-  transition-duration: 0s !important;
-}
-
-.logs-table :deep(.el-table__row) {
-  animation: none !important;
-  transition: none !important;
-}
-
-.logs-table :deep(.el-table--enable-row-transition .el-table__body td) {
-  transition: none !important;
-}
-
+/* 只禁用可能影响宽度展开的动画 */
 .logs-table :deep(.el-table__column-resize-proxy) {
-  display: none !important;
-}
-
-/* 强制立即显示 */
-.logs-page .logs-container {
-  opacity: 1 !important;
-  visibility: visible !important;
-  transform: none !important;
+  display: none;
 }
 
 .empty-logs {
@@ -521,30 +447,6 @@ onMounted(() => {
   }
 }
 
-/* 全局禁用动画 - 仅针对日志页面 */
-.logs-page * {
-  animation-delay: 0s !important;
-  animation-duration: 0s !important;
-  animation-fill-mode: none !important;
-  transition-delay: 0s !important;
-  transition-duration: 0s !important;
-  transition-property: none !important;
-}
-
-/* 强制禁用Element Plus的内置动画类 */
-.logs-page .el-table,
-.logs-page .el-table *,
-.logs-page .el-card,
-.logs-page .el-card * {
-  animation: none !important;
-  transition: none !important;
-  -webkit-animation: none !important;
-  -webkit-transition: none !important;
-  -moz-animation: none !important;
-  -moz-transition: none !important;
-  -o-animation: none !important;
-  -o-transition: none !important;
-}
 
 /* 深色主题适配 */
 @media (prefers-color-scheme: dark) {
