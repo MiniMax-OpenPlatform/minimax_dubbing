@@ -49,6 +49,18 @@ const navigateTo = (view: string) => {
   logger.addLog('info', `导航到: ${viewNames[view] || view}`, 'Navigation')
 }
 
+// 为模板提供localStorage访问
+const getStorageItem = (key: string) => {
+  return localStorage.getItem(key)
+}
+
+// 系统信息
+const systemInfo = {
+  browser: navigator.userAgent.split(' ').slice(-2).join(' '),
+  screenResolution: `${screen.width} × ${screen.height}`,
+  viewportSize: `${window.innerWidth} × ${window.innerHeight}`
+}
+
 onMounted(() => {
   // 检查是否已有认证信息
   const groupId = localStorage.getItem('group_id')
@@ -125,18 +137,20 @@ onMounted(() => {
           <!-- 项目列表页面 -->
           <ProjectList
             v-if="currentView === 'projects'"
+            :key="'projects'"
             @show-detail="showProjectDetail"
           />
 
           <!-- 项目详情页面 -->
           <ProjectDetail
             v-if="currentView === 'detail' && selectedProjectId"
+            :key="`detail-${selectedProjectId}`"
             :project-id="selectedProjectId"
             @back="backToProjects"
           />
 
           <!-- 系统日志页面 -->
-          <div v-if="currentView === 'logs'" class="page-content">
+          <div v-if="currentView === 'logs'" :key="'logs'" class="page-content">
             <div class="page-header">
               <h2>系统日志</h2>
               <el-button @click="logger.clearLogs" type="danger">
@@ -178,7 +192,7 @@ onMounted(() => {
           </div>
 
           <!-- 系统设置页面 -->
-          <div v-if="currentView === 'settings'" class="page-content">
+          <div v-if="currentView === 'settings'" :key="'settings'" class="page-content">
             <h2>系统设置</h2>
 
             <div class="settings-grid">
@@ -188,10 +202,10 @@ onMounted(() => {
                 </template>
                 <el-descriptions :column="1" border>
                   <el-descriptions-item label="Group ID">
-                    {{ localStorage.getItem('group_id') || '未设置' }}
+                    {{ getStorageItem('group_id') || '未设置' }}
                   </el-descriptions-item>
                   <el-descriptions-item label="API Key">
-                    {{ localStorage.getItem('api_key') ? '已设置' : '未设置' }}
+                    {{ getStorageItem('api_key') ? '已设置' : '未设置' }}
                   </el-descriptions-item>
                 </el-descriptions>
                 <el-button @click="logout" type="warning" style="margin-top: 15px; width: 100%;">
@@ -234,13 +248,13 @@ onMounted(() => {
                 </template>
                 <el-descriptions :column="1" border>
                   <el-descriptions-item label="浏览器">
-                    {{ navigator.userAgent.split(' ').slice(-2).join(' ') }}
+                    {{ systemInfo.browser }}
                   </el-descriptions-item>
                   <el-descriptions-item label="屏幕分辨率">
-                    {{ screen.width }} × {{ screen.height }}
+                    {{ systemInfo.screenResolution }}
                   </el-descriptions-item>
                   <el-descriptions-item label="视口大小">
-                    {{ window.innerWidth }} × {{ window.innerHeight }}
+                    {{ systemInfo.viewportSize }}
                   </el-descriptions-item>
                 </el-descriptions>
               </el-card>
@@ -275,6 +289,7 @@ onMounted(() => {
   padding: 20px;
   width: 100%;
   box-sizing: border-box;
+  min-height: calc(100vh - 60px);
 }
 
 /* 页面内容通用样式 */
@@ -304,6 +319,9 @@ onMounted(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   overflow: hidden;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
 }
 
 /* 设置页面网格布局 */
@@ -312,6 +330,8 @@ onMounted(() => {
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
   gap: 20px;
   width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
 }
 
 .settings-card {
