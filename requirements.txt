@@ -1,0 +1,7 @@
+Django==5.2.*
+djangorestframework==3.15.*
+drf-nested-routers==0.94.*
+psycopg2-binary==2.9.*
+requests==2.32.*
+pydub==0.25.*
+python-dotenv==1.0.*
