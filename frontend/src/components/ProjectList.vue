@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../utils/api'
+import { logger } from '../utils/logger'
 
 interface Project {
   id: number
@@ -29,11 +30,14 @@ const uploadForm = ref({
 
 const loadProjects = async () => {
   loading.value = true
+  logger.addLog('info', '开始加载项目列表', 'ProjectList')
   try {
     const response = await api.get('/projects/')
     projects.value = response.data.results || []
+    logger.addLog('success', `成功加载 ${projects.value.length} 个项目`, 'ProjectList')
   } catch (error) {
     ElMessage.error('加载项目列表失败')
+    logger.addLog('error', '加载项目列表失败', 'ProjectList')
     console.error('Load projects error:', error)
   } finally {
     loading.value = false
@@ -47,11 +51,13 @@ const handleFileChange = (file: any) => {
   if (!uploadForm.value.project_name) {
     uploadForm.value.project_name = rawFile.name.replace('.srt', '')
   }
+  logger.addLog('info', `选择文件: ${rawFile.name} (${(rawFile.size / 1024).toFixed(2)}KB)`, 'ProjectList')
 }
 
 const handleUpload = async () => {
   if (!uploadForm.value.srt_file) {
     ElMessage.error('请选择SRT文件')
+    logger.addLog('warning', '未选择SRT文件，上传取消', 'ProjectList')
     return
   }
 
@@ -61,18 +67,18 @@ const handleUpload = async () => {
     formData.append('project_name', uploadForm.value.project_name)
   }
 
-  console.log('Created FormData:', formData)
-  console.log('File:', uploadForm.value.srt_file)
-  console.log('Project name:', uploadForm.value.project_name)
+  logger.addLog('info', `开始上传项目: ${uploadForm.value.project_name}`, 'ProjectList')
 
   try {
     await api.post('/projects/upload_srt/', formData)
     ElMessage.success('SRT文件上传成功')
+    logger.addLog('success', `项目 "${uploadForm.value.project_name}" 上传成功`, 'ProjectList')
     uploadDialogVisible.value = false
     uploadForm.value = { srt_file: null, project_name: '' }
     loadProjects()
   } catch (error) {
     ElMessage.error('上传失败')
+    logger.addLog('error', `项目上传失败: ${error}`, 'ProjectList')
     console.error('Upload error:', error)
   }
 }

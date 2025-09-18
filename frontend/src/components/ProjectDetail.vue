@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '../utils/api'
+import { logger } from '../utils/logger'
 
 interface Segment {
   id: number
@@ -53,11 +54,14 @@ const selectedSegments = ref<number[]>([])
 
 const loadProject = async () => {
   loading.value = true
+  logger.addLog('info', `开始加载项目信息: ID ${props.projectId}`, 'ProjectDetail')
   try {
     const response = await api.get(`/projects/${props.projectId}/`)
     project.value = response.data
+    logger.addLog('success', `成功加载项目: ${project.value.name}`, 'ProjectDetail')
   } catch (error) {
     ElMessage.error('加载项目信息失败')
+    logger.addLog('error', `加载项目信息失败: ID ${props.projectId}`, 'ProjectDetail')
     console.error('Load project error:', error)
   } finally {
     loading.value = false
@@ -66,11 +70,14 @@ const loadProject = async () => {
 
 const loadSegments = async () => {
   segmentsLoading.value = true
+  logger.addLog('info', `开始加载段落列表: 项目 ID ${props.projectId}`, 'ProjectDetail')
   try {
     const response = await api.get(`/projects/${props.projectId}/segments/`)
     segments.value = response.data.results || []
+    logger.addLog('success', `成功加载 ${segments.value.length} 个段落`, 'ProjectDetail')
   } catch (error) {
     ElMessage.error('加载段落列表失败')
+    logger.addLog('error', `加载段落列表失败: 项目 ID ${props.projectId}`, 'ProjectDetail')
     console.error('Load segments error:', error)
   } finally {
     segmentsLoading.value = false
@@ -83,13 +90,16 @@ const batchTranslate = async () => {
       type: 'warning'
     })
 
+    logger.addLog('info', `开始批量翻译项目: ${project.value?.name}`, 'ProjectDetail')
     const response = await api.post(`/projects/${props.projectId}/batch_translate/`)
     ElMessage.success(response.data.message)
+    logger.addLog('success', `批量翻译任务已提交: ${project.value?.name}`, 'ProjectDetail')
     loadProject()
     loadSegments()
   } catch (error: any) {
     if (error !== 'cancel') {
       ElMessage.error('批量翻译失败')
+      logger.addLog('error', `批量翻译失败: ${project.value?.name}`, 'ProjectDetail')
       console.error('Batch translate error:', error)
     }
   }
@@ -114,11 +124,14 @@ const batchTTS = async () => {
 
 const translateSegment = async (segmentId: number) => {
   try {
+    logger.addLog('info', `开始翻译段落: ID ${segmentId}`, 'ProjectDetail')
     const response = await api.post(`/projects/${props.projectId}/segments/${segmentId}/translate/`)
     ElMessage.success('翻译成功')
+    logger.addLog('success', `段落翻译成功: ID ${segmentId}`, 'ProjectDetail')
     loadSegments()
   } catch (error) {
     ElMessage.error('翻译失败')
+    logger.addLog('error', `段落翻译失败: ID ${segmentId}`, 'ProjectDetail')
     console.error('Translate segment error:', error)
   }
 }

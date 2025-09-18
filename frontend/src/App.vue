@@ -3,23 +3,29 @@ import { ref, onMounted } from 'vue'
 import AuthSetup from './components/AuthSetup.vue'
 import ProjectList from './components/ProjectList.vue'
 import ProjectDetail from './components/ProjectDetail.vue'
+import { Document, Setting, List, Monitor, Delete, SwitchButton } from '@element-plus/icons-vue'
+import { logger } from './utils/logger'
 
 const isAuthenticated = ref(false)
 const currentView = ref('projects')
 const selectedProjectId = ref<number | null>(null)
+const sidebarCollapsed = ref(false)
 
 const handleAuthenticated = () => {
   isAuthenticated.value = true
+  logger.addLog('success', '用户认证成功', 'Auth')
 }
 
 const showProjectDetail = (projectId: number) => {
   selectedProjectId.value = projectId
   currentView.value = 'detail'
+  logger.addLog('info', `打开项目详情: ID ${projectId}`, 'Navigation')
 }
 
 const backToProjects = () => {
   currentView.value = 'projects'
   selectedProjectId.value = null
+  logger.addLog('info', '返回项目列表', 'Navigation')
 }
 
 const logout = () => {
@@ -28,6 +34,19 @@ const logout = () => {
   isAuthenticated.value = false
   currentView.value = 'projects'
   selectedProjectId.value = null
+  logger.addLog('info', '用户退出登录', 'Auth')
+  logger.clearLogs()
+}
+
+const navigateTo = (view: string) => {
+  currentView.value = view
+  selectedProjectId.value = null
+  const viewNames: Record<string, string> = {
+    'projects': '项目管理',
+    'logs': '系统日志',
+    'settings': '系统设置'
+  }
+  logger.addLog('info', `导航到: ${viewNames[view] || view}`, 'Navigation')
 }
 
 onMounted(() => {
@@ -36,6 +55,9 @@ onMounted(() => {
   const apiKey = localStorage.getItem('api_key')
   if (groupId && apiKey) {
     isAuthenticated.value = true
+    logger.addLog('info', '应用启动，从本地存储恢复认证信息', 'App')
+  } else {
+    logger.addLog('info', '应用启动，需要用户认证', 'App')
   }
 })
 </script>
@@ -46,14 +68,22 @@ onMounted(() => {
 
   <!-- 已认证时显示主应用 -->
   <el-container v-else style="height: 100vh">
-    <!-- 头部导航 -->
-    <el-header style="background-color: #409eff; color: white; padding: 0 20px;">
+    <!-- 顶部导航栏 -->
+    <el-header style="background-color: #001529; color: white; padding: 0 20px; border-bottom: 1px solid #f0f0f0;">
       <div style="display: flex; align-items: center; height: 100%;">
-        <h1 style="margin: 0;">MiniMax 翻译工具</h1>
-        <div style="margin-left: auto;">
-          <el-button type="primary" @click="backToProjects" v-if="currentView === 'detail'">
-            <el-icon><Back /></el-icon>
-            返回项目列表
+        <el-icon style="font-size: 24px; margin-right: 12px; color: #1890ff;">
+          <Document />
+        </el-icon>
+        <h1 style="margin: 0; font-size: 20px;">MiniMax 翻译工具</h1>
+
+        <div style="margin-left: auto; display: flex; align-items: center;">
+          <el-button
+            type="text"
+            style="color: white;"
+            @click="sidebarCollapsed = !sidebarCollapsed"
+          >
+            <el-icon><List /></el-icon>
+            {{ sidebarCollapsed ? '展开' : '收起' }}菜单
           </el-button>
           <el-button type="danger" @click="logout" style="margin-left: 10px;">
             <el-icon><SwitchButton /></el-icon>
@@ -63,21 +93,116 @@ onMounted(() => {
       </div>
     </el-header>
 
-    <!-- 主内容区域 -->
-    <el-main style="padding: 20px;">
-      <!-- 项目列表页面 -->
-      <ProjectList
-        v-if="currentView === 'projects'"
-        @show-detail="showProjectDetail"
-      />
+    <el-container>
+      <!-- 左侧导航栏 -->
+      <el-aside :width="sidebarCollapsed ? '60px' : '200px'" style="background-color: #f0f2f5; transition: width 0.3s;">
+        <el-menu
+          :default-active="currentView"
+          :collapse="sidebarCollapsed"
+          style="height: 100%; border-right: none;"
+          @select="navigateTo"
+        >
+          <el-menu-item index="projects">
+            <el-icon><Document /></el-icon>
+            <span>项目管理</span>
+          </el-menu-item>
 
-      <!-- 项目详情页面 -->
-      <ProjectDetail
-        v-if="currentView === 'detail' && selectedProjectId"
-        :project-id="selectedProjectId"
-        @back="backToProjects"
-      />
-    </el-main>
+          <el-menu-item index="logs">
+            <el-icon><Monitor /></el-icon>
+            <span>系统日志</span>
+          </el-menu-item>
+
+          <el-menu-item index="settings">
+            <el-icon><Setting /></el-icon>
+            <span>系统设置</span>
+          </el-menu-item>
+        </el-menu>
+      </el-aside>
+
+      <!-- 主内容区域 -->
+      <el-main style="padding: 20px; background-color: white;">
+        <!-- 项目列表页面 -->
+        <ProjectList
+          v-if="currentView === 'projects'"
+          @show-detail="showProjectDetail"
+        />
+
+        <!-- 项目详情页面 -->
+        <ProjectDetail
+          v-if="currentView === 'detail' && selectedProjectId"
+          :project-id="selectedProjectId"
+          @back="backToProjects"
+        />
+
+        <!-- 系统日志页面 -->
+        <div v-if="currentView === 'logs'">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="margin: 0;">系统日志</h2>
+            <el-button @click="logger.clearLogs" type="danger">
+              <el-icon><Delete /></el-icon>
+              清空日志
+            </el-button>
+          </div>
+
+          <el-table :data="logger.logs.value" style="width: 100%" max-height="600">
+            <el-table-column prop="timestamp" label="时间" width="180" />
+            <el-table-column prop="level" label="级别" width="100">
+              <template #default="{ row }">
+                <el-tag
+                  :type="row.level === 'error' ? 'danger' : row.level === 'success' ? 'success' : row.level === 'warning' ? 'warning' : 'info'"
+                  size="small"
+                >
+                  {{ row.level.toUpperCase() }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="module" label="模块" width="120">
+              <template #default="{ row }">
+                <el-tag v-if="row.module" size="small" type="info">
+                  {{ row.module }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="message" label="消息" />
+          </el-table>
+
+          <el-empty v-if="logger.logs.value.length === 0" description="暂无日志记录" />
+        </div>
+
+        <!-- 系统设置页面 -->
+        <div v-if="currentView === 'settings'">
+          <h2>系统设置</h2>
+          <el-card style="margin-bottom: 20px;">
+            <template #header>
+              <span>认证信息</span>
+            </template>
+            <el-descriptions :column="1">
+              <el-descriptions-item label="Group ID">
+                {{ localStorage.getItem('group_id') || '未设置' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="API Key">
+                {{ localStorage.getItem('api_key') ? '已设置' : '未设置' }}
+              </el-descriptions-item>
+            </el-descriptions>
+            <el-button @click="logout" type="warning" style="margin-top: 10px;">
+              重新设置认证信息
+            </el-button>
+          </el-card>
+
+          <el-card>
+            <template #header>
+              <span>应用信息</span>
+            </template>
+            <el-descriptions :column="1">
+              <el-descriptions-item label="应用名称">MiniMax 翻译工具</el-descriptions-item>
+              <el-descriptions-item label="版本">v1.0.0</el-descriptions-item>
+              <el-descriptions-item label="后端地址">http://10.11.17.19:5172</el-descriptions-item>
+              <el-descriptions-item label="前端地址">http://10.11.17.19:5173</el-descriptions-item>
+            </el-descriptions>
+          </el-card>
+        </div>
+      </el-main>
+    </el-container>
   </el-container>
 </template>
 
