@@ -17,9 +17,16 @@ api.interceptors.request.use(
     const groupId = localStorage.getItem('group_id')
     const apiKey = localStorage.getItem('api_key')
 
+    console.log('API Request:', config.url, 'Content-Type:', config.headers['Content-Type'])
+
     if (groupId && apiKey) {
       config.headers['X-Group-ID'] = groupId
       config.headers['X-API-Key'] = apiKey
+    }
+
+    // 对于FormData，确保不设置Content-Type，让浏览器自动设置
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']
     }
 
     return config
