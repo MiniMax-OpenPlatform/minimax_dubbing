@@ -60,9 +60,7 @@ const handleUpload = async () => {
   }
 
   try {
-    await api.post('/projects/upload_srt/', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    await api.post('/projects/upload_srt/', formData)
     ElMessage.success('SRT文件上传成功')
     uploadDialogVisible.value = false
     uploadForm.value = { srt_file: null, project_name: '' }
