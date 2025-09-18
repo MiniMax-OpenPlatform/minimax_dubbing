@@ -753,26 +753,81 @@ onMounted(() => {
       </el-button>
     </div>
 
-    <!-- 视频预览区域 -->
-    <div class="video-preview-section">
+    <!-- 视频和音频预览区域 -->
+    <div class="media-preview-section">
       <el-row :gutter="20">
+        <!-- 左列：原始内容 -->
         <el-col :span="12">
-          <VideoPlayer
-            title="原始视频预览"
-            :video-url="project?.video_file_path"
-            :default-visible="true"
-            @visibility-change="onOriginalVideoVisibilityChange"
-            @time-update="onVideoTimeUpdate"
-          />
+          <div class="media-group">
+            <h3 class="media-group-title">原始内容</h3>
+
+            <!-- 原始视频预览 -->
+            <VideoPlayer
+              title="原始视频预览"
+              :video-url="project?.video_file_path"
+              :default-visible="true"
+              @visibility-change="onOriginalVideoVisibilityChange"
+              @time-update="onVideoTimeUpdate"
+            />
+
+            <!-- 原始音频轨道 -->
+            <div class="audio-tracks-group">
+              <AudioTrack
+                title="原始音频预览"
+                :audio-url="originalAudioUrl"
+                :default-visible="false"
+                color="#67c23a"
+                @visibility-change="onOriginalAudioVisibilityChange"
+                @time-update="onAudioTimeUpdate"
+              />
+
+              <AudioTrack
+                title="原始背景音预览"
+                :audio-url="backgroundAudioUrl"
+                :default-visible="false"
+                color="#e6a23c"
+                @visibility-change="onBackgroundAudioVisibilityChange"
+                @time-update="onAudioTimeUpdate"
+              />
+            </div>
+          </div>
         </el-col>
+
+        <!-- 右列：翻译内容 -->
         <el-col :span="12">
-          <VideoPlayer
-            title="翻译视频预览"
-            :video-url="translatedVideoUrl"
-            :default-visible="false"
-            @visibility-change="onTranslatedVideoVisibilityChange"
-            @time-update="onVideoTimeUpdate"
-          />
+          <div class="media-group">
+            <h3 class="media-group-title">翻译内容</h3>
+
+            <!-- 翻译视频预览 -->
+            <VideoPlayer
+              title="翻译视频预览"
+              :video-url="translatedVideoUrl"
+              :default-visible="false"
+              @visibility-change="onTranslatedVideoVisibilityChange"
+              @time-update="onVideoTimeUpdate"
+            />
+
+            <!-- 翻译音频轨道 -->
+            <div class="audio-tracks-group">
+              <AudioTrack
+                title="翻译音频预览"
+                :audio-url="translatedAudioUrl"
+                :default-visible="true"
+                color="#409eff"
+                @visibility-change="onTranslatedAudioVisibilityChange"
+                @time-update="onAudioTimeUpdate"
+              />
+
+              <AudioTrack
+                title="翻译音频+背景音合成预览"
+                :audio-url="compositeAudioUrl"
+                :default-visible="false"
+                color="#f56c6c"
+                @visibility-change="onCompositeAudioVisibilityChange"
+                @time-update="onAudioTimeUpdate"
+              />
+            </div>
+          </div>
         </el-col>
       </el-row>
     </div>
@@ -987,46 +1042,6 @@ onMounted(() => {
       />
     </div>
 
-    <!-- 音频轨道区域 -->
-    <div class="audio-tracks-section">
-      <h3 style="margin-bottom: 20px; color: #303133;">音频轨道</h3>
-
-      <AudioTrack
-        title="翻译音频预览"
-        :audio-url="translatedAudioUrl"
-        :default-visible="true"
-        color="#409eff"
-        @visibility-change="onTranslatedAudioVisibilityChange"
-        @time-update="onAudioTimeUpdate"
-      />
-
-      <AudioTrack
-        title="原始音频预览"
-        :audio-url="originalAudioUrl"
-        :default-visible="false"
-        color="#67c23a"
-        @visibility-change="onOriginalAudioVisibilityChange"
-        @time-update="onAudioTimeUpdate"
-      />
-
-      <AudioTrack
-        title="原始背景音预览"
-        :audio-url="backgroundAudioUrl"
-        :default-visible="false"
-        color="#e6a23c"
-        @visibility-change="onBackgroundAudioVisibilityChange"
-        @time-update="onAudioTimeUpdate"
-      />
-
-      <AudioTrack
-        title="翻译音频+背景音合成预览"
-        :audio-url="compositeAudioUrl"
-        :default-visible="false"
-        color="#f56c6c"
-        @visibility-change="onCompositeAudioVisibilityChange"
-        @time-update="onAudioTimeUpdate"
-      />
-    </div>
 
     <!-- 批量修改角色对话框 -->
     <el-dialog
@@ -1308,8 +1323,8 @@ onMounted(() => {
   gap: 10px;
 }
 
-/* 视频预览区域样式 */
-.video-preview-section {
+/* 媒体预览区域样式 */
+.media-preview-section {
   margin: 20px 0;
   padding: 20px;
   background: #fafafa;
@@ -1317,40 +1332,52 @@ onMounted(() => {
   border: 1px solid #e4e7ed;
 }
 
-/* 音频轨道区域样式 */
-.audio-tracks-section {
-  margin: 30px 0;
-  padding: 20px;
-  background: #fafafa;
+/* 媒体组样式 */
+.media-group {
+  background: white;
   border-radius: 8px;
+  padding: 16px;
   border: 1px solid #e4e7ed;
 }
 
-.audio-tracks-section h3 {
-  margin: 0 0 20px 0;
-  padding-bottom: 10px;
+.media-group-title {
+  margin: 0 0 16px 0;
+  padding-bottom: 8px;
   border-bottom: 2px solid #409eff;
   color: #303133;
   font-weight: 600;
+  font-size: 16px;
+}
+
+/* 音频轨道组样式 */
+.audio-tracks-group {
+  margin-top: 16px;
 }
 
 /* 响应式设计 */
 @media (max-width: 1200px) {
-  .video-preview-section .el-row {
+  .media-preview-section .el-row {
     flex-direction: column;
   }
 
-  .video-preview-section .el-col {
+  .media-preview-section .el-col {
     width: 100% !important;
     margin-bottom: 15px;
   }
 }
 
 @media (max-width: 768px) {
-  .video-preview-section,
-  .audio-tracks-section {
+  .media-preview-section {
     margin: 15px 0;
     padding: 15px;
+  }
+
+  .media-group {
+    padding: 12px;
+  }
+
+  .media-group-title {
+    font-size: 14px;
   }
 }
 </style>

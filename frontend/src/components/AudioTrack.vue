@@ -69,6 +69,12 @@
           <el-text type="info" size="small">暂无音频文件，显示示例波形</el-text>
         </div>
 
+        <!-- 波形分析加载状态 -->
+        <div v-if="isAnalyzingWaveform" class="waveform-loading">
+          <el-loading-spinner size="small" />
+          <el-text type="primary" size="small">正在分析音频波形...</el-text>
+        </div>
+
         <!-- 波形图区域 -->
         <div class="waveform-container" ref="waveformContainer">
           <canvas
@@ -119,6 +125,9 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { Download, VideoPlay, VideoPause, CircleClose, Microphone } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
+// 全局波形缓存（跨组件共享）
+const globalWaveformCache = new Map<string, number[]>()
+
 interface Props {
   title: string
   audioUrl?: string
@@ -146,6 +155,9 @@ const currentTime = ref(0)
 const progressValue = ref(0)
 const volume = ref(80)
 const waveformData = ref<number[]>([])
+const retryCount = ref(0)
+const maxRetries = 5
+const isAnalyzingWaveform = ref(false)
 
 const progressPercentage = computed(() => {
   return duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0
@@ -268,25 +280,115 @@ const downloadAudio = () => {
   }
 }
 
-// 生成波形数据（简化版本，实际项目中可能需要Web Audio API）
+// 生成波形数据（使用Web Audio API分析真实音频）
 const generateWaveform = async () => {
   console.log('[AudioTrack] 开始生成波形数据:', props.title)
 
-  // 模拟波形数据生成
-  const sampleCount = 200
-  const samples: number[] = []
+  // 重置重试计数器
+  retryCount.value = 0
 
-  for (let i = 0; i < sampleCount; i++) {
-    // 生成随机波形数据（实际应该从音频文件解析）
-    const amplitude = Math.random() * 0.8 + 0.2
-    samples.push(amplitude)
+  // 设置加载状态
+  isAnalyzingWaveform.value = true
+
+  // 如果没有音频URL，生成默认波形用于展示
+  if (!props.audioUrl) {
+    console.log('[AudioTrack] 没有音频URL，生成默认波形:', props.title)
+    const sampleCount = 200
+    const samples: number[] = []
+
+    for (let i = 0; i < sampleCount; i++) {
+      // 生成随机波形数据用于预览
+      const amplitude = Math.random() * 0.8 + 0.2
+      samples.push(amplitude)
+    }
+
+    waveformData.value = samples
+    console.log('[AudioTrack] 默认波形数据生成完成:', samples.length, '个样本')
+
+    // 结束加载状态
+    isAnalyzingWaveform.value = false
+
+    await nextTick()
+    drawWaveform()
+    return
   }
 
-  waveformData.value = samples
-  console.log('[AudioTrack] 波形数据生成完成:', samples.length, '个样本')
+  // 检查缓存
+  if (globalWaveformCache.has(props.audioUrl)) {
+    console.log('[AudioTrack] 使用缓存的波形数据:', props.title)
+    waveformData.value = globalWaveformCache.get(props.audioUrl)!
+    isAnalyzingWaveform.value = false
+    await nextTick()
+    drawWaveform()
+    return
+  }
 
-  await nextTick()
-  drawWaveform()
+  // 使用Web Audio API分析真实音频文件
+  try {
+    console.log('[AudioTrack] 开始分析真实音频文件:', props.audioUrl)
+
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const response = await fetch(props.audioUrl)
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    const arrayBuffer = await response.arrayBuffer()
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+
+    // 获取音频数据（使用第一个声道）
+    const rawData = audioBuffer.getChannelData(0)
+    const sampleCount = 200 // 波形条数
+    const blockSize = Math.floor(rawData.length / sampleCount)
+    const samples: number[] = []
+
+    for (let i = 0; i < sampleCount; i++) {
+      let sum = 0
+      for (let j = 0; j < blockSize; j++) {
+        sum += Math.abs(rawData[i * blockSize + j])
+      }
+      // 计算平均振幅并标准化到0-1范围
+      const amplitude = (sum / blockSize)
+      samples.push(Math.min(amplitude * 2, 1)) // 放大2倍但限制在1以内
+    }
+
+    waveformData.value = samples
+    console.log('[AudioTrack] 真实波形数据生成完成:', samples.length, '个样本，音频时长:', audioBuffer.duration, '秒')
+
+    // 缓存波形数据
+    globalWaveformCache.set(props.audioUrl, samples)
+
+    // 关闭音频上下文以释放资源
+    audioContext.close()
+
+    // 结束加载状态
+    isAnalyzingWaveform.value = false
+
+    await nextTick()
+    drawWaveform()
+
+  } catch (error) {
+    console.error('[AudioTrack] 音频波形分析失败:', props.title, error)
+
+    // 分析失败时使用默认波形
+    const sampleCount = 200
+    const samples: number[] = []
+
+    for (let i = 0; i < sampleCount; i++) {
+      const amplitude = Math.random() * 0.4 + 0.1 // 更低的默认波形
+      samples.push(amplitude)
+    }
+
+    waveformData.value = samples
+    console.log('[AudioTrack] 使用默认波形（分析失败）:', samples.length, '个样本')
+
+    // 结束加载状态（即使失败）
+    isAnalyzingWaveform.value = false
+
+    await nextTick()
+    drawWaveform()
+  }
 }
 
 // 绘制波形图
@@ -297,12 +399,13 @@ const drawWaveform = () => {
   if (!canvas || !container || waveformData.value.length === 0) {
     console.log('[AudioTrack] 无法绘制波形:', props.title, 'canvas:', !!canvas, 'container:', !!container, 'data:', waveformData.value.length)
 
-    // 如果Canvas或容器不存在，稍后重试
-    if (waveformData.value.length > 0 && (!canvas || !container)) {
+    // 如果Canvas或容器不存在，且组件可见且未超过重试次数，稍后重试
+    if (waveformData.value.length > 0 && (!canvas || !container) && isVisible.value && retryCount.value < maxRetries) {
+      retryCount.value++
       setTimeout(() => {
-        console.log('[AudioTrack] 重试绘制波形:', props.title)
+        console.log('[AudioTrack] 重试绘制波形:', props.title, '第', retryCount.value, '次')
         drawWaveform()
-      }, 100)
+      }, 200 + retryCount.value * 100) // 递增延迟
     }
     return
   }
@@ -330,6 +433,9 @@ const drawWaveform = () => {
   const progressPoint = (currentTime.value / duration.value) * width
 
   console.log('[AudioTrack] 绘制波形:', props.title, 'size:', width, 'x', height, 'bars:', waveformData.value.length)
+
+  // 重置重试计数器（成功绘制）
+  retryCount.value = 0
 
   // 清空画布
   ctx.clearRect(0, 0, width, height)
@@ -360,11 +466,13 @@ watch(() => props.audioUrl, (newUrl, oldUrl) => {
   progressValue.value = 0
   waveformData.value = []
 
-  // 如果有新的URL，等待下一个tick后重新加载
+  // 如果有新的URL，等待下一个tick后重新加载和分析
   if (newUrl && audioRef.value) {
     nextTick(() => {
       if (audioRef.value) {
         audioRef.value.load()
+        // 重新生成波形数据
+        generateWaveform()
       }
     })
   }
@@ -372,6 +480,9 @@ watch(() => props.audioUrl, (newUrl, oldUrl) => {
 
 // 监听可见性变化，重新绘制波形
 watch(isVisible, async (visible) => {
+  // 重置重试计数器
+  retryCount.value = 0
+
   if (visible && waveformData.value.length > 0) {
     await nextTick()
     drawWaveform()
@@ -499,6 +610,18 @@ defineExpose({
   padding: 8px;
   background: #f0f9ff;
   border: 1px dashed #409eff;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.waveform-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: #f5f7fa;
+  border: 1px solid #e4e7ed;
   border-radius: 4px;
   margin-bottom: 12px;
 }
