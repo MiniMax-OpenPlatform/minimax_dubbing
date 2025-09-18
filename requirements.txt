@@ -1,5 +1,6 @@
 Django==5.2.*
 djangorestframework==3.15.*
+django-cors-headers==4.8.*
 drf-nested-routers==0.94.*
 psycopg2-binary==2.9.*
 requests==2.32.*
