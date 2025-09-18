@@ -68,7 +68,7 @@ const loadSegments = async () => {
   segmentsLoading.value = true
   try {
     const response = await api.get(`/projects/${props.projectId}/segments/`)
-    segments.value = response.data
+    segments.value = response.data.results || []
   } catch (error) {
     ElMessage.error('加载段落列表失败')
     console.error('Load segments error:', error)
@@ -170,6 +170,10 @@ const getStatusTag = (status: string) => {
 
 const pendingCount = computed(() => segments.value.filter(s => s.status === 'pending').length)
 const translatedCount = computed(() => segments.value.filter(s => s.status === 'translated').length)
+
+const playAudio = (audioUrl: string) => {
+  window.open(audioUrl)
+}
 
 onMounted(() => {
   loadProject()
@@ -282,7 +286,7 @@ onMounted(() => {
             v-if="row.translated_audio_url"
             size="small"
             type="success"
-            @click="window.open(row.translated_audio_url)"
+            @click="playAudio(row.translated_audio_url)"
           >
             播放
           </el-button>
