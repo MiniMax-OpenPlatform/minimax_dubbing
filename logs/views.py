@@ -82,6 +82,53 @@ def clear_system_logs(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+def get_raw_logs(request):
+    """获取原始日志文本"""
+    try:
+        # 获取所有日志
+        logs = memory_log_handler.get_logs()
+
+        # 格式化为原始日志文本
+        raw_text_lines = []
+        for log in logs:
+            # 格式：时间戳 [级别] logger: 消息
+            line = f"{log['timestamp']} [{log['level']}] {log['logger']}: {log['message']}"
+            raw_text_lines.append(line)
+
+        raw_text = '\n'.join(raw_text_lines)
+
+        # 直接返回文本，不包装在JSON中
+        from django.http import HttpResponse
+        return HttpResponse(raw_text, content_type='text/plain; charset=utf-8')
+
+    except Exception as e:
+        logger.error(f"获取原始日志失败: {e}")
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['DELETE'])
+def clear_logs(request):
+    """清空系统日志 - 新的简化接口"""
+    try:
+        memory_log_handler.clear_logs()
+        logger.info("系统日志已清空")
+
+        from django.http import HttpResponse
+        return HttpResponse("日志已清空", content_type='text/plain; charset=utf-8')
+
+    except Exception as e:
+        logger.error(f"清空系统日志失败: {e}")
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
 def get_log_stats(request):
     """获取日志统计信息"""
     try:
