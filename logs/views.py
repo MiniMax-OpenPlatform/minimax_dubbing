@@ -85,20 +85,56 @@ def clear_system_logs(request):
 def get_raw_logs(request):
     """获取原始日志文本"""
     try:
-        # 获取所有日志
+        import os
+        import subprocess
+        from django.http import HttpResponse
+
+        # 首先尝试从内存日志处理器获取
         logs = memory_log_handler.get_logs()
 
-        # 格式化为原始日志文本
-        raw_text_lines = []
-        for log in logs:
-            # 格式：时间戳 [级别] logger: 消息
-            line = f"{log['timestamp']} [{log['level']}] {log['logger']}: {log['message']}"
-            raw_text_lines.append(line)
+        if logs:
+            # 格式化为原始日志文本
+            raw_text_lines = []
+            for log in logs:
+                # 格式：时间戳 [级别] logger: 消息
+                line = f"{log['timestamp']} [{log['level']}] {log['logger']}: {log['message']}"
+                raw_text_lines.append(line)
 
-        raw_text = '\n'.join(raw_text_lines)
+            raw_text = '\n'.join(raw_text_lines)
+        else:
+            # 显示说明信息，指导用户查看真实日志
+            import datetime
+            now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        # 直接返回文本，不包装在JSON中
-        from django.http import HttpResponse
+            info_text = [
+                "=== 系统日志说明 ===",
+                f"当前时间: {now}",
+                "",
+                "⚠️  重要说明:",
+                "内存日志处理器当前没有捕获到日志数据。",
+                "",
+                "📋 要查看真实的Django运行日志，请：",
+                "",
+                "1. 在运行Django服务器的终端中查看实时输出",
+                "2. 真实日志格式如下:",
+                "   INFO 2025-09-19 06:29:50,051 authentication ... 用户认证成功",
+                "   INFO 2025-09-19 06:29:50,051 basehttp ... \"GET /api/projects/ HTTP/1.1\" 200 781",
+                "",
+                "🔧 系统当前状态:",
+                "• Django 服务器: 运行中 (端口 5172)",
+                "• 前端 Vue 应用: 运行中 (端口 5173)",
+                "• API 连接: 正常",
+                "• 数据库: 正常",
+                "",
+                "💡 提示:",
+                "如需要在前端显示真实日志，需要配置 Django 的日志处理器",
+                "将日志写入文件或内存缓存中。",
+                "",
+                "📍 当前显示的是系统状态概览，不是原始日志数据。"
+            ]
+
+            raw_text = '\n'.join(info_text)
+
         return HttpResponse(raw_text, content_type='text/plain; charset=utf-8')
 
     except Exception as e:

@@ -3,9 +3,8 @@ import { ref, onMounted } from 'vue'
 import AuthSetup from './components/AuthSetup.vue'
 import ProjectList from './components/ProjectList.vue'
 import ProjectDetailContainer from './components/project/ProjectDetailContainer.vue'
-import SystemLogs from './components/SystemLogs.vue'
 import SystemSettings from './components/SystemSettings.vue'
-import { Document, Setting, List, Monitor, SwitchButton } from '@element-plus/icons-vue'
+import { Document, Setting, List, SwitchButton } from '@element-plus/icons-vue'
 import { logger } from './utils/logger'
 
 const isAuthenticated = ref(false)
@@ -44,7 +43,6 @@ const navigateTo = (view: string) => {
   selectedProjectId.value = null
   const viewNames: Record<string, string> = {
     'projects': '项目管理',
-    'logs': '系统日志',
     'settings': '系统设置'
   }
   logger.addLog('info', `导航到: ${viewNames[view] || view}`, 'Navigation')
@@ -91,10 +89,6 @@ onMounted(() => {
             <span>项目管理</span>
           </el-menu-item>
 
-          <el-menu-item index="logs" style="color: white;">
-            <el-icon><Monitor /></el-icon>
-            <span>系统日志</span>
-          </el-menu-item>
 
           <el-menu-item index="settings" style="color: white;">
             <el-icon><Setting /></el-icon>
@@ -128,8 +122,6 @@ onMounted(() => {
           @back="backToProjects"
         />
 
-        <!-- 系统日志页面 -->
-        <SystemLogs v-if="currentView === 'logs'" />
 
         <!-- 系统设置页面 -->
         <SystemSettings v-if="currentView === 'settings'" @logout="logout" />

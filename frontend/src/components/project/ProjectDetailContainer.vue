@@ -6,6 +6,7 @@
       :segments="segments"
       :concatenated-audio-url="concatenatedAudioUrl"
       :audio-key="audioKey"
+      :final-mixed-audio-url="null"
       @segment-click="handleSegmentClick"
       @time-update="handleTimeUpdate"
     />

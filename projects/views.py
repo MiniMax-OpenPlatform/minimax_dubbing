@@ -1,28 +1,21 @@
 """
 项目管理视图
 """
-import os
 import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
-from django.db import transaction
 from django.http import HttpResponse
 from .models import Project
 from .serializers import (
     ProjectListSerializer, ProjectDetailSerializer,
     ProjectCreateSerializer, SRTUploadSerializer
 )
-from segments.models import Segment
-from services.parsers.srt_parser import SRTParser
-from services.clients.minimax_client import MiniMaxClient
-from services.algorithms.timestamp_aligner import TimestampAligner
-from services.audio_processor import AudioProcessor
+from services.business.project_service import ProjectService
 from backend.exceptions import (
-    ValidationError, BusinessLogicError, ExternalAPIError,
-    ResourceNotFoundError, handle_external_api_error, handle_business_logic_error
+    ValidationError, handle_business_logic_error
 )
 
 logger = logging.getLogger(__name__)

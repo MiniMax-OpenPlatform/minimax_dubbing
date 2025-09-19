@@ -2,7 +2,7 @@
   <div class="waveform-container" ref="waveformContainer">
     <!-- 波形分析加载状态 -->
     <div v-if="isAnalyzing" class="waveform-loading">
-      <el-loading-spinner size="small" />
+      <el-icon class="loading-icon"><Loading /></el-icon>
       <el-text type="primary" size="small">正在分析音频波形...</el-text>
     </div>
 
@@ -24,6 +24,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { Loading } from '@element-plus/icons-vue'
 
 interface Props {
   waveformData: number[]
@@ -169,5 +170,18 @@ defineExpose({
   gap: 8px;
   height: 100%;
   background: #f5f7fa;
+}
+
+.loading-icon {
+  animation: rotate 2s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
