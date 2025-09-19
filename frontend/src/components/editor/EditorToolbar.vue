@@ -1,17 +1,13 @@
 <template>
   <div class="editor-toolbar">
     <div class="toolbar-left">
-      <div class="selection-info">
-        已选择 <strong>{{ selectedCount }}</strong> / {{ totalCount }} 个段落
-      </div>
-
-      <el-button-group v-if="selectedCount > 0">
+      <el-button-group>
         <el-button
           type="primary"
           @click="$emit('batch-translate')"
           :loading="batchLoading"
         >
-          批量翻译 ({{ selectedCount }})
+          批量翻译
         </el-button>
 
         <el-button
@@ -19,54 +15,55 @@
           @click="$emit('batch-tts')"
           :loading="batchLoading"
         >
-          批量TTS ({{ selectedCount }})
+          批量TTS
+        </el-button>
+
+        <el-button
+          type="warning"
+          @click="$emit('concatenate-audio')"
+          :loading="batchLoading"
+        >
+          拼接音频
         </el-button>
       </el-button-group>
     </div>
 
     <div class="toolbar-center">
-      <!-- 筛选器 -->
-      <el-select
-        v-model="statusFilter"
-        placeholder="按状态筛选"
-        style="width: 140px"
-        clearable
-        @change="handleFilterChange"
-      >
-        <el-option label="全部" value="" />
-        <el-option label="待处理" value="pending" />
-        <el-option label="已翻译" value="translated" />
-        <el-option label="已完成" value="completed" />
-        <el-option label="失败" value="failed" />
-      </el-select>
-
-      <el-input
-        v-model="textFilter"
-        placeholder="搜索文本内容"
-        style="width: 200px; margin-left: 8px"
-        clearable
-        @input="handleFilterChange"
-      >
-        <template #prefix>
-          <el-icon><Search /></el-icon>
-        </template>
-      </el-input>
+      <!-- 空白区域 -->
     </div>
 
     <div class="toolbar-right">
-      <el-button-group>
-        <el-button @click="$emit('save-all')" :disabled="!hasUnsavedChanges">
-          保存全部
-        </el-button>
 
-        <el-button @click="$emit('undo')" :disabled="!canUndo">
-          撤销
+      <!-- 上传SRT -->
+      <el-upload
+        ref="uploadRef"
+        :show-file-list="false"
+        :before-upload="handleUploadSrt"
+        accept=".srt"
+        style="margin-left: 8px"
+      >
+        <el-button :icon="Upload" type="success">
+          上传SRT
         </el-button>
+      </el-upload>
 
-        <el-button @click="$emit('redo')" :disabled="!canRedo">
-          重做
+      <!-- 说话人管理 -->
+      <el-dropdown @command="handleSpeakerCommand" style="margin-left: 8px">
+        <el-button :icon="User">
+          说话人管理
+          <el-icon class="el-icon--right"><arrow-down /></el-icon>
         </el-button>
-      </el-button-group>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="auto-assign">
+              自动分配说话人
+            </el-dropdown-item>
+            <el-dropdown-item command="batch-speaker" divided>
+              批量修改说话人
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
 
       <el-dropdown trigger="click" style="margin-left: 8px">
         <el-button>
@@ -88,29 +85,19 @@
         </template>
       </el-dropdown>
 
-      <el-button
-        v-if="selectedCount > 0"
-        type="danger"
-        @click="$emit('clear-selection')"
-        style="margin-left: 8px"
-      >
-        清除选择
-      </el-button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Search, ArrowDown } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { Search, ArrowDown, Upload, User } from '@element-plus/icons-vue'
 
 interface Props {
   selectedCount: number
   totalCount: number
   batchLoading?: boolean
-  hasUnsavedChanges?: boolean
-  canUndo?: boolean
-  canRedo?: boolean
 }
 
 defineProps<Props>()
@@ -118,26 +105,44 @@ defineProps<Props>()
 const emit = defineEmits<{
   'batch-translate': []
   'batch-tts': []
-  'save-all': []
-  'undo': []
-  'redo': []
+  'concatenate-audio': []
   'export': [type: string]
-  'filter-change': [filters: { status: string; text: string }]
-  'clear-selection': []
+  'upload-srt': [file: File]
+  'auto-assign-speaker': []
+  'batch-speaker': []
 }>()
 
-const statusFilter = ref('')
-const textFilter = ref('')
-
-const handleFilterChange = () => {
-  emit('filter-change', {
-    status: statusFilter.value,
-    text: textFilter.value
-  })
-}
 
 const handleExport = (type: string) => {
   emit('export', type)
+}
+
+const handleUploadSrt = (file: File) => {
+  // 验证文件类型
+  if (!file.name.toLowerCase().endsWith('.srt')) {
+    ElMessage.error('请选择SRT格式的字幕文件')
+    return false
+  }
+
+  // 验证文件大小 (10MB)
+  if (file.size > 10 * 1024 * 1024) {
+    ElMessage.error('文件大小不能超过10MB')
+    return false
+  }
+
+  emit('upload-srt', file)
+  return false // 阻止自动上传
+}
+
+const handleSpeakerCommand = (command: string) => {
+  switch (command) {
+    case 'auto-assign':
+      emit('auto-assign-speaker')
+      break
+    case 'batch-speaker':
+      emit('batch-speaker')
+      break
+  }
 }
 </script>
 
@@ -172,15 +177,6 @@ const handleExport = (type: string) => {
   align-items: center;
 }
 
-.selection-info {
-  font-size: 14px;
-  color: #606266;
-  white-space: nowrap;
-}
-
-.selection-info strong {
-  color: #409eff;
-}
 
 /* 响应式设计 */
 @media (max-width: 1200px) {

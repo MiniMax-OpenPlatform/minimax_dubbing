@@ -54,12 +54,14 @@
             size="small"
             placeholder="选择说话人"
             style="width: 100%"
-            @change="handleFieldChange(row, 'speaker', $event)"
+            @change="handleSpeakerChange(row, $event)"
           >
-            <el-option label="说话人1" value="speaker1" />
-            <el-option label="说话人2" value="speaker2" />
-            <el-option label="旁白" value="narrator" />
-            <el-option label="其他" value="other" />
+            <el-option
+              v-for="mapping in getProjectSpeakerOptions()"
+              :key="mapping.speaker"
+              :label="mapping.speaker"
+              :value="mapping.speaker"
+            />
           </el-select>
         </template>
       </el-table-column>
@@ -126,11 +128,13 @@
             @change="handleFieldChange(row, 'emotion', $event)"
           >
             <el-option label="自动" value="auto" />
-            <el-option label="自然" value="neutral" />
-            <el-option label="开心" value="happy" />
+            <el-option label="高兴" value="happy" />
             <el-option label="悲伤" value="sad" />
             <el-option label="愤怒" value="angry" />
+            <el-option label="恐惧" value="fearful" />
+            <el-option label="厌恶" value="disgusted" />
             <el-option label="惊讶" value="surprised" />
+            <el-option label="平静" value="calm" />
           </el-select>
         </template>
       </el-table-column>
@@ -148,7 +152,6 @@
           />
         </template>
       </el-table-column>
-
 
       <!-- 时长对比列 -->
       <el-table-column label="时长对比" width="130">
@@ -244,6 +247,7 @@ interface Props {
   segments: Segment[]
   tableHeight?: number
   projectId: number
+  project?: any
 }
 
 const props = defineProps<Props>()
@@ -436,20 +440,64 @@ const lengthenTranslation = async (segment: Segment) => {
   }
 }
 
-// 获取音色显示名称（根据说话人和项目配置）
+// 获取项目中配置的说话人选项
+const getProjectSpeakerOptions = () => {
+  if (!props.project?.voice_mappings) {
+    // 如果没有项目配置，返回默认选项
+    return [
+      { speaker: '说话人1', voice_id: '' },
+      { speaker: '说话人2', voice_id: '' },
+      { speaker: '旁白', voice_id: '' }
+    ]
+  }
+
+  let mappings = props.project.voice_mappings
+
+  // 如果是字符串，尝试解析为JSON
+  if (typeof mappings === 'string') {
+    try {
+      mappings = JSON.parse(mappings)
+    } catch {
+      return [
+        { speaker: '说话人1', voice_id: '' },
+        { speaker: '说话人2', voice_id: '' },
+        { speaker: '旁白', voice_id: '' }
+      ]
+    }
+  }
+
+  // 返回项目配置的映射
+  return Array.isArray(mappings) ? mappings : []
+}
+
+// 处理说话人变更，自动设置对应的voice_id
+const handleSpeakerChange = async (segment: Segment, speaker: string) => {
+  // 先更新说话人
+  segment.speaker = speaker
+
+  // 从项目配置中查找对应的voice_id
+  const mappings = getProjectSpeakerOptions()
+  const mapping = mappings.find(m => m.speaker === speaker)
+
+  if (mapping && mapping.voice_id) {
+    segment.voice_id = mapping.voice_id
+  }
+
+  // 保存说话人变更
+  await handleFieldChange(segment, 'speaker', speaker)
+
+  // 如果找到了对应的voice_id，也保存voice_id
+  if (mapping && mapping.voice_id) {
+    await handleFieldChange(segment, 'voice_id', mapping.voice_id)
+  }
+}
+
+// 获取音色显示名称（只显示voice_id）
 const getVoiceDisplayName = (voiceId: string, speaker: string) => {
   if (!voiceId) return '未配置'
 
-  // 这里应该根据项目配置的说话人-音色映射来显示
-  // 临时显示逻辑，实际应该从项目配置中获取
-  const voiceMap: Record<string, string> = {
-    'male-qn-qingse': '男声-清澈',
-    'female-shaonv': '女声-甜美',
-    'male-qn-jingying': '男声-磁性',
-    'female-gentle': '女声-温柔'
-  }
-
-  return voiceMap[voiceId] || `${speaker}:${voiceId}`
+  // 直接返回voice_id，不显示speaker前缀
+  return voiceId
 }
 
 // 复制段落
