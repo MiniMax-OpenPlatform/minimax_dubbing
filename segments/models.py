@@ -42,7 +42,7 @@ class Segment(models.Model):
     # 音频相关
     voice_id = models.CharField(max_length=100, blank=True, help_text="音色ID")
     emotion = models.CharField(max_length=20, choices=EMOTION_CHOICES, default='auto', help_text="情绪参数")
-    speed = models.FloatField(default=1.0, help_text="语速参数(0.5-2.0)")
+    speed = models.FloatField(default=1.0, help_text="语速参数(0-2.0]")
 
     # 音频文件
     original_audio_url = models.URLField(blank=True, help_text="原音频URL")

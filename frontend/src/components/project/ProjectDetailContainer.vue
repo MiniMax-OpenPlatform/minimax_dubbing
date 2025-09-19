@@ -395,22 +395,44 @@ const handleGenerateTts = async (segment: Segment) => {
 const handleShortenTranslation = async (segment: Segment) => {
   try {
     const api = (await import('../../utils/api')).default
-    await api.post(`/segments/${segment.id}/shorten/`)
-    ElMessage.success('译文缩短任务已启动')
+
+    const response = await api.post(`/projects/${props.projectId}/segments/${segment.id}/shorten/`)
+
+    if (response.data.success) {
+      ElMessage.success(response.data.message || '译文缩短成功')
+    } else {
+      ElMessage.warning(response.data.error || '译文缩短失败')
+    }
+
     refreshData()
-  } catch (error) {
-    ElMessage.error('译文缩短失败')
+  } catch (error: any) {
+    if (error.response?.data?.error) {
+      ElMessage.error(error.response.data.error)
+    } else {
+      ElMessage.error('译文缩短失败')
+    }
   }
 }
 
 const handleLengthenTranslation = async (segment: Segment) => {
   try {
     const api = (await import('../../utils/api')).default
-    await api.post(`/segments/${segment.id}/lengthen/`)
-    ElMessage.success('译文加长任务已启动')
+
+    const response = await api.post(`/projects/${props.projectId}/segments/${segment.id}/lengthen/`)
+
+    if (response.data.success) {
+      ElMessage.success(response.data.message || '译文加长成功')
+    } else {
+      ElMessage.warning(response.data.error || '译文加长失败')
+    }
+
     refreshData()
-  } catch (error) {
-    ElMessage.error('译文加长失败')
+  } catch (error: any) {
+    if (error.response?.data?.error) {
+      ElMessage.error(error.response.data.error)
+    } else {
+      ElMessage.error('译文加长失败')
+    }
   }
 }
 

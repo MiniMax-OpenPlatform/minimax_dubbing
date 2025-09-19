@@ -143,11 +143,13 @@
       <el-table-column label="语速" width="100">
         <template #default="{ row }">
           <el-input
-            :model-value="formatSpeed(row.speed)"
+            v-model="row.speed"
             size="small"
             placeholder="1.00"
+            maxlength="4"
             @blur="handleSpeedChange(row, $event.target.value)"
             @keydown.enter="handleSpeedChange(row, $event.target.value)"
+            @input="limitSpeedInput(row, $event)"
             style="width: 100%"
           />
         </template>
@@ -303,20 +305,28 @@ const formatSpeed = (speed: number): string => {
   return speed.toFixed(2)
 }
 
-// 语速变更处理 - 验证数值范围
+// 语速实时输入限制
+const limitSpeedInput = (segment: Segment, value: string) => {
+  // 只允许数字和小数点，限制格式为 x.xx
+  const regex = /^[0-2]?\.?\d{0,2}$/
+  if (!regex.test(value)) {
+    // 如果不符合格式，恢复到上一个有效值
+    segment.speed = segment.speed || 1.00
+    return
+  }
+}
+
+// 语速变更处理 - 验证数值范围 (0, 2]
 const handleSpeedChange = async (segment: Segment, value: any) => {
   let speed = parseFloat(value)
 
-  // 验证数值范围
-  if (isNaN(speed)) {
+  // 验证数值范围 (0, 2]
+  if (isNaN(speed) || speed <= 0) {
     speed = 1.00
-    ElMessage.warning('语速必须是数字，已重置为1.00')
-  } else if (speed < 0.50) {
-    speed = 0.50
-    ElMessage.warning('语速不能小于0.50')
+    ElMessage.warning('语速必须大于0，已重置为1.00')
   } else if (speed > 2.00) {
     speed = 2.00
-    ElMessage.warning('语速不能大于2.00')
+    ElMessage.warning('语速不能大于2.00，已调整为2.00')
   }
 
   // 保留两位小数

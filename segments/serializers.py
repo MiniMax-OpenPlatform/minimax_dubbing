@@ -76,7 +76,7 @@ class BatchUpdateSerializer(serializers.Serializer):
         choices=Segment.EMOTION_CHOICES,
         required=False
     )
-    speed = serializers.FloatField(min_value=0.5, max_value=2.0, required=False)
+    speed = serializers.FloatField(min_value=0.01, max_value=2.0, required=False)
 
     def validate_segment_ids(self, value):
         """验证段落ID"""

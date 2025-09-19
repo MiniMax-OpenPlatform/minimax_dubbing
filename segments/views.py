@@ -14,6 +14,7 @@ from .serializers import (
 from projects.models import Project
 from services.business.segment_service import SegmentService
 from services.business.simple_tts_service import SimpleTTSService
+from services.business.translation_optimizer_service import TranslationOptimizerService
 
 logger = logging.getLogger(__name__)
 
@@ -165,3 +166,65 @@ class SegmentViewSet(viewsets.ModelViewSet):
                 {'error': result['error']},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=True, methods=['post'])
+    def shorten(self, request, project_pk=None, pk=None):
+        """
+        缩短段落翻译文本
+        """
+        segment = self.get_object()
+        service = TranslationOptimizerService(user=request.user)
+
+        # 从请求参数获取目标字符数，如果没有则自动计算
+        target_char_count = request.data.get('target_char_count')
+        if target_char_count:
+            target_char_count = int(target_char_count)
+
+        result = service.shorten_translation(
+            segment=segment,
+            api_key=request.user.api_key,
+            group_id=request.user.group_id,
+            target_char_count=target_char_count
+        )
+
+        if result['success']:
+            return Response(result)
+        else:
+            status_code = result.get('status_code', 500)
+            if status_code == 400:
+                return Response({'error': result['error']}, status=status.HTTP_400_BAD_REQUEST)
+            elif status_code == 422:
+                return Response({'error': result['error']}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+            else:
+                return Response({'error': result['error']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['post'])
+    def lengthen(self, request, project_pk=None, pk=None):
+        """
+        加长段落翻译文本
+        """
+        segment = self.get_object()
+        service = TranslationOptimizerService(user=request.user)
+
+        # 从请求参数获取目标字符数，如果没有则自动计算
+        target_char_count = request.data.get('target_char_count')
+        if target_char_count:
+            target_char_count = int(target_char_count)
+
+        result = service.lengthen_translation(
+            segment=segment,
+            api_key=request.user.api_key,
+            group_id=request.user.group_id,
+            target_char_count=target_char_count
+        )
+
+        if result['success']:
+            return Response(result)
+        else:
+            status_code = result.get('status_code', 500)
+            if status_code == 400:
+                return Response({'error': result['error']}, status=status.HTTP_400_BAD_REQUEST)
+            elif status_code == 422:
+                return Response({'error': result['error']}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+            else:
+                return Response({'error': result['error']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
