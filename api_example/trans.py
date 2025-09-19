@@ -23,7 +23,7 @@ payload = {
   "messages": [
     {
       "role": "system",
-      "name": "你是一个翻译优化专家"
+      "content": "你是一个翻译优化专家"
     },
     {
       "role":"user",

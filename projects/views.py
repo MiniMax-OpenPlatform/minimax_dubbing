@@ -2,6 +2,8 @@
 项目管理视图
 """
 import logging
+import os
+from django.db import transaction
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -9,11 +11,15 @@ from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.http import HttpResponse
 from .models import Project
+from segments.models import Segment
 from .serializers import (
     ProjectListSerializer, ProjectDetailSerializer,
     ProjectCreateSerializer, SRTUploadSerializer
 )
 from services.business.project_service import ProjectService
+from services.parsers.srt_parser import SRTParser
+from services.clients.minimax_client import MiniMaxClient
+from services.audio_processor import AudioProcessor
 from backend.exceptions import (
     ValidationError, handle_business_logic_error
 )
@@ -102,75 +108,94 @@ class ProjectViewSet(viewsets.ModelViewSet):
         """
         批量翻译项目中的所有段落
         """
-        project = self.get_object()
-
-        # 检查项目状态
-        if project.status == 'processing':
-            return Response({
-                'error': '项目正在处理中，请稍后再试'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            # 更新项目状态
-            project.status = 'processing'
-            project.save()
+            project = self.get_object()
 
-            # 获取待翻译的段落
-            segments = project.segments.filter(status='pending').order_by('index')
+            # 直接进行批量翻译，不检查项目状态
+
+            # 获取所有段落进行批量翻译（覆盖现有翻译）
+            segments = project.segments.filter(original_text__isnull=False).exclude(original_text__exact='').order_by('index')
             if not segments.exists():
                 return Response({
-                    'message': '没有待翻译的段落'
+                    'success': True,
+                    'message': '没有可翻译的段落（原文为空）'
                 }, status=status.HTTP_200_OK)
 
-            # 初始化MiniMax客户端
-            client = MiniMaxClient(
-                api_key=request.user.api_key,
-                group_id=request.user.group_id
-            )
-
+            # 简化实现：逐个翻译段落
             success_count = 0
             total_count = segments.count()
 
-            # 获取目标语言的显示名称
-            target_lang_display = dict(Project.LANGUAGE_CHOICES).get(
-                project.target_lang, project.target_lang
-            )
+            # 获取目标语言显示名称
+            target_lang_display = project.get_target_lang_display()
+
+            # 初始化客户端 - 使用默认配置
+            try:
+                client = MiniMaxClient()
+            except Exception as e:
+                logger.error(f"初始化MiniMax客户端失败: {str(e)}")
+                return Response({
+                    'error': f'初始化翻译客户端失败: {str(e)}'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             for segment in segments:
                 try:
-                    # 更新段落状态
-                    segment.status = 'translating'
-                    segment.save()
+                    if not segment.original_text.strip():
+                        continue
+
+                    # 准备专有词汇表
+                    custom_vocabulary = []
+                    if project.custom_vocabulary:
+                        logger.info(f"原始专有词汇表: {project.custom_vocabulary}, 类型: {type(project.custom_vocabulary)}")
+
+                        if isinstance(project.custom_vocabulary, list):
+                            # 处理列表格式，列表项可能是字符串或字典
+                            for item in project.custom_vocabulary:
+                                if isinstance(item, dict):
+                                    # 如果已经是字典格式，直接使用
+                                    custom_vocabulary.append(item)
+                                elif isinstance(item, str) and '|' in item:
+                                    # 如果是字符串格式，解析为字典
+                                    parts = item.strip().split('|')
+                                    if len(parts) >= 2:
+                                        custom_vocabulary.append({
+                                            '序号': len(custom_vocabulary) + 1,
+                                            '词汇': parts[0].strip(),
+                                            '译文': parts[1].strip()
+                                        })
+                        elif isinstance(project.custom_vocabulary, str):
+                            # 解析字符串格式的专有词汇表
+                            for line in project.custom_vocabulary.split('\n'):
+                                if '|' in line:
+                                    parts = line.strip().split('|')
+                                    if len(parts) >= 2:
+                                        custom_vocabulary.append({
+                                            '序号': len(custom_vocabulary) + 1,
+                                            '词汇': parts[0].strip(),
+                                            '译文': parts[1].strip()
+                                        })
+
+                    logger.info(f"处理后的专有词汇表: {custom_vocabulary}")
 
                     # 调用翻译API
                     result = client.translate(
                         text=segment.original_text,
                         target_language=target_lang_display,
-                        custom_vocabulary=project.custom_vocabulary
+                        custom_vocabulary=custom_vocabulary
                     )
 
-                    if result['success']:
+                    # 检查结果类型并处理
+                    if isinstance(result, dict) and result.get('success'):
                         segment.translated_text = result['translation']
-                        segment.status = 'translated'
-                        segment.save()
                         success_count += 1
-                        logger.info(f"段落{segment.index}翻译成功: {result['translation']}")
+                        logger.info(f"段落{segment.index}翻译成功")
                     else:
-                        segment.status = 'failed'
-                        segment.save()
-                        logger.error(f"段落{segment.index}翻译失败")
+                        logger.error(f"段落{segment.index}翻译失败: {result}")
 
                 except Exception as e:
-                    segment.status = 'failed'
-                    segment.save()
                     logger.error(f"段落{segment.index}翻译异常: {str(e)}")
 
-            # 更新项目状态
-            if success_count == total_count:
-                project.status = 'completed'
-            else:
-                project.status = 'draft'
-            project.save()
+                finally:
+                    segment.save()
 
             return Response({
                 'success': True,
@@ -181,8 +206,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
             })
 
         except Exception as e:
-            project.status = 'failed'
-            project.save()
             logger.error(f"批量翻译失败: {str(e)}")
             return Response({
                 'error': f'批量翻译失败: {str(e)}'

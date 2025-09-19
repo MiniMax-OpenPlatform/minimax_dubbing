@@ -16,7 +16,7 @@
       <el-table-column prop="index" label="序号" width="60" fixed="left" />
 
       <!-- 时间列 - 可编辑时间戳 -->
-      <el-table-column label="时间戳" width="220" fixed="left">
+      <el-table-column label="时间戳" width="220">
         <template #default="{ row }">
           <div class="time-edit-group">
             <div class="time-input-row">
@@ -169,46 +169,51 @@
       </el-table-column>
 
       <!-- 操作列 -->
-      <el-table-column label="操作" width="240" fixed="right">
+      <el-table-column label="操作" width="120" fixed="right">
         <template #default="{ row }">
-          <div class="row-actions">
-            <el-button
-              size="small"
-              type="primary"
-              @click="generateTTS(row)"
-              :disabled="!row.translated_text"
-              :loading="row._ttsLoading"
-            >
-              TTS
-            </el-button>
-
-            <el-button
-              size="small"
-              v-if="row.translated_audio_url"
-              @click="playAudio(row.translated_audio_url)"
-            >
-              播放
-            </el-button>
-
-            <el-button
-              size="small"
-              type="warning"
-              @click="shortenTranslation(row)"
-              :disabled="!row.translated_text"
-              :loading="row._shortenLoading"
-            >
-              缩短
-            </el-button>
-
-            <el-button
-              size="small"
-              type="success"
-              @click="lengthenTranslation(row)"
-              :disabled="!row.translated_text"
-              :loading="row._lengthenLoading"
-            >
-              加长
-            </el-button>
+          <div class="row-actions grid">
+            <div class="button-row">
+              <el-button
+                size="small"
+                type="primary"
+                @click="generateTTS(row)"
+                :disabled="!row.translated_text"
+                :loading="row._ttsLoading"
+                class="action-btn-small"
+              >
+                TTS
+              </el-button>
+              <el-button
+                size="small"
+                @click="playAudio(row.translated_audio_url)"
+                :disabled="!row.translated_audio_url"
+                class="action-btn-small"
+              >
+                播放
+              </el-button>
+            </div>
+            <div class="button-row">
+              <el-button
+                size="small"
+                type="warning"
+                @click="shortenTranslation(row)"
+                :disabled="!row.translated_text"
+                :loading="row._shortenLoading"
+                class="action-btn-small"
+              >
+                缩短
+              </el-button>
+              <el-button
+                size="small"
+                type="success"
+                @click="lengthenTranslation(row)"
+                :disabled="!row.translated_text"
+                :loading="row._lengthenLoading"
+                class="action-btn-small"
+              >
+                加长
+              </el-button>
+            </div>
           </div>
         </template>
       </el-table-column>
@@ -668,6 +673,31 @@ const getRowClassName = ({ row }: { row: Segment }) => {
   display: flex;
   gap: 4px;
   align-items: center;
+}
+
+.row-actions.vertical {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+}
+
+.row-actions.grid {
+  display: flex;
+  flex-direction: column;
+  gap: 3px !important;
+  padding: 2px 10px !important;
+}
+
+.button-row {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.action-btn-small {
+  width: 40px !important;
+  font-size: 11px !important;
+  padding: 4px 2px !important;
 }
 
 /* 行状态样式 */

@@ -55,43 +55,69 @@ class MiniMaxClient:
     def _make_request(self, method: str, url: str, headers: Dict, data: Any = None,
                      request_type: str = 'llm', max_retries: int = 2) -> Dict:
         """统一的请求方法，支持重试"""
-        self._rate_limit(request_type)
+        try:
+            logger.info(f"[_make_request] 开始请求 - {method} {url}")
+            self._rate_limit(request_type)
 
-        for attempt in range(max_retries + 1):
-            try:
-                if method.upper() == 'POST':
-                    if isinstance(data, dict):
-                        response = requests.post(url, headers=headers, json=data, timeout=30)
+            for attempt in range(max_retries + 1):
+                try:
+                    logger.info(f"[_make_request] 尝试 {attempt + 1}/{max_retries + 1}")
+
+                    if method.upper() == 'POST':
+                        if isinstance(data, dict):
+                            response = requests.post(url, headers=headers, json=data, timeout=30)
+                        else:
+                            response = requests.post(url, headers=headers, data=data, timeout=30)
                     else:
-                        response = requests.post(url, headers=headers, data=data, timeout=30)
-                else:
-                    response = requests.get(url, headers=headers, timeout=30)
+                        response = requests.get(url, headers=headers, timeout=30)
 
-                # 记录trace_id
-                trace_id = response.headers.get('Trace-ID', 'N/A')
-                logger.info(f"API请求 - {request_type.upper()} - Trace-ID: {trace_id}")
+                    # 记录trace_id
+                    trace_id = response.headers.get('Trace-ID', 'N/A')
+                    logger.info(f"[_make_request] API请求 - {request_type.upper()} - Trace-ID: {trace_id} - 状态码: {response.status_code}")
 
-                if response.status_code == 200:
-                    result = response.json()
-                    result['trace_id'] = trace_id  # 添加trace_id到结果中
-                    return result
-                else:
-                    error_msg = f"API请求失败: {response.status_code} - {response.text}"
-                    logger.error(error_msg)
+                    if response.status_code == 200:
+                        logger.info(f"[_make_request] 开始解析JSON响应")
+                        result = response.json()
+                        logger.info(f"[_make_request] JSON解析成功，类型: {type(result)}")
+
+                        # 确保result是字典类型才添加trace_id
+                        if isinstance(result, dict):
+                            result['trace_id'] = trace_id
+                            logger.info(f"[_make_request] 请求成功，返回字典")
+                            return result
+                        else:
+                            logger.error(f"[_make_request] API返回格式错误，不是字典类型: {type(result)} - {result}")
+                            return {'error': f'API返回格式错误: {result}', 'trace_id': trace_id}
+                    else:
+                        error_msg = f"API请求失败: {response.status_code} - {response.text}"
+                        logger.error(f"[_make_request] {error_msg}")
+                        if attempt == max_retries:
+                            raise ExternalAPIError(error_msg, service="minimax")
+
+                except requests.exceptions.RequestException as e:
+                    error_msg = f"请求异常: {str(e)}"
+                    logger.error(f"[_make_request] {error_msg}")
+                    if attempt == max_retries:
+                        raise ExternalAPIError(error_msg, service="minimax")
+                except Exception as e:
+                    error_msg = f"未知异常: {str(e)}"
+                    logger.error(f"[_make_request] {error_msg}")
                     if attempt == max_retries:
                         raise ExternalAPIError(error_msg, service="minimax")
 
-            except requests.exceptions.RequestException as e:
-                error_msg = f"请求异常: {str(e)}"
-                logger.error(error_msg)
-                if attempt == max_retries:
-                    raise ExternalAPIError(error_msg, service="minimax")
+                # 重试前等待
+                if attempt < max_retries:
+                    wait_time = (attempt + 1) * 2
+                    logger.info(f"[_make_request] 第{attempt + 1}次重试失败，等待{wait_time}秒后重试")
+                    time.sleep(wait_time)
 
-            # 重试前等待
-            if attempt < max_retries:
-                wait_time = (attempt + 1) * 2
-                logger.info(f"第{attempt + 1}次重试失败，等待{wait_time}秒后重试")
-                time.sleep(wait_time)
+            # 如果所有重试都失败了
+            logger.error(f"[_make_request] 所有重试都失败了")
+            raise ExternalAPIError("所有重试都失败了", service="minimax")
+
+        except Exception as e:
+            logger.error(f"[_make_request] 最外层异常: {str(e)} - 类型: {type(e)}")
+            raise
 
     def translate(self, text: str, target_language: str,
                   custom_vocabulary: list = None) -> Dict[str, Any]:
@@ -108,50 +134,87 @@ class MiniMaxClient:
         """
         logger.info(f"开始翻译: {text[:50]}... -> {target_language}")
 
-        # 构建专有词汇表字符串
-        vocab_str = ""
-        if custom_vocabulary:
-            vocab_parts = []
-            for item in custom_vocabulary:
-                vocab_parts.append(f"序号{item.get('序号', '')}，{item.get('词汇', '')}，{item.get('译文', '')}")
-            vocab_str = "；".join(vocab_parts) + "；"
+        # 生成请求trace_id用于调试
+        import uuid
+        request_trace_id = str(uuid.uuid4())[:8]
+        logger.info(f"[{request_trace_id}] 翻译请求开始 - 文本: {text} - 目标语言: {target_language}")
+        logger.info(f"[{request_trace_id}] 专有词汇表: {custom_vocabulary}")
 
-        # 构建提示词
-        system_prompt = "你是一个专业的翻译助手，擅长翻译视频字幕。请保持翻译的自然流畅，适合口语表达。"
+        try:
+            # 构建专有词汇表字符串 - 按照prompt_translation模板格式
+            vocab_str = ""
+            if custom_vocabulary:
+                vocab_parts = []
+                for item in custom_vocabulary:
+                    # 确保item是字典类型
+                    if isinstance(item, dict):
+                        # 按照模板格式：序号1，词汇1，词汇1译文1；序号2，词汇2，词汇译文2；
+                        序号 = item.get('序号', len(vocab_parts) + 1)
+                        词汇 = item.get('词汇', '')
+                        译文 = item.get('译文', '')
+                        if 词汇 and 译文:  # 只有词汇和译文都存在才添加
+                            vocab_parts.append(f"{序号}，{词汇}，{译文}")
+                    else:
+                        logger.warning(f"[{request_trace_id}] 专有词汇项不是字典类型: {type(item)} - {item}")
+                vocab_str = "；".join(vocab_parts) + "；" if vocab_parts else ""
 
-        user_prompt = f"请将以下文本翻译成{target_language}，要求：\n"
-        user_prompt += "1. 保持自然流畅的表达方式\n"
-        if vocab_str:
-            user_prompt += f"2. 如果包含以下专有词汇，请按照词表翻译，词表:{vocab_str}\n"
-        user_prompt += f"需要翻译的文本：\"{text}\"\n"
-        user_prompt += "请直接给出翻译结果，不需要解释，你的翻译结果是："
+            # 构建提示词 - 严格按照prompt_translation模板
+            system_prompt = "你是一个专业的翻译助手，擅长翻译视频字幕。请保持翻译的自然流畅，适合口语表达。"
 
-        url = f"{self.llm_base_url}/v1/text/chatcompletion_v2"
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+            user_prompt = f"请将以下文本翻译成{target_language}，要求：\n"
+            user_prompt += "1. 保持自然流畅的表达方式\n"
+            if vocab_str:
+                user_prompt += f"2. 如果包含以下专有词汇，请按照词表翻译，词表:{vocab_str}\n"
+            user_prompt += f"需要翻译的文本：\"{text}\"\n"
+            user_prompt += "请直接给出翻译结果，不需要解释，你的翻译结果是："
 
-        payload = {
-            "model": "MiniMax-Text-01",
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ]
-        }
+            logger.info(f"[{request_trace_id}] 专有词汇表字符串: {vocab_str}")
+            logger.info(f"[{request_trace_id}] 用户提示词: {user_prompt}")
 
-        result = self._make_request('POST', url, headers, payload, 'llm')
-
-        if 'choices' in result and len(result['choices']) > 0:
-            translation = result['choices'][0]['message']['content'].strip()
-            logger.info(f"翻译成功: {translation}")
-            return {
-                'translation': translation,
-                'trace_id': result.get('trace_id'),
-                'success': True
+            url = f"{self.llm_base_url}/v1/text/chatcompletion_v2"
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
             }
-        else:
-            raise ExternalAPIError(f"翻译响应格式错误: {result}")
+
+            payload = {
+                "model": "MiniMax-Text-01",
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "name": "用户", "content": user_prompt}
+                ]
+            }
+
+            logger.info(f"发送翻译请求到: {url}")
+            logger.info(f"请求payload: {payload}")
+
+            result = self._make_request('POST', url, headers, payload, 'llm')
+            logger.info(f"API响应: {result}")
+
+            if 'choices' in result and len(result['choices']) > 0:
+                translation = result['choices'][0]['message']['content'].strip()
+                logger.info(f"翻译成功: {translation}")
+                return {
+                    'translation': translation,
+                    'trace_id': result.get('trace_id'),
+                    'success': True
+                }
+            else:
+                logger.error(f"翻译响应格式错误: {result}")
+                return {
+                    'error': f'翻译响应格式错误: {result}',
+                    'success': False
+                }
+
+        except Exception as e:
+            logger.error(f"[{request_trace_id}] 翻译异常: {str(e)} - 异常类型: {type(e)}")
+            import traceback
+            logger.error(f"[{request_trace_id}] 异常堆栈: {traceback.format_exc()}")
+            return {
+                'error': f'翻译失败: {str(e)}',
+                'success': False,
+                'trace_id': request_trace_id
+            }
 
     def optimize_translation(self, original_text: str, current_translation: str,
                            target_language: str, target_char_count: int,

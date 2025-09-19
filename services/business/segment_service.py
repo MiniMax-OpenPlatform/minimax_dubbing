@@ -21,18 +21,7 @@ class SegmentService(BaseService):
         """翻译单个段落"""
         project = segment.project
 
-        # 检查段落状态
-        if segment.status == 'translating':
-            return {
-                'success': False,
-                'error': '段落正在翻译中，请稍后再试',
-                'status_code': 400
-            }
-
         try:
-            # 更新段落状态
-            segment.status = 'translating'
-            segment.save()
 
             # 初始化MiniMax客户端
             client = MiniMaxClient(api_key=api_key, group_id=group_id)
@@ -51,7 +40,6 @@ class SegmentService(BaseService):
 
             if result['success']:
                 segment.translated_text = result['translation']
-                segment.status = 'translated'
                 segment.save()
 
                 self.log_operation(
@@ -66,7 +54,6 @@ class SegmentService(BaseService):
                     'message': '翻译成功'
                 }
             else:
-                segment.status = 'failed'
                 segment.save()
                 return {
                     'success': False,
@@ -75,7 +62,6 @@ class SegmentService(BaseService):
                 }
 
         except Exception as e:
-            segment.status = 'failed'
             segment.save()
             self.logger.error(f"段落{segment.index}翻译异常: {str(e)}")
             return {
@@ -91,14 +77,11 @@ class SegmentService(BaseService):
         if not segment.translated_text:
             return {
                 'success': False,
-                'error': '段落还未翻译，无法生成TTS',
+                'error': '段落译文为空，无法生成TTS',
                 'status_code': 400
             }
 
         try:
-            # 更新段落状态
-            segment.status = 'tts_processing'
-            segment.save()
 
             # 初始化客户端和对齐器
             client = MiniMaxClient(api_key=api_key, group_id=group_id)
@@ -127,7 +110,6 @@ class SegmentService(BaseService):
             return self._process_tts_result(segment, align_result)
 
         except Exception as e:
-            segment.status = 'failed'
             segment.save()
             self.logger.error(f"段落{segment.index}TTS生成异常: {str(e)}")
             return {
@@ -173,17 +155,16 @@ class SegmentService(BaseService):
             }
 
     def batch_generate_tts(self, project: Project, segments_queryset, api_key: str, group_id: str) -> Dict[str, Any]:
-        """批量生成TTS音频"""
+        """批量生成TTS音频（覆盖现有音频）"""
         segments = segments_queryset.filter(
-            status='translated',
             translated_text__isnull=False
         ).exclude(translated_text='')
 
         if not segments.exists():
-            self.logger.info(f"项目 {project.name} (ID: {project.id}) 没有可生成TTS的段落")
+            self.logger.info(f"项目 {project.name} (ID: {project.id}) 没有可生成TTS的段落（译文为空）")
             return {
                 'success': True,
-                'message': '没有可生成TTS的段落'
+                'message': '没有可生成TTS的段落（译文为空）'
             }
 
         try:
@@ -251,7 +232,6 @@ class SegmentService(BaseService):
             segment.speed = align_result['speed']
             segment.translated_text = align_result['optimized_text']
             segment.calculate_ratio()
-            segment.status = 'completed'
             segment.save()
 
             self.log_operation(
@@ -272,7 +252,6 @@ class SegmentService(BaseService):
             }
         else:
             # 对齐失败，设为静音
-            segment.status = 'silent'
             segment.translated_audio_url = ''
             segment.t_tts_duration = 0.0
             segment.calculate_ratio()
@@ -306,8 +285,6 @@ class SegmentService(BaseService):
     def _process_single_tts(self, segment: Segment, project: Project, aligner: TimestampAligner, language_boost: str) -> str:
         """处理单个段落的TTS生成"""
         try:
-            segment.status = 'tts_processing'
-            segment.save()
 
             # 设置音色ID
             if not segment.voice_id:
@@ -332,11 +309,9 @@ class SegmentService(BaseService):
                 segment.speed = align_result['speed']
                 segment.translated_text = align_result['optimized_text']
                 segment.calculate_ratio()
-                segment.status = 'completed'
                 segment.save()
                 return 'success'
             else:
-                segment.status = 'silent'
                 segment.translated_audio_url = ''
                 segment.t_tts_duration = 0.0
                 segment.calculate_ratio()
@@ -344,7 +319,6 @@ class SegmentService(BaseService):
                 return 'silent'
 
         except Exception as e:
-            segment.status = 'failed'
             segment.save()
             self.logger.error(f"段落{segment.index}批量TTS失败: {str(e)}")
             return 'failed'
