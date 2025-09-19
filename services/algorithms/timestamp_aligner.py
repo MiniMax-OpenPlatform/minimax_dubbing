@@ -68,7 +68,7 @@ class TimestampAligner:
     def align_timestamp(self, text: str, target_duration: float, voice_id: str,
                        original_text: str = "", target_language: str = "中文",
                        custom_vocabulary: list = None, emotion: str = "auto",
-                       language_boost: str = "Chinese") -> Dict[str, Any]:
+                       language_boost: str = "Chinese", model: str = "speech-01-turbo") -> Dict[str, Any]:
         """
         时间戳对齐算法主函数
         按照PRD文档中定义的5步优化流程
@@ -82,6 +82,7 @@ class TimestampAligner:
             custom_vocabulary: 专有词汇表
             emotion: 情绪参数
             language_boost: 语言增强
+            model: TTS模型
 
         Returns:
             Dict: 对齐结果
@@ -111,7 +112,8 @@ class TimestampAligner:
                 voice_id=voice_id,
                 speed=current_speed,
                 emotion=emotion,
-                language_boost=language_boost
+                language_boost=language_boost,
+                model=model
             )
 
             if not step1_result['success']:
@@ -122,7 +124,7 @@ class TimestampAligner:
 
             # 去除静音并计算时长
             t_tts = self.get_audio_duration(audio_url)
-            ratio = t_tts / target_duration
+            ratio = round(t_tts / target_duration, 2)
 
             optimization_steps.append({
                 'step': 1,
@@ -154,12 +156,17 @@ class TimestampAligner:
             logger.info("第二步: LLM翻译优化")
             if original_text:  # 只有在提供原文的情况下才进行翻译优化
                 target_char_count = int(len(current_text) * target_duration / t_tts)
+
+                # 直接使用字典格式的专有词汇表
+                processed_vocabulary = custom_vocabulary or []
+                logger.info(f"[TimestampAligner] 专有词汇表: {processed_vocabulary}")
+
                 step2_result = self.client.optimize_translation(
                     original_text=original_text,
                     current_translation=current_text,
                     target_language=target_language,
                     target_char_count=target_char_count,
-                    custom_vocabulary=custom_vocabulary
+                    custom_vocabulary=processed_vocabulary
                 )
 
                 if step2_result['success']:
@@ -172,14 +179,15 @@ class TimestampAligner:
                         voice_id=voice_id,
                         speed=current_speed,
                         emotion=emotion,
-                        language_boost=language_boost
+                        language_boost=language_boost,
+                        model=model
                     )
 
                     if step2_tts_result['success']:
                         audio_url = step2_tts_result['audio_url']
                         trace_ids.append(step2_tts_result['trace_id'])
                         t_tts = self.get_audio_duration(audio_url)
-                        ratio = t_tts / target_duration
+                        ratio = round(t_tts / target_duration, 2)
 
                         optimization_steps.append({
                             'step': 2,
@@ -208,20 +216,21 @@ class TimestampAligner:
 
             # 第三步：调整speed参数
             logger.info("第三步: 调整speed参数")
-            current_speed = min(t_tts / target_duration + 0.2, 2.0)
+            current_speed = round(min(t_tts / target_duration + 0.2, 2.0), 2)
             step3_result = self.client.text_to_speech(
                 text=current_text,
                 voice_id=voice_id,
                 speed=current_speed,
                 emotion=emotion,
-                language_boost=language_boost
+                language_boost=language_boost,
+                model=model
             )
 
             if step3_result['success']:
                 audio_url = step3_result['audio_url']
                 trace_ids.append(step3_result['trace_id'])
                 t_tts = self.get_audio_duration(audio_url)
-                ratio = t_tts / target_duration
+                ratio = round(t_tts / target_duration, 2)
 
                 optimization_steps.append({
                     'step': 3,
@@ -250,20 +259,21 @@ class TimestampAligner:
 
             # 第四步：speed增加0.5重试
             logger.info("第四步: speed增加0.5重试")
-            current_speed = min(current_speed + 0.5, 2.0)
+            current_speed = round(min(current_speed + 0.5, 2.0), 2)
             step4_result = self.client.text_to_speech(
                 text=current_text,
                 voice_id=voice_id,
                 speed=current_speed,
                 emotion=emotion,
-                language_boost=language_boost
+                language_boost=language_boost,
+                model=model
             )
 
             if step4_result['success']:
                 audio_url = step4_result['audio_url']
                 trace_ids.append(step4_result['trace_id'])
                 t_tts = self.get_audio_duration(audio_url)
-                ratio = t_tts / target_duration
+                ratio = round(t_tts / target_duration, 2)
 
                 optimization_steps.append({
                     'step': 4,
@@ -298,14 +308,15 @@ class TimestampAligner:
                 voice_id=voice_id,
                 speed=current_speed,
                 emotion=emotion,
-                language_boost=language_boost
+                language_boost=language_boost,
+                model=model
             )
 
             if step5_result['success']:
                 audio_url = step5_result['audio_url']
                 trace_ids.append(step5_result['trace_id'])
                 t_tts = self.get_audio_duration(audio_url)
-                ratio = t_tts / target_duration
+                ratio = round(t_tts / target_duration, 2)
 
                 optimization_steps.append({
                     'step': 5,

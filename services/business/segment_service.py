@@ -92,8 +92,8 @@ class SegmentService(BaseService):
                 voice_mappings = project.voice_mappings or {}
                 segment.voice_id = voice_mappings.get(segment.speaker, 'male-qn-qingse')
 
-            # 获取目标语言对应的language_boost
-            language_boost = self._get_language_boost(project.target_lang)
+            # 直接使用项目的目标语言作为language_boost
+            language_boost = project.target_lang
 
             # 调用时间戳对齐算法
             align_result = aligner.align_timestamp(
@@ -104,7 +104,8 @@ class SegmentService(BaseService):
                 target_language=dict(Project.LANGUAGE_CHOICES).get(project.target_lang),
                 custom_vocabulary=project.custom_vocabulary,
                 emotion=segment.emotion,
-                language_boost=language_boost
+                language_boost=language_boost,
+                model=project.tts_model
             )
 
             return self._process_tts_result(segment, align_result)
@@ -175,7 +176,8 @@ class SegmentService(BaseService):
             client = MiniMaxClient(api_key=api_key, group_id=group_id)
             aligner = TimestampAligner(client)
 
-            language_boost = self._get_language_boost(project.target_lang)
+            # 直接使用项目的目标语言作为language_boost
+            language_boost = project.target_lang
             self.logger.info(f"[批量TTS] 目标语言: {project.target_lang}, language_boost: {language_boost}")
 
             counters = {'success': 0, 'failed': 0, 'silent': 0}
@@ -212,16 +214,6 @@ class SegmentService(BaseService):
                 'status_code': 500
             }
 
-    def _get_language_boost(self, target_lang: str) -> str:
-        """获取目标语言对应的language_boost"""
-        language_boost_map = {
-            'zh': 'Chinese',
-            'yue': 'Chinese,Yue',
-            'en': 'English',
-            'ja': 'Japanese',
-            'ko': 'Korean',
-        }
-        return language_boost_map.get(target_lang, 'Chinese')
 
     def _process_tts_result(self, segment: Segment, align_result: Dict[str, Any]) -> Dict[str, Any]:
         """处理TTS生成结果"""
@@ -300,7 +292,8 @@ class SegmentService(BaseService):
                 target_language=dict(Project.LANGUAGE_CHOICES).get(project.target_lang),
                 custom_vocabulary=project.custom_vocabulary,
                 emotion=segment.emotion,
-                language_boost=language_boost
+                language_boost=language_boost,
+                model=project.tts_model
             )
 
             if align_result['success']:

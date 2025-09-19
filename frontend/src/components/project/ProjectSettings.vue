@@ -27,91 +27,91 @@
 
       <el-form-item label="源语言" prop="source_lang">
         <el-select v-model="formData.source_lang" placeholder="请选择源语言" filterable>
-          <el-option label="中文" value="zh" />
-          <el-option label="粤语" value="yue" />
-          <el-option label="英语" value="en" />
-          <el-option label="阿拉伯语" value="ar" />
-          <el-option label="俄语" value="ru" />
-          <el-option label="西班牙语" value="es" />
-          <el-option label="法语" value="fr" />
-          <el-option label="葡萄牙语" value="pt" />
-          <el-option label="德语" value="de" />
-          <el-option label="土耳其语" value="tr" />
-          <el-option label="荷兰语" value="nl" />
-          <el-option label="乌克兰语" value="uk" />
-          <el-option label="越南语" value="vi" />
-          <el-option label="印尼语" value="id" />
-          <el-option label="日语" value="ja" />
-          <el-option label="意大利语" value="it" />
-          <el-option label="韩语" value="ko" />
-          <el-option label="泰语" value="th" />
-          <el-option label="波兰语" value="pl" />
-          <el-option label="罗马尼亚语" value="ro" />
-          <el-option label="希腊语" value="el" />
-          <el-option label="捷克语" value="cs" />
-          <el-option label="芬兰语" value="fi" />
-          <el-option label="印地语" value="hi" />
-          <el-option label="保加利亚语" value="bg" />
-          <el-option label="丹麦语" value="da" />
-          <el-option label="希伯来语" value="he" />
-          <el-option label="马来语" value="ms" />
-          <el-option label="波斯语" value="fa" />
-          <el-option label="斯洛伐克语" value="sk" />
-          <el-option label="瑞典语" value="sv" />
-          <el-option label="克罗地亚语" value="hr" />
-          <el-option label="菲律宾语" value="fil" />
-          <el-option label="匈牙利语" value="hu" />
-          <el-option label="挪威语" value="no" />
-          <el-option label="斯洛文尼亚语" value="sl" />
-          <el-option label="加泰罗尼亚语" value="ca" />
-          <el-option label="尼诺斯克语" value="nn" />
-          <el-option label="泰米尔语" value="ta" />
-          <el-option label="阿非利卡语" value="af" />
+          <el-option label="中文" value="Chinese" />
+          <el-option label="粤语" value="Chinese,Yue" />
+          <el-option label="英语" value="English" />
+          <el-option label="阿拉伯语" value="Arabic" />
+          <el-option label="俄语" value="Russian" />
+          <el-option label="西班牙语" value="Spanish" />
+          <el-option label="法语" value="French" />
+          <el-option label="葡萄牙语" value="Portuguese" />
+          <el-option label="德语" value="German" />
+          <el-option label="土耳其语" value="Turkish" />
+          <el-option label="荷兰语" value="Dutch" />
+          <el-option label="乌克兰语" value="Ukrainian" />
+          <el-option label="越南语" value="Vietnamese" />
+          <el-option label="印尼语" value="Indonesian" />
+          <el-option label="日语" value="Japanese" />
+          <el-option label="意大利语" value="Italian" />
+          <el-option label="韩语" value="Korean" />
+          <el-option label="泰语" value="Thai" />
+          <el-option label="波兰语" value="Polish" />
+          <el-option label="罗马尼亚语" value="Romanian" />
+          <el-option label="希腊语" value="Greek" />
+          <el-option label="捷克语" value="Czech" />
+          <el-option label="芬兰语" value="Finnish" />
+          <el-option label="印地语" value="Hindi" />
+          <el-option label="保加利亚语" value="Bulgarian" />
+          <el-option label="丹麦语" value="Danish" />
+          <el-option label="希伯来语" value="Hebrew" />
+          <el-option label="马来语" value="Malay" />
+          <el-option label="波斯语" value="Persian" />
+          <el-option label="斯洛伐克语" value="Slovak" />
+          <el-option label="瑞典语" value="Swedish" />
+          <el-option label="克罗地亚语" value="Croatian" />
+          <el-option label="菲律宾语" value="Filipino" />
+          <el-option label="匈牙利语" value="Hungarian" />
+          <el-option label="挪威语" value="Norwegian" />
+          <el-option label="斯洛文尼亚语" value="Slovenian" />
+          <el-option label="加泰罗尼亚语" value="Catalan" />
+          <el-option label="尼诺斯克语" value="Nynorsk" />
+          <el-option label="泰米尔语" value="Tamil" />
+          <el-option label="阿非利卡语" value="Afrikaans" />
         </el-select>
       </el-form-item>
 
       <el-form-item label="目标语言" prop="target_lang">
         <el-select v-model="formData.target_lang" placeholder="请选择目标语言" filterable>
-          <el-option label="中文" value="zh" />
-          <el-option label="粤语" value="yue" />
-          <el-option label="英语" value="en" />
-          <el-option label="阿拉伯语" value="ar" />
-          <el-option label="俄语" value="ru" />
-          <el-option label="西班牙语" value="es" />
-          <el-option label="法语" value="fr" />
-          <el-option label="葡萄牙语" value="pt" />
-          <el-option label="德语" value="de" />
-          <el-option label="土耳其语" value="tr" />
-          <el-option label="荷兰语" value="nl" />
-          <el-option label="乌克兰语" value="uk" />
-          <el-option label="越南语" value="vi" />
-          <el-option label="印尼语" value="id" />
-          <el-option label="日语" value="ja" />
-          <el-option label="意大利语" value="it" />
-          <el-option label="韩语" value="ko" />
-          <el-option label="泰语" value="th" />
-          <el-option label="波兰语" value="pl" />
-          <el-option label="罗马尼亚语" value="ro" />
-          <el-option label="希腊语" value="el" />
-          <el-option label="捷克语" value="cs" />
-          <el-option label="芬兰语" value="fi" />
-          <el-option label="印地语" value="hi" />
-          <el-option label="保加利亚语" value="bg" />
-          <el-option label="丹麦语" value="da" />
-          <el-option label="希伯来语" value="he" />
-          <el-option label="马来语" value="ms" />
-          <el-option label="波斯语" value="fa" />
-          <el-option label="斯洛伐克语" value="sk" />
-          <el-option label="瑞典语" value="sv" />
-          <el-option label="克罗地亚语" value="hr" />
-          <el-option label="菲律宾语" value="fil" />
-          <el-option label="匈牙利语" value="hu" />
-          <el-option label="挪威语" value="no" />
-          <el-option label="斯洛文尼亚语" value="sl" />
-          <el-option label="加泰罗尼亚语" value="ca" />
-          <el-option label="尼诺斯克语" value="nn" />
-          <el-option label="泰米尔语" value="ta" />
-          <el-option label="阿非利卡语" value="af" />
+          <el-option label="中文" value="Chinese" />
+          <el-option label="粤语" value="Chinese,Yue" />
+          <el-option label="英语" value="English" />
+          <el-option label="阿拉伯语" value="Arabic" />
+          <el-option label="俄语" value="Russian" />
+          <el-option label="西班牙语" value="Spanish" />
+          <el-option label="法语" value="French" />
+          <el-option label="葡萄牙语" value="Portuguese" />
+          <el-option label="德语" value="German" />
+          <el-option label="土耳其语" value="Turkish" />
+          <el-option label="荷兰语" value="Dutch" />
+          <el-option label="乌克兰语" value="Ukrainian" />
+          <el-option label="越南语" value="Vietnamese" />
+          <el-option label="印尼语" value="Indonesian" />
+          <el-option label="日语" value="Japanese" />
+          <el-option label="意大利语" value="Italian" />
+          <el-option label="韩语" value="Korean" />
+          <el-option label="泰语" value="Thai" />
+          <el-option label="波兰语" value="Polish" />
+          <el-option label="罗马尼亚语" value="Romanian" />
+          <el-option label="希腊语" value="Greek" />
+          <el-option label="捷克语" value="Czech" />
+          <el-option label="芬兰语" value="Finnish" />
+          <el-option label="印地语" value="Hindi" />
+          <el-option label="保加利亚语" value="Bulgarian" />
+          <el-option label="丹麦语" value="Danish" />
+          <el-option label="希伯来语" value="Hebrew" />
+          <el-option label="马来语" value="Malay" />
+          <el-option label="波斯语" value="Persian" />
+          <el-option label="斯洛伐克语" value="Slovak" />
+          <el-option label="瑞典语" value="Swedish" />
+          <el-option label="克罗地亚语" value="Croatian" />
+          <el-option label="菲律宾语" value="Filipino" />
+          <el-option label="匈牙利语" value="Hungarian" />
+          <el-option label="挪威语" value="Norwegian" />
+          <el-option label="斯洛文尼亚语" value="Slovenian" />
+          <el-option label="加泰罗尼亚语" value="Catalan" />
+          <el-option label="尼诺斯克语" value="Nynorsk" />
+          <el-option label="泰米尔语" value="Tamil" />
+          <el-option label="阿非利卡语" value="Afrikaans" />
         </el-select>
       </el-form-item>
 
@@ -146,6 +146,20 @@
           >
             添加角色音色映射
           </el-button>
+        </div>
+      </el-form-item>
+
+      <el-form-item label="TTS模型" prop="tts_model">
+        <el-select v-model="formData.tts_model" placeholder="请选择TTS模型">
+          <el-option label="speech-2.5-hd-preview (推荐)" value="speech-2.5-hd-preview" />
+          <el-option label="speech-2.5-turbo-preview" value="speech-2.5-turbo-preview" />
+          <el-option label="speech-02-hd" value="speech-02-hd" />
+          <el-option label="speech-02-turbo" value="speech-02-turbo" />
+          <el-option label="speech-01-hd" value="speech-01-hd" />
+          <el-option label="speech-01-turbo" value="speech-01-turbo" />
+        </el-select>
+        <div class="model-hint">
+          <small>TTS模型用于语音合成，推荐使用speech-2.5-hd-preview获得最佳质量。</small>
         </div>
       </el-form-item>
 
@@ -187,6 +201,7 @@ interface ProjectSettings {
   description: string
   source_lang: string
   target_lang: string
+  tts_model: string
   voice_mappings: SpeakerVoiceMapping[]
   custom_vocabulary: string
 }
@@ -210,6 +225,7 @@ const formData = reactive<ProjectSettings>({
   description: '',
   source_lang: '',
   target_lang: '',
+  tts_model: 'speech-2.5-hd-preview',
   voice_mappings: [
     { speaker: '说话人1', voice_id: '' },
     { speaker: '说话人2', voice_id: '' },
@@ -229,6 +245,9 @@ const rules: FormRules<ProjectSettings> = {
   ],
   target_lang: [
     { required: true, message: '请选择目标语言', trigger: 'change' }
+  ],
+  tts_model: [
+    { required: true, message: '请选择TTS模型', trigger: 'change' }
   ]
 }
 
@@ -239,6 +258,7 @@ watch(() => props.project, (newProject) => {
     formData.description = newProject.description || ''
     formData.source_lang = newProject.source_lang || ''
     formData.target_lang = newProject.target_lang || ''
+    formData.tts_model = newProject.tts_model || 'speech-2.5-hd-preview'
 
     // 解析角色音色映射
     if (newProject.voice_mappings && Array.isArray(newProject.voice_mappings)) {
@@ -261,10 +281,19 @@ watch(() => props.project, (newProject) => {
       ]
     }
 
-    // 解析专有词汇表
+    // 解析专有词汇表 - 从字典格式还原为文本显示
     if (Array.isArray(newProject.custom_vocabulary)) {
-      // 如果是数组格式，转换为字符串显示
-      formData.custom_vocabulary = newProject.custom_vocabulary.join('\n')
+      if (newProject.custom_vocabulary.length > 0 &&
+          typeof newProject.custom_vocabulary[0] === 'object' &&
+          newProject.custom_vocabulary[0]['词汇']) {
+        // 新的字典格式：[{'序号': 1, '词汇': '爸爸', '译文': 'HAHA'}]
+        formData.custom_vocabulary = newProject.custom_vocabulary
+          .map(item => `${item['词汇']}|${item['译文']}`)
+          .join('\n')
+      } else {
+        // 旧的字符串数组格式：['爸爸|HAHA'] (兼容性处理)
+        formData.custom_vocabulary = newProject.custom_vocabulary.join('\n')
+      }
     } else if (typeof newProject.custom_vocabulary === 'string') {
       formData.custom_vocabulary = newProject.custom_vocabulary
     } else {
@@ -298,11 +327,24 @@ const handleSave = async () => {
       mapping => mapping.speaker.trim() && mapping.voice_id.trim()
     )
 
-    // 处理专有词汇表，转换为数组格式
+    // 处理专有词汇表，转换为字典格式
     const vocabularyArray = formData.custom_vocabulary
       .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
+      .map((line, index) => {
+        const trimmedLine = line.trim()
+        if (trimmedLine.length > 0 && trimmedLine.includes('|')) {
+          const parts = trimmedLine.split('|')
+          if (parts.length >= 2) {
+            return {
+              序号: index + 1,
+              词汇: parts[0].trim(),
+              译文: parts[1].trim()
+            }
+          }
+        }
+        return null
+      })
+      .filter(item => item !== null)
 
     const saveData = {
       ...formData,
@@ -353,6 +395,12 @@ const handleSave = async () => {
 }
 
 .vocabulary-hint {
+  margin-top: 8px;
+  color: #909399;
+  line-height: 1.4;
+}
+
+.model-hint {
   margin-top: 8px;
   color: #909399;
   line-height: 1.4;

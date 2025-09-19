@@ -10,7 +10,6 @@ interface Project {
   name: string
   source_lang: string
   target_lang: string
-  status: string
   created_at: string
   segment_count: number
   completed_segment_count: number
@@ -84,15 +83,6 @@ const handleUpload = async () => {
   }
 }
 
-const getStatusTag = (status: string) => {
-  const statusMap: Record<string, { type: string, text: string }> = {
-    'draft': { type: 'info', text: '草稿' },
-    'processing': { type: 'warning', text: '处理中' },
-    'completed': { type: 'success', text: '已完成' },
-    'failed': { type: 'danger', text: '失败' }
-  }
-  return statusMap[status] || { type: 'info', text: status }
-}
 
 onMounted(() => {
   loadProjects()
@@ -126,13 +116,6 @@ onMounted(() => {
       <el-table-column prop="source_lang" label="源语言" width="100" />
       <el-table-column prop="target_lang" label="目标语言" width="100" />
 
-      <el-table-column prop="status" label="状态" width="100">
-        <template #default="{ row }">
-          <el-tag :type="getStatusTag(row.status).type">
-            {{ getStatusTag(row.status).text }}
-          </el-tag>
-        </template>
-      </el-table-column>
 
       <el-table-column label="进度" width="150">
         <template #default="{ row }">

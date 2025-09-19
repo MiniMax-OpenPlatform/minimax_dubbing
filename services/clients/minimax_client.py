@@ -281,7 +281,8 @@ class MiniMaxClient:
             raise ExternalAPIError(f"翻译优化响应格式错误: {result}")
 
     def text_to_speech(self, text: str, voice_id: str, speed: float = 1.0,
-                      emotion: str = "auto", language_boost: str = "Chinese") -> Dict[str, Any]:
+                      emotion: str = "auto", language_boost: str = "Chinese",
+                      model: str = "speech-01-turbo") -> Dict[str, Any]:
         """
         文本转语音
 
@@ -291,6 +292,7 @@ class MiniMaxClient:
             speed: 语速 (0.5-2.0)
             emotion: 情绪参数
             language_boost: 语言增强
+            model: TTS模型
 
         Returns:
             包含音频URL和trace_id的字典
@@ -313,7 +315,7 @@ class MiniMaxClient:
             voice_setting["emotion"] = emotion
 
         payload = {
-            "model": "speech-01-turbo",
+            "model": model,
             "text": text,
             "language_boost": language_boost,
             "output_format": "url",

@@ -76,8 +76,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
             project = Project.objects.create(
                     user=request.user,
                     name=project_name,
-                    source_lang='zh',  # 默认中文
-                    target_lang='en',  # 默认英文
+                    source_lang='Chinese',  # 默认中文
+                    target_lang='English',  # 默认英文
                     status='draft'
                 )
 
@@ -142,39 +142,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
                     if not segment.original_text.strip():
                         continue
 
-                    # 准备专有词汇表
-                    custom_vocabulary = []
-                    if project.custom_vocabulary:
-                        logger.info(f"原始专有词汇表: {project.custom_vocabulary}, 类型: {type(project.custom_vocabulary)}")
-
-                        if isinstance(project.custom_vocabulary, list):
-                            # 处理列表格式，列表项可能是字符串或字典
-                            for item in project.custom_vocabulary:
-                                if isinstance(item, dict):
-                                    # 如果已经是字典格式，直接使用
-                                    custom_vocabulary.append(item)
-                                elif isinstance(item, str) and '|' in item:
-                                    # 如果是字符串格式，解析为字典
-                                    parts = item.strip().split('|')
-                                    if len(parts) >= 2:
-                                        custom_vocabulary.append({
-                                            '序号': len(custom_vocabulary) + 1,
-                                            '词汇': parts[0].strip(),
-                                            '译文': parts[1].strip()
-                                        })
-                        elif isinstance(project.custom_vocabulary, str):
-                            # 解析字符串格式的专有词汇表
-                            for line in project.custom_vocabulary.split('\n'):
-                                if '|' in line:
-                                    parts = line.strip().split('|')
-                                    if len(parts) >= 2:
-                                        custom_vocabulary.append({
-                                            '序号': len(custom_vocabulary) + 1,
-                                            '词汇': parts[0].strip(),
-                                            '译文': parts[1].strip()
-                                        })
-
-                    logger.info(f"处理后的专有词汇表: {custom_vocabulary}")
+                    # 直接使用字典格式的专有词汇表
+                    custom_vocabulary = project.custom_vocabulary or []
+                    logger.info(f"专有词汇表: {custom_vocabulary}")
 
                     # 调用翻译API
                     result = client.translate(
