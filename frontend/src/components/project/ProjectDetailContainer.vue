@@ -219,28 +219,8 @@ const handleBatchTts = async () => {
   }
 }
 
-const handleConcatenateAudio = async () => {
-  try {
-    const api = (await import('../../utils/api')).default
-
-    // 项目级别的音频拼接
-    const response = await api.post(`/projects/${props.projectId}/concatenate_audio/`)
-
-    if (response.data.success) {
-      ElMessage.success(`音频拼接成功！拼接了${response.data.segments_count}个音频段落`)
-
-      // 可以在这里处理返回的音频URL
-      if (response.data.audio_url) {
-        console.log('拼接后的音频URL:', response.data.audio_url)
-      }
-    } else {
-      ElMessage.error('音频拼接失败')
-    }
-  } catch (error) {
-    console.error('音频拼接失败', error)
-    ElMessage.error('音频拼接失败')
-  }
-}
+// 使用useAudioOperations中的concatenateAudio函数
+const handleConcatenateAudio = concatenateAudio
 
 // 批量设置处理
 const handleBatchSetVoice = async (voiceId: string) => {
@@ -392,11 +372,23 @@ const handleTranslateSingle = async (segment: Segment) => {
 const handleGenerateTts = async (segment: Segment) => {
   try {
     const api = (await import('../../utils/api')).default
-    await api.post(`/projects/${props.projectId}/segments/${segment.id}/generate_tts/`)
-    ElMessage.success('TTS任务已启动')
+
+    // 使用简化TTS接口，不进行时间戳对齐
+    const response = await api.post(`/projects/${props.projectId}/segments/${segment.id}/simple_tts/`)
+
+    if (response.data.success) {
+      ElMessage.success(`TTS生成成功，时长比例: ${response.data.ratio}`)
+    } else {
+      ElMessage.warning(response.data.error || 'TTS生成失败')
+    }
+
     refreshData()
-  } catch (error) {
-    ElMessage.error('TTS生成失败')
+  } catch (error: any) {
+    if (error.response?.data?.error) {
+      ElMessage.error(error.response.data.error)
+    } else {
+      ElMessage.error('TTS生成失败')
+    }
   }
 }
 

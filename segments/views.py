@@ -13,6 +13,7 @@ from .serializers import (
 )
 from projects.models import Project
 from services.business.segment_service import SegmentService
+from services.business.simple_tts_service import SimpleTTSService
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,36 @@ class SegmentViewSet(viewsets.ModelViewSet):
         service = SegmentService(user=request.user)
 
         result = service.generate_tts_for_segment(
+            segment=segment,
+            api_key=request.user.api_key,
+            group_id=request.user.group_id
+        )
+
+        if result['success']:
+            return Response(result)
+        else:
+            status_code = result.get('status_code', 500)
+            if status_code == 400:
+                return Response({'error': result['error']}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({'error': result['error']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['post'])
+    def simple_tts(self, request, project_pk=None, pk=None):
+        """
+        生成单个段落的简化TTS音频（不进行时间戳对齐）
+
+        简化流程：
+        1. 调用TTS API生成音频
+        2. 去除前后静音并计算实际时长
+        3. 计算ratio = t_tts / target_duration
+        4. 如果ratio <= 1，则成功更新段落音频
+        5. 如果ratio > 1，则失败，不更新段落音频
+        """
+        segment = self.get_object()
+        service = SimpleTTSService(user=request.user)
+
+        result = service.generate_simple_tts(
             segment=segment,
             api_key=request.user.api_key,
             group_id=request.user.group_id
