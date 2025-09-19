@@ -3,7 +3,7 @@
     <el-table
       ref="tableRef"
       :data="segments"
-      :height="tableHeight"
+      :height="computedTableHeight"
       stripe
       border
       @selection-change="$emit('selection-change', $event)"
@@ -15,12 +15,33 @@
       <!-- 序号列 -->
       <el-table-column prop="index" label="序号" width="60" fixed="left" />
 
-      <!-- 时间列 -->
-      <el-table-column label="时间" width="180" fixed="left">
+      <!-- 时间列 - 可编辑时间戳 -->
+      <el-table-column label="时间戳" width="220" fixed="left">
         <template #default="{ row }">
-          <div class="time-display">
-            <div>{{ row.start_time }} - {{ row.end_time }}</div>
-            <div class="duration">时长: {{ formatDuration(row.duration) }}s</div>
+          <div class="time-edit-group">
+            <div class="time-input-row">
+              <label>开始:</label>
+              <el-input
+                :model-value="formatTimestamp(row.start_time)"
+                size="small"
+                placeholder="HH:MM:SS,mmm"
+                @blur="handleTimestampChange(row, 'start_time', $event.target.value)"
+                @keydown.enter="handleTimestampChange(row, 'start_time', $event.target.value)"
+                style="width: 95px;"
+              />
+            </div>
+            <div class="time-input-row">
+              <label>结束:</label>
+              <el-input
+                :model-value="formatTimestamp(row.end_time)"
+                size="small"
+                placeholder="HH:MM:SS,mmm"
+                @blur="handleTimestampChange(row, 'end_time', $event.target.value)"
+                @keydown.enter="handleTimestampChange(row, 'end_time', $event.target.value)"
+                style="width: 95px;"
+              />
+            </div>
+            <div class="duration-display">时长: {{ formatDuration(row.duration) }}s</div>
           </div>
         </template>
       </el-table-column>
@@ -85,21 +106,12 @@
         </template>
       </el-table-column>
 
-      <!-- 音色设置列 - 行内编辑 -->
-      <el-table-column label="音色" width="140">
+      <!-- 音色配置列 - 只读（来自项目配置） -->
+      <el-table-column label="音色ID" width="140">
         <template #default="{ row }">
-          <el-select
-            v-model="row.voice_id"
-            size="small"
-            placeholder="选择音色"
-            style="width: 100%"
-            @change="handleFieldChange(row, 'voice_id', $event)"
-          >
-            <el-option label="男声-清澈" value="male-qn-qingse" />
-            <el-option label="女声-甜美" value="female-shaonv" />
-            <el-option label="男声-磁性" value="male-qn-jingying" />
-            <el-option label="女声-温柔" value="female-gentle" />
-          </el-select>
+          <el-tag size="small" type="info">
+            {{ getVoiceDisplayName(row.voice_id, row.speaker) }}
+          </el-tag>
         </template>
       </el-table-column>
 
@@ -113,6 +125,7 @@
             style="width: 100%"
             @change="handleFieldChange(row, 'emotion', $event)"
           >
+            <el-option label="自动" value="auto" />
             <el-option label="自然" value="neutral" />
             <el-option label="开心" value="happy" />
             <el-option label="悲伤" value="sad" />
@@ -125,30 +138,17 @@
       <!-- 语速设置列 - 行内编辑 -->
       <el-table-column label="语速" width="100">
         <template #default="{ row }">
-          <el-input-number
-            v-model="row.speed"
+          <el-input
+            :model-value="formatSpeed(row.speed)"
             size="small"
-            :min="0.5"
-            :max="2.0"
-            :step="0.1"
-            :precision="1"
+            placeholder="1.00"
+            @blur="handleSpeedChange(row, $event.target.value)"
+            @keydown.enter="handleSpeedChange(row, $event.target.value)"
             style="width: 100%"
-            @change="handleFieldChange(row, 'speed', $event)"
           />
         </template>
       </el-table-column>
 
-      <!-- 状态列 -->
-      <el-table-column label="状态" width="100">
-        <template #default="{ row }">
-          <el-tag
-            :type="getStatusType(row.status)"
-            size="small"
-          >
-            {{ getStatusText(row.status) }}
-          </el-tag>
-        </template>
-      </el-table-column>
 
       <!-- 时长对比列 -->
       <el-table-column label="时长对比" width="130">
@@ -166,7 +166,7 @@
       </el-table-column>
 
       <!-- 操作列 -->
-      <el-table-column label="操作" width="180" fixed="right">
+      <el-table-column label="操作" width="240" fixed="right">
         <template #default="{ row }">
           <div class="row-actions">
             <el-button
@@ -187,25 +187,25 @@
               播放
             </el-button>
 
-            <el-dropdown trigger="click" size="small">
-              <el-button size="small">
-                更多
-                <el-icon><ArrowDown /></el-icon>
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="duplicateRow(row)">
-                    复制段落
-                  </el-dropdown-item>
-                  <el-dropdown-item @click="resetRow(row)">
-                    重置设置
-                  </el-dropdown-item>
-                  <el-dropdown-item @click="deleteRow(row)" divided>
-                    删除段落
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+            <el-button
+              size="small"
+              type="warning"
+              @click="shortenTranslation(row)"
+              :disabled="!row.translated_text"
+              :loading="row._shortenLoading"
+            >
+              缩短
+            </el-button>
+
+            <el-button
+              size="small"
+              type="success"
+              @click="lengthenTranslation(row)"
+              :disabled="!row.translated_text"
+              :loading="row._lengthenLoading"
+            >
+              加长
+            </el-button>
           </div>
         </template>
       </el-table-column>
@@ -236,10 +236,14 @@ interface Segment {
   status: string
   _translating?: boolean
   _ttsLoading?: boolean
+  _shortenLoading?: boolean
+  _lengthenLoading?: boolean
 }
 
 interface Props {
   segments: Segment[]
+  tableHeight?: number
+  projectId: number
 }
 
 const props = defineProps<Props>()
@@ -249,13 +253,13 @@ const emit = defineEmits<{
   'field-change': [segment: Segment, field: string, value: any]
   'translate-single': [segment: Segment]
   'generate-tts': [segment: Segment]
-  'play-audio': [url: string]
-  'duplicate-row': [segment: Segment]
-  'delete-row': [segment: Segment]
+  'shorten-translation': [segment: Segment]
+  'lengthen-translation': [segment: Segment]
+  'segment-click': [segment: Segment]
 }>()
 
 const tableRef = ref()
-const tableHeight = computed(() => 'calc(100vh - 250px)')
+const computedTableHeight = computed(() => props.tableHeight || 600)
 
 // 字段变更处理 - 自动保存
 const handleFieldChange = async (segment: Segment, field: string, value: any) => {
@@ -280,6 +284,88 @@ const handleFieldChange = async (segment: Segment, field: string, value: any) =>
     ElMessage.error('保存失败')
     segment.status = originalStatus
   }
+}
+
+// 语速格式化 - 显示两位小数
+const formatSpeed = (speed: number): string => {
+  if (speed === null || speed === undefined || isNaN(speed)) {
+    return '1.00'
+  }
+  return speed.toFixed(2)
+}
+
+// 语速变更处理 - 验证数值范围
+const handleSpeedChange = async (segment: Segment, value: any) => {
+  let speed = parseFloat(value)
+
+  // 验证数值范围
+  if (isNaN(speed)) {
+    speed = 1.00
+    ElMessage.warning('语速必须是数字，已重置为1.00')
+  } else if (speed < 0.50) {
+    speed = 0.50
+    ElMessage.warning('语速不能小于0.50')
+  } else if (speed > 2.00) {
+    speed = 2.00
+    ElMessage.warning('语速不能大于2.00')
+  }
+
+  // 保留两位小数
+  speed = Math.round(speed * 100) / 100
+  segment.speed = speed
+
+  // 调用通用保存方法
+  await handleFieldChange(segment, 'speed', speed)
+}
+
+// 时间戳格式转换 - 转换为SRT标准格式 HH:MM:SS,mmm
+const formatTimestamp = (timestamp: string): string => {
+  if (!timestamp) return '00:00:00,000'
+
+  // 如果已经是正确格式，直接返回
+  if (/^\d{2}:\d{2}:\d{2},\d{3}$/.test(timestamp)) {
+    return timestamp
+  }
+
+  // 如果是数字（秒），转换为HH:MM:SS,mmm格式
+  const seconds = parseFloat(timestamp)
+  if (!isNaN(seconds)) {
+    const hours = Math.floor(seconds / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
+    const secs = Math.floor(seconds % 60)
+    const milliseconds = Math.floor((seconds % 1) * 1000)
+
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${milliseconds.toString().padStart(3, '0')}`
+  }
+
+  // 其他格式尝试解析
+  return timestamp || '00:00:00,000'
+}
+
+// 时间戳变更处理
+const handleTimestampChange = async (segment: Segment, field: string, value: string) => {
+  // 验证SRT时间戳格式 HH:MM:SS,mmm
+  const srtPattern = /^(\d{2}):(\d{2}):(\d{2}),(\d{3})$/
+  const match = value.match(srtPattern)
+
+  if (!match) {
+    ElMessage.warning('时间戳格式不正确，请使用 HH:MM:SS,mmm 格式（如：00:01:23,456）')
+    return
+  }
+
+  const [, hours, minutes, seconds, milliseconds] = match
+
+  // 验证时间值的合理性
+  if (parseInt(minutes) >= 60 || parseInt(seconds) >= 60) {
+    ElMessage.warning('时间格式不正确：分钟和秒数不能超过59')
+    return
+  }
+
+  // 转换为秒数存储（如果后端需要的话）
+  const totalSeconds = parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds) + parseInt(milliseconds) / 1000
+
+  // 调用通用保存方法，保存原始SRT格式
+  await handleFieldChange(segment, field, value)
 }
 
 // 单个翻译
@@ -314,7 +400,56 @@ const generateTTS = async (segment: Segment) => {
 
 // 播放音频
 const playAudio = (url: string) => {
-  emit('play-audio', url)
+  const audio = new Audio(url)
+  audio.play().catch(() => {
+    ElMessage.error('音频播放失败')
+  })
+}
+
+// 翻译缩短
+const shortenTranslation = async (segment: Segment) => {
+  if (!segment.translated_text.trim()) {
+    ElMessage.warning('请先输入译文')
+    return
+  }
+
+  segment._shortenLoading = true
+  try {
+    emit('shorten-translation', segment)
+  } finally {
+    segment._shortenLoading = false
+  }
+}
+
+// 翻译加长
+const lengthenTranslation = async (segment: Segment) => {
+  if (!segment.translated_text.trim()) {
+    ElMessage.warning('请先输入译文')
+    return
+  }
+
+  segment._lengthenLoading = true
+  try {
+    emit('lengthen-translation', segment)
+  } finally {
+    segment._lengthenLoading = false
+  }
+}
+
+// 获取音色显示名称（根据说话人和项目配置）
+const getVoiceDisplayName = (voiceId: string, speaker: string) => {
+  if (!voiceId) return '未配置'
+
+  // 这里应该根据项目配置的说话人-音色映射来显示
+  // 临时显示逻辑，实际应该从项目配置中获取
+  const voiceMap: Record<string, string> = {
+    'male-qn-qingse': '男声-清澈',
+    'female-shaonv': '女声-甜美',
+    'male-qn-jingying': '男声-磁性',
+    'female-gentle': '女声-温柔'
+  }
+
+  return voiceMap[voiceId] || `${speaker}:${voiceId}`
 }
 
 // 复制段落
@@ -425,6 +560,31 @@ const getRowClassName = ({ row }: { row: Segment }) => {
 .time-display {
   font-size: 12px;
   line-height: 1.3;
+}
+
+.time-edit-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.time-input-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.time-input-row label {
+  width: 30px;
+  color: #606266;
+  font-size: 11px;
+}
+
+.duration-display {
+  color: #909399;
+  font-size: 11px;
+  margin-top: 2px;
 }
 
 .duration {

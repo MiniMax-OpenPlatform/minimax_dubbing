@@ -12,13 +12,11 @@
     />
 
     <!-- 段落数据表格 -->
-    <SegmentTable
+    <InlineEditTable
       :segments="segments"
       :table-height="600"
-      :batch-tts-loading="batchTtsLoading"
-      @update-segment="updateSegment"
-      @batch-tts="batchTts"
-      @row-click="handleSegmentClick"
+      :project-id="projectId"
+      @segment-click="handleSegmentClick"
     />
 
     <!-- 项目设置对话框 -->
@@ -38,7 +36,7 @@ import { ElMessage } from 'element-plus'
 
 // 导入子组件
 import MediaPreview from './MediaPreview.vue'
-import SegmentTable from './SegmentTable.vue'
+import InlineEditTable from '../editor/InlineEditTable.vue'
 import ProjectSettings from './ProjectSettings.vue'
 
 // 导入composables
