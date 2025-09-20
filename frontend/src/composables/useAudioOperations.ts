@@ -8,6 +8,15 @@ export function useAudioOperations(projectId: number) {
   const concatenatedAudioUrl = ref<string | null>(null)
   const audioKey = ref(0)
 
+  // 初始化拼接音频URL（从项目数据获取）
+  const initializeConcatenatedAudio = (projectData: any) => {
+    if (projectData?.concatenated_audio_url) {
+      concatenatedAudioUrl.value = projectData.concatenated_audio_url
+      audioKey.value++
+      console.log('已加载项目拼接音频:', projectData.concatenated_audio_url)
+    }
+  }
+
   // 批量TTS
   const batchTts = async () => {
     try {
@@ -213,6 +222,7 @@ export function useAudioOperations(projectId: number) {
     concatenateAudio,
     playAudio,
     downloadAudio,
+    initializeConcatenatedAudio,
 
     // 批量操作
     batchAudioOperations

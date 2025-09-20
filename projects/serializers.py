@@ -27,15 +27,18 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     segment_count = serializers.ReadOnlyField()
     completed_segment_count = serializers.ReadOnlyField()
     progress_percentage = serializers.ReadOnlyField()
+    audio_url = serializers.ReadOnlyField()
+    video_url = serializers.ReadOnlyField()
 
     class Meta:
         model = Project
         fields = [
             'id', 'name', 'description', 'source_lang', 'target_lang',
-            'srt_file_path', 'video_file_path', 'tts_model',
+            'srt_file_path', 'video_file_path', 'concatenated_audio_url', 'tts_model',
             'voice_mappings', 'custom_vocabulary', 'status',
             'created_at', 'updated_at', 'segment_count',
-            'completed_segment_count', 'progress_percentage'
+            'completed_segment_count', 'progress_percentage',
+            'audio_url', 'video_url'
         ]
 
 

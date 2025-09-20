@@ -89,8 +89,14 @@ class SegmentService(BaseService):
 
             # 设置音色ID
             if not segment.voice_id:
-                voice_mappings = project.voice_mappings or {}
-                segment.voice_id = voice_mappings.get(segment.speaker, 'male-qn-qingse')
+                voice_mappings = project.voice_mappings or []
+                # 从映射列表中查找对应的音色ID
+                voice_id = 'male-qn-qingse'  # 默认音色
+                for mapping in voice_mappings:
+                    if isinstance(mapping, dict) and mapping.get('speaker') == segment.speaker:
+                        voice_id = mapping.get('voice_id', 'male-qn-qingse')
+                        break
+                segment.voice_id = voice_id
 
             # 直接使用项目的目标语言作为language_boost
             language_boost = project.target_lang
@@ -280,8 +286,14 @@ class SegmentService(BaseService):
 
             # 设置音色ID
             if not segment.voice_id:
-                voice_mappings = project.voice_mappings or {}
-                segment.voice_id = voice_mappings.get(segment.speaker, 'male-qn-qingse')
+                voice_mappings = project.voice_mappings or []
+                # 从映射列表中查找对应的音色ID
+                voice_id = 'male-qn-qingse'  # 默认音色
+                for mapping in voice_mappings:
+                    if isinstance(mapping, dict) and mapping.get('speaker') == segment.speaker:
+                        voice_id = mapping.get('voice_id', 'male-qn-qingse')
+                        break
+                segment.voice_id = voice_id
 
             # 调用时间戳对齐算法
             align_result = aligner.align_timestamp(

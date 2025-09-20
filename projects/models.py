@@ -65,6 +65,7 @@ class Project(models.Model):
     # 文件路径
     srt_file_path = models.FileField(upload_to='srt/', blank=True, null=True, help_text="SRT文件路径")
     video_file_path = models.FileField(upload_to='videos/', blank=True, null=True, help_text="视频文件路径")
+    concatenated_audio_url = models.CharField(max_length=500, blank=True, help_text="拼接后的完整音频URL")
 
     # 项目级配置
     tts_model = models.CharField(max_length=50, default="speech-2.5-hd-preview", help_text="TTS模型")
@@ -136,3 +137,17 @@ class Project(models.Model):
             'no_ratio_count': no_ratio_count,
             'percentage': percentage
         }
+
+    @property
+    def audio_url(self):
+        """返回音频文件URL"""
+        if self.video_file_path:
+            return self.video_file_path.url
+        return None
+
+    @property
+    def video_url(self):
+        """返回视频文件URL"""
+        if self.video_file_path:
+            return self.video_file_path.url
+        return None

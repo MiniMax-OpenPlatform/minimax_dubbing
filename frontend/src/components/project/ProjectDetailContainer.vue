@@ -84,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Setting, Refresh } from '@element-plus/icons-vue'
 
@@ -123,13 +123,21 @@ const {
   concatenatedAudioUrl,
   audioKey,
   batchTts,
-  concatenateAudio
+  concatenateAudio,
+  initializeConcatenatedAudio
 } = useAudioOperations(props.projectId)
 
 // 本地状态
 const settingsSaving = ref(false)
 const showSettings = ref(false)
 const selectedSegments = ref<Segment[]>([])
+
+// 监听项目数据变化，初始化拼接音频
+watch(project, (newProject) => {
+  if (newProject) {
+    initializeConcatenatedAudio(newProject)
+  }
+}, { immediate: true })
 
 // 页面初始化
 onMounted(() => {
@@ -657,9 +665,9 @@ const handleBatchSpeaker = async () => {
 
 <style scoped>
 .project-detail-container {
-  padding: 20px;
-  max-width: 1400px;
-  margin: 0 auto;
+  padding: 12px;
+  max-width: 100%;
+  margin: 0;
   min-height: 100vh;
   background-color: #f5f7fa;
 }
@@ -670,10 +678,10 @@ const handleBatchSpeaker = async () => {
   justify-content: space-between;
   align-items: center;
   background: #fff;
-  padding: 20px 24px;
+  padding: 16px 20px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .header-left {
@@ -703,9 +711,9 @@ const handleBatchSpeaker = async () => {
 /* 主内容区左右分栏布局 */
 .main-content-layout {
   display: flex;
-  gap: 16px;
-  height: calc(100vh - 250px); /* 减去头部和工具栏高度 */
-  margin-top: 20px;
+  gap: 12px;
+  height: calc(100vh - 160px); /* 进一步减少预留高度 */
+  margin-top: 12px;
 }
 
 .data-section {
@@ -714,7 +722,7 @@ const handleBatchSpeaker = async () => {
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  padding: 16px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   overflow: auto;
@@ -727,7 +735,9 @@ const handleBatchSpeaker = async () => {
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 响应式设计 */

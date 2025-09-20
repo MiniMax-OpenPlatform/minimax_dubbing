@@ -294,11 +294,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
                     'index': segment.index
                 })
 
-            # 创建输出文件路径
+            # 创建输出文件路径 - 使用项目ID作为固定文件名
             output_dir = os.path.join(settings.MEDIA_ROOT, 'concatenated')
             os.makedirs(output_dir, exist_ok=True)
 
-            output_filename = f"{project.name}_{trace_id}_complete.mp3"
+            # 使用项目ID确保文件名唯一且固定
+            safe_project_name = "".join(c for c in project.name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+            output_filename = f"project_{project.id}_{safe_project_name}_complete.mp3"
             output_path = os.path.join(output_dir, output_filename)
 
             # 执行音频拼接
@@ -315,7 +317,11 @@ class ProjectViewSet(viewsets.ModelViewSet):
                     f'/media/concatenated/{output_filename}'
                 )
 
-                logger.info(f"[{trace_id}] 音频拼接成功: {audio_url}")
+                # 保存到项目模型中
+                project.concatenated_audio_url = audio_url
+                project.save(update_fields=['concatenated_audio_url'])
+
+                logger.info(f"[{trace_id}] 音频拼接成功并保存到项目: {audio_url}")
 
                 return Response({
                     'success': True,
