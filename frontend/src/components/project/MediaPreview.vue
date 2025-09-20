@@ -159,6 +159,40 @@ const emit = defineEmits<{
   timeUpdate: [time: number]
 }>()
 
+// 解析时间字符串为秒数
+const parseTimeToSeconds = (timeStr: string | number): number => {
+  if (typeof timeStr === 'number') return timeStr
+  if (!timeStr) return 0
+
+  // 如果是 HH:MM:SS,mmm 格式 (SRT格式)
+  const srtMatch = timeStr.toString().match(/^(\d{2}):(\d{2}):(\d{2}),(\d{3})$/)
+  if (srtMatch) {
+    const [, hours, minutes, seconds, milliseconds] = srtMatch
+    return parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds) + parseInt(milliseconds) / 1000
+  }
+
+  // 如果是数字字符串，直接解析
+  const numValue = parseFloat(timeStr.toString())
+  return isNaN(numValue) ? 0 : numValue
+}
+
+// 跳转到指定段落的开始时间
+const seekToSegmentStart = (segment: Segment) => {
+  const startTimeInSeconds = parseTimeToSeconds(segment.start_time)
+  console.log(`跳转到段落 ${segment.index} 开始时间: ${startTimeInSeconds}秒`)
+
+  // 更新当前时间
+  currentTime.value = startTimeInSeconds
+
+  // 如果有音频，也更新音频位置
+  if (audioRef.value && !isNaN(startTimeInSeconds)) {
+    audioRef.value.currentTime = startTimeInSeconds
+  }
+
+  // 触发时间更新事件
+  emit('timeUpdate', startTimeInSeconds)
+}
+
 // 媒体选项定义
 interface MediaOption {
   key: string
@@ -435,6 +469,11 @@ onMounted(() => {
   nextTick(() => {
     generateWaveform()
   })
+})
+
+// 暴露方法给父组件
+defineExpose({
+  seekToSegmentStart
 })
 </script>
 

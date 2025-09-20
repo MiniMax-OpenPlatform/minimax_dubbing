@@ -7,6 +7,7 @@
       stripe
       border
       @selection-change="$emit('selection-change', $event)"
+      @row-click="handleRowClick"
       :row-class-name="getRowClassName"
     >
       <!-- 选择列 -->
@@ -329,6 +330,12 @@ const handleCurrentChange = (newPage: number) => {
 }
 
 // 字段变更处理 - 自动保存
+// 处理行点击事件
+const handleRowClick = (row: Segment) => {
+  console.log('表格行点击:', { segmentId: row.id, index: row.index })
+  emit('segment-click', row)
+}
+
 const handleFieldChange = async (segment: Segment, field: string, value: any) => {
   // 立即更新本地数据
   segment[field] = value

@@ -61,6 +61,7 @@
       <!-- 右侧：媒体预览区 -->
       <div class="media-section">
         <MediaPreview
+          ref="mediaPreviewRef"
           :project="project"
           :segments="segments"
           :concatenated-audio-url="concatenatedAudioUrl"
@@ -132,6 +133,9 @@ const settingsSaving = ref(false)
 const showSettings = ref(false)
 const selectedSegments = ref<Segment[]>([])
 
+// MediaPreview组件引用
+const mediaPreviewRef = ref<{ seekToSegmentStart: (segment: Segment) => void }>()
+
 // 监听项目数据变化，初始化拼接音频
 watch(project, (newProject) => {
   if (newProject) {
@@ -169,8 +173,12 @@ const saveProjectSettings = async (settings: any) => {
 
 // 处理段落点击
 const handleSegmentClick = (segment: Segment) => {
-  console.log('段落点击', { segmentId: segment.id, index: segment.index })
-  // 这里可以添加段落点击的逻辑，比如跳转到对应时间点
+  console.log('段落点击', { segmentId: segment.id, index: segment.index, startTime: segment.start_time })
+
+  // 调用MediaPreview组件的跳转方法
+  if (mediaPreviewRef.value?.seekToSegmentStart) {
+    mediaPreviewRef.value.seekToSegmentStart(segment)
+  }
 }
 
 // 处理时间更新
