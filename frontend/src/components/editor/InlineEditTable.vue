@@ -10,13 +10,13 @@
       :row-class-name="getRowClassName"
     >
       <!-- 选择列 -->
-      <el-table-column type="selection" width="55" fixed="left" />
+      <el-table-column type="selection" width="45" fixed="left" />
 
       <!-- 序号列 -->
       <el-table-column prop="index" label="序号" width="60" fixed="left" />
 
       <!-- 时间列 - 可编辑时间戳 -->
-      <el-table-column label="时间戳" width="220">
+      <el-table-column label="时间戳" width="160">
         <template #default="{ row }">
           <div class="time-edit-group">
             <div class="time-input-row">
@@ -47,7 +47,7 @@
       </el-table-column>
 
       <!-- 说话人列 - 行内编辑 -->
-      <el-table-column label="说话人" width="120">
+      <el-table-column label="说话人" width="100">
         <template #default="{ row }">
           <el-select
             v-model="row.speaker"
@@ -67,7 +67,7 @@
       </el-table-column>
 
       <!-- 原文列 - 行内编辑 -->
-      <el-table-column label="原文" min-width="250">
+      <el-table-column label="原文" min-width="320">
         <template #default="{ row }">
           <el-input
             v-model="row.original_text"
@@ -82,7 +82,7 @@
       </el-table-column>
 
       <!-- 译文列 - 行内编辑 -->
-      <el-table-column label="译文" min-width="250">
+      <el-table-column label="译文" min-width="320">
         <template #default="{ row }">
           <el-input
             v-model="row.translated_text"
@@ -118,7 +118,7 @@
       </el-table-column>
 
       <!-- 情感设置列 - 行内编辑 -->
-      <el-table-column label="情感" width="120">
+      <el-table-column label="情感" width="100">
         <template #default="{ row }">
           <el-select
             v-model="row.emotion"
@@ -140,7 +140,7 @@
       </el-table-column>
 
       <!-- 语速设置列 - 行内编辑 -->
-      <el-table-column label="语速" width="100">
+      <el-table-column label="语速" width="70">
         <template #default="{ row }">
           <el-input
             v-model="row.speed"
@@ -156,7 +156,7 @@
       </el-table-column>
 
       <!-- 时长对比列 -->
-      <el-table-column label="时长对比" width="130">
+      <el-table-column label="时长对比" width="110">
         <template #default="{ row }">
           <div class="duration-info">
             <div>原: {{ formatDuration(row.duration) }}s</div>
