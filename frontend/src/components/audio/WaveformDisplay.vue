@@ -74,15 +74,15 @@ const drawWaveform = () => {
     return
   }
 
-  // 设置canvas尺寸
+  // 设置canvas尺寸，增加高度以提升波形可见性
   const containerWidth = container.clientWidth
   if (containerWidth > 0) {
     canvas.width = containerWidth
-    canvas.height = 60
+    canvas.height = 80 // 增加高度从60到80
   } else {
     // 如果容器宽度为0，使用默认宽度
     canvas.width = 600
-    canvas.height = 60
+    canvas.height = 80 // 增加高度从60到80
   }
 
   const width = canvas.width
@@ -96,20 +96,21 @@ const drawWaveform = () => {
   // 清空画布
   ctx.clearRect(0, 0, width, height)
 
-  // 绘制波形
+  // 绘制波形，增强可见性
   props.waveformData.forEach((amplitude, index) => {
     const x = index * barWidth
-    const barHeight = amplitude * height * 0.8
+    const barHeight = amplitude * height * 0.9 // 增加高度比例从0.8到0.9
     const y = (height - barHeight) / 2
 
     // 根据播放进度设置颜色
     if (x < progressPoint) {
       ctx.fillStyle = props.color // 已播放部分
     } else {
-      ctx.fillStyle = '#e4e7ed' // 未播放部分
+      ctx.fillStyle = '#c0c4cc' // 未播放部分，使用更深的颜色提高对比度
     }
 
-    ctx.fillRect(x, y, barWidth - 1, barHeight)
+    // 绘制波形条，无间距以创建连续波形
+    ctx.fillRect(x, y, Math.ceil(barWidth), barHeight)
   })
 }
 
@@ -139,12 +140,13 @@ defineExpose({
 <style scoped>
 .waveform-container {
   position: relative;
-  height: 60px;
-  background: #fafafa;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
+  height: 80px; /* 增加容器高度匹配canvas */
+  background: #f8f9fa;
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
   cursor: pointer;
   overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05); /* 添加内阴影增强立体感 */
 }
 
 .waveform-canvas {
@@ -157,10 +159,11 @@ defineExpose({
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 2px;
+  width: 1px; /* 减少进度指示器宽度 */
   background: #f56c6c;
   pointer-events: none;
   transition: left 0.1s ease;
+  z-index: 10; /* 确保在波形之上 */
 }
 
 .waveform-loading {

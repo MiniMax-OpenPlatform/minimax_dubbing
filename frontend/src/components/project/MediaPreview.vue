@@ -72,7 +72,7 @@
 
           <!-- 进度条 -->
           <ProgressBar
-            :current-time="progressValue"
+            :current-time="currentTime"
             :duration="duration"
             @seek-to="seekTo"
             @progress-input="onProgressInput"
@@ -260,7 +260,7 @@ const isVideoType = computed(() => currentMedia.value?.type === 'video')
 // 音频播放相关状态
 const audioRef = ref<HTMLAudioElement>()
 const isPlaying = ref(false)
-const duration = ref(0)
+const duration = ref(100) // 设置默认duration以便测试滑块
 const currentTime = ref(0)
 const progressValue = ref(0)
 const volume = ref(80)
@@ -354,14 +354,26 @@ const stopAudio = () => {
 }
 
 const seekTo = (time: number) => {
+  console.log('seekTo called with:', time)
   if (audioRef.value) {
     audioRef.value.currentTime = time
+    currentTime.value = time
+  } else {
+    // 即使没有音频，也更新时间用于测试
     currentTime.value = time
   }
 }
 
 const onProgressInput = (value: number) => {
-  currentTime.value = value
+  console.log('onProgressInput called with:', value)
+  // 拖拽时也更新音频位置
+  if (audioRef.value && !isNaN(value)) {
+    audioRef.value.currentTime = value
+    currentTime.value = value
+  } else if (!isNaN(value)) {
+    // 即使没有音频，也更新时间用于测试
+    currentTime.value = value
+  }
 }
 
 const seekToPosition = (event: MouseEvent) => {
@@ -419,12 +431,10 @@ watchEffect(() => {
 
 // 组件挂载时初始化
 onMounted(() => {
-  if (!currentMediaUrl.value && !isVideoType.value) {
-    // 如果没有音频URL，生成默认波形用于测试
-    setTimeout(() => {
-      generateWaveform()
-    }, 300)
-  }
+  // 立即生成默认波形以提供视觉反馈
+  nextTick(() => {
+    generateWaveform()
+  })
 })
 </script>
 
