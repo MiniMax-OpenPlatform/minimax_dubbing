@@ -1,7 +1,17 @@
 <template>
-  <div class="media-preview-container">
-    <!-- 左侧：原始媒体预览 -->
-    <div class="original-media-section">
+  <div class="media-preview-compact">
+    <!-- 媒体类型切换器 -->
+    <div class="media-type-selector">
+      <el-radio-group v-model="activeMediaType" size="small" class="media-tabs">
+        <el-radio-button label="original">原始媒体</el-radio-button>
+        <el-radio-button label="translated">翻译媒体</el-radio-button>
+      </el-radio-group>
+    </div>
+
+    <!-- 动态内容区 -->
+    <div class="media-content">
+      <!-- 原始媒体内容 -->
+      <div v-if="activeMediaType === 'original'" class="original-media-section">
       <h3 class="section-title">原始媒体</h3>
 
       <!-- 原始视频预览 -->
@@ -74,10 +84,10 @@
           </div>
         </div>
       </div>
-    </div>
+      </div>
 
-    <!-- 右侧：翻译媒体预览 -->
-    <div class="translated-media-section">
+      <!-- 翻译媒体内容 -->
+      <div v-if="activeMediaType === 'translated'" class="translated-media-section">
       <h3 class="section-title">翻译媒体</h3>
 
       <!-- 翻译视频预览 -->
@@ -137,6 +147,7 @@
             <p>暂无合成音频文件</p>
           </div>
         </div>
+      </div>
       </div>
     </div>
   </div>
@@ -206,6 +217,9 @@ const finalMixedAudioUrl = computed(() => {
   return props.finalMixedAudioUrl
 })
 
+// 媒体类型切换状态
+const activeMediaType = ref<'original' | 'translated'>('original')
+
 // 显示/隐藏状态
 const showOriginalVideo = ref(false)
 const showOriginalAudio = ref(false)
@@ -221,22 +235,39 @@ const handleVideoSeek = (time: number) => {
 </script>
 
 <style scoped>
-.media-preview-container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  margin-bottom: 24px;
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+.media-preview-compact {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.media-type-selector {
+  padding: 16px;
+  border-bottom: 1px solid #e4e7ed;
+  background: #f8f9fa;
+}
+
+.media-tabs {
+  width: 100%;
+}
+
+.media-tabs .el-radio-button__inner {
+  flex: 1;
+  text-align: center;
+}
+
+.media-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
 }
 
 .original-media-section,
 .translated-media-section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+  height: 100%;
 }
 
 .section-title {
@@ -261,7 +292,7 @@ const handleVideoSeek = (time: number) => {
 
 .media-placeholder {
   width: 100%;
-  height: 200px;
+  height: 150px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -270,44 +301,28 @@ const handleVideoSeek = (time: number) => {
   border: 2px dashed #dcdfe6;
   border-radius: 8px;
   color: #909399;
-  font-size: 14px;
-  gap: 8px;
+  font-size: 12px;
+  gap: 6px;
 }
 
 .media-placeholder .el-icon {
-  font-size: 32px;
+  font-size: 24px;
 }
 
-@media (max-width: 1200px) {
-  .media-preview-container {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-
-  .section-title {
-    font-size: 16px;
-  }
+/* 调整音频轨道高度以适应紧凑布局 */
+.media-track {
+  margin-bottom: 8px;
 }
 
-@media (max-width: 768px) {
-  .media-preview-container {
-    padding: 16px;
-    gap: 16px;
-  }
+.track-content {
+  max-height: 120px;
+  overflow: hidden;
+}
 
-  .section-title {
-    font-size: 14px;
-    margin-bottom: 12px;
-  }
-
-  .media-placeholder {
-    height: 150px;
-    font-size: 12px;
-  }
-
-  .media-placeholder .el-icon {
-    font-size: 24px;
-  }
+/* 覆盖原有section-title样式 */
+.section-title {
+  font-size: 16px !important;
+  margin-bottom: 12px !important;
 }
 
 .media-track {

@@ -22,17 +22,6 @@
       </div>
     </div>
 
-    <!-- 媒体预览 -->
-    <MediaPreview
-      :project="project"
-      :segments="segments"
-      :concatenated-audio-url="concatenatedAudioUrl"
-      :audio-key="audioKey"
-      :final-mixed-audio-url="null"
-      @segment-click="handleSegmentClick"
-      @time-update="handleTimeUpdate"
-    />
-
     <!-- 项目操作工具栏 -->
     <EditorToolbar
       v-if="project"
@@ -48,23 +37,40 @@
       @batch-speaker="handleBatchSpeaker"
     />
 
+    <!-- 主内容区：左右分栏 -->
+    <div class="main-content-layout">
+      <!-- 左侧：数据表格区 -->
+      <div class="data-section">
+        <InlineEditTable
+          :segments="segments"
+          :table-height="500"
+          :project-id="projectId"
+          :project="project"
+          @segment-click="handleSegmentClick"
+          @selection-change="handleSelectionChange"
+          @field-change="updateSegment"
+          @translate-single="handleTranslateSingle"
+          @generate-tts="handleGenerateTts"
+          @shorten-translation="handleShortenTranslation"
+          @lengthen-translation="handleLengthenTranslation"
+          @delete-row="handleDeleteSegment"
+          @duplicate-row="handleDuplicateSegment"
+        />
+      </div>
 
-    <!-- 段落数据表格 -->
-    <InlineEditTable
-      :segments="segments"
-      :table-height="600"
-      :project-id="projectId"
-      :project="project"
-      @segment-click="handleSegmentClick"
-      @selection-change="handleSelectionChange"
-      @field-change="updateSegment"
-      @translate-single="handleTranslateSingle"
-      @generate-tts="handleGenerateTts"
-      @shorten-translation="handleShortenTranslation"
-      @lengthen-translation="handleLengthenTranslation"
-      @delete-row="handleDeleteSegment"
-      @duplicate-row="handleDuplicateSegment"
-    />
+      <!-- 右侧：媒体预览区 -->
+      <div class="media-section">
+        <MediaPreview
+          :project="project"
+          :segments="segments"
+          :concatenated-audio-url="concatenatedAudioUrl"
+          :audio-key="audioKey"
+          :final-mixed-audio-url="null"
+          @segment-click="handleSegmentClick"
+          @time-update="handleTimeUpdate"
+        />
+      </div>
+    </div>
 
     <!-- 项目设置对话框 -->
     <ProjectSettings
@@ -694,7 +700,55 @@ const handleBatchSpeaker = async () => {
   gap: 12px;
 }
 
+/* 主内容区左右分栏布局 */
+.main-content-layout {
+  display: flex;
+  gap: 16px;
+  height: calc(100vh - 250px); /* 减去头部和工具栏高度 */
+  margin-top: 20px;
+}
+
+.data-section {
+  flex: 0 0 70%;
+  min-width: 0; /* 确保flex子项可以收缩 */
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.media-section {
+  flex: 0 0 30%;
+  min-width: 300px;
+  max-width: 400px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
 /* 响应式设计 */
+@media (max-width: 1200px) {
+  .main-content-layout {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .data-section, .media-section {
+    flex: none;
+    width: 100%;
+    min-width: unset;
+    max-width: unset;
+  }
+
+  .media-section {
+    margin-top: 16px;
+  }
+}
+
 @media (max-width: 1024px) {
   .project-header {
     flex-direction: column;
@@ -705,7 +759,6 @@ const handleBatchSpeaker = async () => {
   .header-left {
     justify-content: space-between;
   }
-
 
   .header-right {
     justify-content: center;

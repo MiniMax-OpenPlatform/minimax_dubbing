@@ -305,7 +305,7 @@ const emit = defineEmits<{
 }>()
 
 const tableRef = ref()
-const computedTableHeight = computed(() => props.tableHeight || 600)
+const computedTableHeight = computed(() => (props.tableHeight || 600) - 80) // 减去分页组件高度
 
 // 分页相关
 const currentPage = ref(1)
@@ -676,6 +676,12 @@ const getRowClassName = ({ row }: { row: Segment }) => {
 <style scoped>
 .inline-edit-table {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.inline-edit-table .el-table {
+  flex: 1;
 }
 
 .time-display {
