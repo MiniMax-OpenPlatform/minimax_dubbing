@@ -47,7 +47,7 @@
       </el-table-column>
 
       <!-- 说话人列 - 行内编辑 -->
-      <el-table-column label="说话人" width="100">
+      <el-table-column label="说话人" width="140">
         <template #default="{ row }">
           <el-select
             v-model="row.speaker"

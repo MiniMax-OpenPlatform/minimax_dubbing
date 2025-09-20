@@ -49,12 +49,39 @@ class SegmentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """创建段落时自动设置项目并处理索引重排"""
         from django.db import transaction
+        import json
 
         project_id = self.kwargs.get('project_pk')
         project = Project.objects.get(id=project_id, user=self.request.user)
 
         # 获取插入位置的索引
         insert_index = serializer.validated_data.get('index', 1)
+
+        # 如果没有指定说话人，使用项目配置的第一个角色
+        if not serializer.validated_data.get('speaker'):
+            default_speaker = 'SPEAKER_00'  # 默认值
+            default_voice_id = 'female-tianmei'  # 默认音色
+
+            # 尝试从项目配置获取第一个角色
+            if project.voice_mappings:
+                try:
+                    if isinstance(project.voice_mappings, str):
+                        mappings = json.loads(project.voice_mappings)
+                    else:
+                        mappings = project.voice_mappings
+
+                    if isinstance(mappings, list) and len(mappings) > 0:
+                        first_mapping = mappings[0]
+                        if isinstance(first_mapping, dict):
+                            default_speaker = first_mapping.get('speaker', 'SPEAKER_00')
+                            default_voice_id = first_mapping.get('voice_id', 'female-tianmei')
+                except (json.JSONDecodeError, KeyError, IndexError):
+                    pass  # 使用默认值
+
+            # 设置默认说话人和音色
+            serializer.validated_data['speaker'] = default_speaker
+            if not serializer.validated_data.get('voice_id'):
+                serializer.validated_data['voice_id'] = default_voice_id
 
         with transaction.atomic():
             # 方案：先将需要移动的段落index增加足够大的数避免冲突

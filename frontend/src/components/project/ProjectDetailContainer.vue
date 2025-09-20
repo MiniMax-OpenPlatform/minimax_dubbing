@@ -461,6 +461,14 @@ const handleDuplicateSegment = async (segment: Segment) => {
       return parseFloat(timeStr) || 0
     }
 
+    // 获取默认说话人（项目配置的第一个角色）
+    const getDefaultSpeaker = () => {
+      const speakerOptions = getProjectSpeakerOptions()
+      return speakerOptions.length > 0 ? speakerOptions[0] : { speaker: 'SPEAKER_00', voice_id: 'female-tianmei' }
+    }
+
+    const defaultSpeaker = getDefaultSpeaker()
+
     // 创建新段落数据，基于当前段落但清空一些字段
     const newSegmentData = {
       index: segment.index + 1, // 在当前段落后插入
@@ -468,8 +476,8 @@ const handleDuplicateSegment = async (segment: Segment) => {
       end_time: parseTimeToSeconds(segment.end_time), // 初始结束时间和开始时间相同
       original_text: '新段落', // 默认文本，不能为空
       translated_text: '', // 空白译文
-      speaker: segment.speaker, // 继承说话人
-      voice_id: segment.voice_id, // 继承音色
+      speaker: segment.speaker || defaultSpeaker.speaker, // 继承说话人，如果没有则使用默认
+      voice_id: segment.voice_id || defaultSpeaker.voice_id, // 继承音色，如果没有则使用默认
       emotion: segment.emotion || 'auto', // 继承情感
       speed: segment.speed || 1.0, // 继承语速
       target_duration: 0, // 初始时长为0
@@ -527,31 +535,107 @@ const handleAutoAssignSpeaker = async () => {
   }
 }
 
+// 获取项目中配置的说话人选项
+const getProjectSpeakerOptions = () => {
+  if (!project.value?.voice_mappings || project.value.voice_mappings.length === 0) {
+    // 如果没有项目配置，返回默认选项
+    return [
+      { speaker: 'SPEAKER_00', voice_id: 'female-tianmei' },
+      { speaker: '说话人1', voice_id: '' },
+      { speaker: '说话人2', voice_id: '' },
+      { speaker: '旁白', voice_id: '' }
+    ]
+  }
+
+  let mappings = project.value.voice_mappings
+
+  // 如果是字符串，尝试解析为JSON
+  if (typeof mappings === 'string') {
+    try {
+      mappings = JSON.parse(mappings)
+    } catch {
+      return [
+        { speaker: 'SPEAKER_00', voice_id: 'female-tianmei' },
+        { speaker: '说话人1', voice_id: '' },
+        { speaker: '说话人2', voice_id: '' },
+        { speaker: '旁白', voice_id: '' }
+      ]
+    }
+  }
+
+  // 返回项目配置的映射
+  return Array.isArray(mappings) ? mappings : []
+}
+
 const handleBatchSpeaker = async () => {
-  // 这里可以打开一个对话框让用户选择说话人
   try {
-    const { value: speaker } = await ElMessageBox.prompt('请输入说话人', '批量修改说话人', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      inputPattern: /\S/,
-      inputErrorMessage: '说话人不能为空',
-      inputPlaceholder: '例如: speaker1, speaker2, narrator 等'
-    })
-
-    if (!speaker) return
-
     if (selectedSegments.value.length === 0) {
       ElMessage.warning('请先选择要修改的段落')
       return
     }
 
-    const segmentIds = selectedSegments.value.map(s => s.id)
-    const api = (await import('../../utils/api')).default
+    // 获取项目配置的说话人选项
+    const speakerOptions = getProjectSpeakerOptions()
 
-    await api.post(`/projects/${props.projectId}/segments/batch_update/`, {
-      segment_ids: segmentIds,
-      speaker
+    if (speakerOptions.length === 0) {
+      ElMessage.warning('项目中没有配置说话人选项')
+      return
+    }
+
+    // 创建选项HTML
+    const optionsHtml = speakerOptions.map(option =>
+      `<option value="${option.speaker}">${option.speaker} ${option.voice_id ? `(${option.voice_id})` : ''}</option>`
+    ).join('')
+
+    // 使用简单的选择对话框
+    let selectedSpeaker = ''
+
+    await ElMessageBox({
+      title: '批量修改说话人',
+      message: `
+        <div>
+          <p>选择要设置的说话人：</p>
+          <select id="speaker-select" style="width: 100%; padding: 8px; margin-top: 10px; border: 1px solid #dcdfe6; border-radius: 4px;">
+            <option value="">请选择说话人</option>
+            ${optionsHtml}
+          </select>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      dangerouslyUseHTMLString: true,
+      beforeClose: (action, instance, done) => {
+        if (action === 'confirm') {
+          const selectElement = document.getElementById('speaker-select') as HTMLSelectElement
+          selectedSpeaker = selectElement?.value || ''
+          if (!selectedSpeaker) {
+            ElMessage.warning('请选择一个说话人')
+            return false
+          }
+        }
+        done()
+      }
     })
+
+    const speaker = selectedSpeaker
+
+    if (!speaker) return
+
+    // 查找对应的音色ID
+    const mapping = speakerOptions.find(option => option.speaker === speaker)
+    const updateData: any = {
+      segment_ids: selectedSegments.value.map(s => s.id),
+      speaker
+    }
+
+    // 如果找到对应的音色ID，也一起更新
+    if (mapping && mapping.voice_id) {
+      updateData.voice_id = mapping.voice_id
+    }
+
+    const api = (await import('../../utils/api')).default
+    await api.post(`/projects/${props.projectId}/segments/batch_update/`, updateData)
 
     ElMessage.success(`已为 ${selectedSegments.value.length} 个段落设置说话人: ${speaker}`)
     refreshData()
