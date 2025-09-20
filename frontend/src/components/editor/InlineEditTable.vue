@@ -2,7 +2,7 @@
   <div class="inline-edit-table">
     <el-table
       ref="tableRef"
-      :data="segments"
+      :data="paginatedSegments"
       :height="computedTableHeight"
       stripe
       border
@@ -171,7 +171,7 @@
       </el-table-column>
 
       <!-- 操作列 -->
-      <el-table-column label="操作" width="120" fixed="right">
+      <el-table-column label="操作" width="140" fixed="right">
         <template #default="{ row }">
           <div class="row-actions grid">
             <div class="button-row">
@@ -216,10 +216,43 @@
                 加长
               </el-button>
             </div>
+            <div class="button-row">
+              <el-button
+                size="small"
+                type="info"
+                @click="duplicateRow(row)"
+                class="action-btn-small"
+              >
+                增加
+              </el-button>
+              <el-button
+                size="small"
+                type="danger"
+                @click="deleteRow(row)"
+                class="action-btn-small"
+              >
+                删除
+              </el-button>
+            </div>
           </div>
         </template>
       </el-table-column>
     </el-table>
+
+    <!-- 分页组件 -->
+    <div class="pagination-container">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[10, 20, 50, 100]"
+        :total="segments.length"
+        :small="false"
+        background
+        layout="total, sizes, prev, pager, next, jumper"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
+    </div>
   </div>
 </template>
 
@@ -267,10 +300,33 @@ const emit = defineEmits<{
   'shorten-translation': [segment: Segment]
   'lengthen-translation': [segment: Segment]
   'segment-click': [segment: Segment]
+  'delete-row': [segment: Segment]
+  'duplicate-row': [segment: Segment]
 }>()
 
 const tableRef = ref()
 const computedTableHeight = computed(() => props.tableHeight || 600)
+
+// 分页相关
+const currentPage = ref(1)
+const pageSize = ref(20)
+
+// 计算分页后的数据
+const paginatedSegments = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return props.segments.slice(start, end)
+})
+
+// 分页事件处理
+const handleSizeChange = (newSize: number) => {
+  pageSize.value = newSize
+  currentPage.value = 1 // 重置到第一页
+}
+
+const handleCurrentChange = (newPage: number) => {
+  currentPage.value = newPage
+}
 
 // 字段变更处理 - 自动保存
 const handleFieldChange = async (segment: Segment, field: string, value: any) => {
@@ -457,9 +513,10 @@ const lengthenTranslation = async (segment: Segment) => {
 
 // 获取项目中配置的说话人选项
 const getProjectSpeakerOptions = () => {
-  if (!props.project?.voice_mappings) {
+  if (!props.project?.voice_mappings || props.project.voice_mappings.length === 0) {
     // 如果没有项目配置，返回默认选项
     return [
+      { speaker: 'SPEAKER_00', voice_id: 'female-tianmei' },
       { speaker: '说话人1', voice_id: '' },
       { speaker: '说话人2', voice_id: '' },
       { speaker: '旁白', voice_id: '' }
@@ -474,6 +531,7 @@ const getProjectSpeakerOptions = () => {
       mappings = JSON.parse(mappings)
     } catch {
       return [
+        { speaker: 'SPEAKER_00', voice_id: 'female-tianmei' },
         { speaker: '说话人1', voice_id: '' },
         { speaker: '说话人2', voice_id: '' },
         { speaker: '旁白', voice_id: '' }
@@ -747,5 +805,14 @@ const getRowClassName = ({ row }: { row: Segment }) => {
 
 :deep(.el-input-number .el-input__inner) {
   text-align: center;
+}
+
+/* 分页样式 */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+  background: white;
+  border-top: 1px solid #ebeef5;
 }
 </style>

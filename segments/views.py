@@ -2,6 +2,8 @@
 段落管理视图
 """
 import logging
+from django.db import models
+from django.db.models import Max
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -9,7 +11,7 @@ from rest_framework.response import Response
 from .models import Segment
 from .serializers import (
     SegmentListSerializer, SegmentDetailSerializer,
-    SegmentUpdateSerializer, BatchUpdateSerializer
+    SegmentUpdateSerializer, SegmentCreateSerializer, BatchUpdateSerializer
 )
 from projects.models import Project
 from services.business.segment_service import SegmentService
@@ -22,6 +24,7 @@ logger = logging.getLogger(__name__)
 class SegmentViewSet(viewsets.ModelViewSet):
     """段落管理ViewSet"""
     permission_classes = [IsAuthenticated]
+    pagination_class = None  # 禁用分页，返回全部段落
 
     def get_queryset(self):
         project_id = self.kwargs.get('project_pk')
@@ -36,10 +39,66 @@ class SegmentViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'list':
             return SegmentListSerializer
+        elif self.action == 'create':
+            return SegmentCreateSerializer
         elif self.action in ['update', 'partial_update']:
             return SegmentUpdateSerializer
         else:
             return SegmentDetailSerializer
+
+    def perform_create(self, serializer):
+        """创建段落时自动设置项目并处理索引重排"""
+        from django.db import transaction
+
+        project_id = self.kwargs.get('project_pk')
+        project = Project.objects.get(id=project_id, user=self.request.user)
+
+        # 获取插入位置的索引
+        insert_index = serializer.validated_data.get('index', 1)
+
+        with transaction.atomic():
+            # 方案：先将需要移动的段落index增加足够大的数避免冲突
+            # 1. 获取所有需要移动的段落（插入位置及之后）
+            segments_to_move = list(Segment.objects.filter(
+                project=project,
+                index__gte=insert_index
+            ).order_by('index'))
+
+            # 2. 先将它们的index都加上10000避免冲突
+            for segment in segments_to_move:
+                segment.index += 10000
+                segment.save()
+
+            # 3. 创建新段落
+            new_segment = serializer.save(project=project, index=insert_index)
+
+            # 4. 恢复移动段落的正确index（从插入位置+1开始）
+            for i, segment in enumerate(segments_to_move):
+                segment.index = insert_index + 1 + i
+                segment.save()
+
+    def destroy(self, request, *args, **kwargs):
+        """删除段落并重新排列索引"""
+        from django.db import transaction
+
+        segment = self.get_object()
+        project = segment.project
+        deleted_index = segment.index
+
+        with transaction.atomic():
+            # 先删除段落
+            response = super().destroy(request, *args, **kwargs)
+
+            # 将被删除段落后面的所有段落index减1
+            segments_to_move = Segment.objects.filter(
+                project=project,
+                index__gt=deleted_index
+            )
+            for segment in segments_to_move:
+                segment.index -= 1
+                segment.save()
+
+        return response
 
     @action(detail=True, methods=['post'])
     def translate(self, request, project_pk=None, pk=None):

@@ -78,7 +78,10 @@ class ProjectViewSet(viewsets.ModelViewSet):
                     name=project_name,
                     source_lang='Chinese',  # 默认中文
                     target_lang='English',  # 默认英文
-                    status='draft'
+                    status='draft',
+                    voice_mappings=[
+                        {"speaker": "SPEAKER_00", "voice_id": "female-tianmei"}
+                    ]
                 )
 
             # 创建段落

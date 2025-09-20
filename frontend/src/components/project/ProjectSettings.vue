@@ -227,6 +227,7 @@ const formData = reactive<ProjectSettings>({
   target_lang: '',
   tts_model: 'speech-2.5-hd-preview',
   voice_mappings: [
+    { speaker: 'SPEAKER_00', voice_id: 'female-tianmei' },
     { speaker: '说话人1', voice_id: '' },
     { speaker: '说话人2', voice_id: '' },
     { speaker: '旁白', voice_id: '' }
@@ -268,6 +269,7 @@ watch(() => props.project, (newProject) => {
         formData.voice_mappings = JSON.parse(newProject.voice_mappings)
       } catch {
         formData.voice_mappings = [
+          { speaker: 'SPEAKER_00', voice_id: 'female-tianmei' },
           { speaker: '说话人1', voice_id: '' },
           { speaker: '说话人2', voice_id: '' },
           { speaker: '旁白', voice_id: '' }
@@ -275,6 +277,7 @@ watch(() => props.project, (newProject) => {
       }
     } else {
       formData.voice_mappings = [
+        { speaker: 'SPEAKER_00', voice_id: 'female-tianmei' },
         { speaker: '说话人1', voice_id: '' },
         { speaker: '说话人2', voice_id: '' },
         { speaker: '旁白', voice_id: '' }

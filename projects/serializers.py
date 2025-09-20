@@ -11,13 +11,14 @@ class ProjectListSerializer(serializers.ModelSerializer):
     segment_count = serializers.ReadOnlyField()
     completed_segment_count = serializers.ReadOnlyField()
     progress_percentage = serializers.ReadOnlyField()
+    progress_stats = serializers.ReadOnlyField()
 
     class Meta:
         model = Project
         fields = [
             'id', 'name', 'source_lang', 'target_lang', 'status',
             'created_at', 'updated_at', 'segment_count',
-            'completed_segment_count', 'progress_percentage'
+            'completed_segment_count', 'progress_percentage', 'progress_stats'
         ]
 
 
@@ -51,6 +52,13 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # 设置用户
         validated_data['user'] = self.context['request'].user
+
+        # 如果没有提供voice_mappings，设置默认值
+        if 'voice_mappings' not in validated_data or not validated_data['voice_mappings']:
+            validated_data['voice_mappings'] = [
+                {"speaker": "SPEAKER_00", "voice_id": "female-tianmei"}
+            ]
+
         return super().create(validated_data)
 
 

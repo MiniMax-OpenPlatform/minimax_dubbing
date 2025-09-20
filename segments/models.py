@@ -61,7 +61,6 @@ class Segment(models.Model):
         verbose_name = "段落"
         verbose_name_plural = "段落"
         ordering = ['project', 'index']
-        unique_together = ['project', 'index']
 
     def __str__(self):
         return f"{self.project.name} - 段落{self.index}: {self.original_text[:30]}..."

@@ -2,6 +2,7 @@
 段落相关序列化器
 """
 from rest_framework import serializers
+from django.db import models
 from .models import Segment
 
 
@@ -62,6 +63,23 @@ class SegmentUpdateSerializer(serializers.ModelSerializer):
                 instance.status = 'translated'
 
         return super().update(instance, validated_data)
+
+
+class SegmentCreateSerializer(serializers.ModelSerializer):
+    """段落创建序列化器"""
+
+    class Meta:
+        model = Segment
+        fields = [
+            'index', 'start_time', 'end_time', 'speaker',
+            'original_text', 'translated_text', 'voice_id', 'emotion',
+            'speed', 'target_duration', 'status'
+        ]
+
+    def create(self, validated_data):
+        # 项目在perform_create中设置，这里只处理索引重排
+        # 注意：此时还没有project，所以索引重排在perform_create中处理
+        return super().create(validated_data)
 
 
 class BatchUpdateSerializer(serializers.Serializer):

@@ -90,8 +90,11 @@ class Project(models.Model):
 
     @property
     def completed_segment_count(self):
-        """返回已完成的段落数"""
-        return self.segments.filter(status='completed').count()
+        """返回已完成的段落数（ratio <= 1的段落）"""
+        return self.segments.filter(
+            ratio__lte=1.0,
+            ratio__isnull=False
+        ).count()
 
     @property
     def progress_percentage(self):
@@ -101,3 +104,35 @@ class Project(models.Model):
             return 0
         completed = self.completed_segment_count
         return int((completed / total) * 100)
+
+    @property
+    def progress_stats(self):
+        """返回基于时长比例的进度统计信息"""
+        segments = self.segments.all()
+        total = segments.count()
+
+        if total == 0:
+            return {
+                'total': 0,
+                'aligned_count': 0,
+                'unaligned_count': 0,
+                'no_ratio_count': 0,
+                'percentage': 0
+            }
+
+        # 统计有ratio值的段落
+        with_ratio = segments.filter(ratio__isnull=False)
+        aligned_count = with_ratio.filter(ratio__lte=1.0).count()  # ratio <= 1的段落
+        unaligned_count = with_ratio.filter(ratio__gt=1.0).count()  # ratio > 1的段落
+        no_ratio_count = segments.filter(ratio__isnull=True).count()  # 没有ratio的段落
+
+        # 计算进度百分比（ratio <= 1的段落）
+        percentage = int((aligned_count / total) * 100) if total > 0 else 0
+
+        return {
+            'total': total,
+            'aligned_count': aligned_count,
+            'unaligned_count': unaligned_count,
+            'no_ratio_count': no_ratio_count,
+            'percentage': percentage
+        }

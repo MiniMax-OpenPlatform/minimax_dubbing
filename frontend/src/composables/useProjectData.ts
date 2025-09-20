@@ -83,9 +83,8 @@ export function useProjectData(projectId: number) {
         return []
       }
 
-      segments.value = segmentData.map((segment: any, index: number) => ({
-        ...segment,
-        index: index + 1
+      segments.value = segmentData.map((segment: any) => ({
+        ...segment
       }))
       console.log('段落数据加载完成:', segmentData.length, '个段落')
       return segments.value

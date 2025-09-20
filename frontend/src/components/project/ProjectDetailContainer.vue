@@ -62,6 +62,8 @@
       @generate-tts="handleGenerateTts"
       @shorten-translation="handleShortenTranslation"
       @lengthen-translation="handleLengthenTranslation"
+      @delete-row="handleDeleteSegment"
+      @duplicate-row="handleDuplicateSegment"
     />
 
     <!-- 项目设置对话框 -->
@@ -416,6 +418,73 @@ const handleLengthenTranslation = async (segment: Segment) => {
       ElMessage.error(error.response.data.error)
     } else {
       ElMessage.error('译文加长失败')
+    }
+  }
+}
+
+// 删除段落
+const handleDeleteSegment = async (segment: Segment) => {
+  try {
+    const api = (await import('../../utils/api')).default
+
+    await api.delete(`/projects/${props.projectId}/segments/${segment.id}/`)
+
+    ElMessage.success('段落删除成功')
+    refreshData()
+  } catch (error: any) {
+    if (error.response?.data?.error) {
+      ElMessage.error(error.response.data.error)
+    } else {
+      ElMessage.error('段落删除失败')
+    }
+  }
+}
+
+// 复制段落（在下方增加新段落）
+const handleDuplicateSegment = async (segment: Segment) => {
+  try {
+    const api = (await import('../../utils/api')).default
+
+    // 解析时间戳为秒数
+    const parseTimeToSeconds = (timeStr: string): number => {
+      if (typeof timeStr === 'number') return timeStr
+      if (!timeStr) return 0
+
+      // 如果是 HH:MM:SS,mmm 格式
+      const match = timeStr.match(/^(\d{2}):(\d{2}):(\d{2}),(\d{3})$/)
+      if (match) {
+        const [, hours, minutes, seconds, milliseconds] = match
+        return parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds) + parseInt(milliseconds) / 1000
+      }
+
+      // 如果已经是数字字符串
+      return parseFloat(timeStr) || 0
+    }
+
+    // 创建新段落数据，基于当前段落但清空一些字段
+    const newSegmentData = {
+      index: segment.index + 1, // 在当前段落后插入
+      start_time: parseTimeToSeconds(segment.end_time), // 新段落从当前段落结束时间开始
+      end_time: parseTimeToSeconds(segment.end_time), // 初始结束时间和开始时间相同
+      original_text: '新段落', // 默认文本，不能为空
+      translated_text: '', // 空白译文
+      speaker: segment.speaker, // 继承说话人
+      voice_id: segment.voice_id, // 继承音色
+      emotion: segment.emotion || 'auto', // 继承情感
+      speed: segment.speed || 1.0, // 继承语速
+      target_duration: 0, // 初始时长为0
+      status: 'pending'
+    }
+
+    await api.post(`/projects/${props.projectId}/segments/`, newSegmentData)
+
+    ElMessage.success('新段落添加成功')
+    refreshData()
+  } catch (error: any) {
+    if (error.response?.data?.error) {
+      ElMessage.error(error.response.data.error)
+    } else {
+      ElMessage.error('新段落添加失败')
     }
   }
 }
