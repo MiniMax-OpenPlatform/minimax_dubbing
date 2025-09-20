@@ -22,6 +22,17 @@
       </div>
     </div>
 
+    <!-- 媒体预览 -->
+    <MediaPreview
+      :project="project"
+      :segments="segments"
+      :concatenated-audio-url="concatenatedAudioUrl"
+      :audio-key="audioKey"
+      :final-mixed-audio-url="null"
+      @segment-click="handleSegmentClick"
+      @time-update="handleTimeUpdate"
+    />
+
     <!-- 项目操作工具栏 -->
     <EditorToolbar
       v-if="project"
@@ -37,33 +48,6 @@
       @batch-speaker="handleBatchSpeaker"
     />
 
-    <!-- 批量操作组件 -->
-    <BatchOperations
-      v-if="selectedSegments.length > 0"
-      :selected-segments="selectedSegments"
-      :loading-states="{ translate: false, tts: batchTtsLoading }"
-      @batch-translate="handleBatchTranslate"
-      @batch-tts="handleBatchTts"
-      @batch-set-voice="handleBatchSetVoice"
-      @batch-set-emotion="handleBatchSetEmotion"
-      @batch-set-speed="handleBatchSetSpeed"
-      @batch-set-speaker="handleBatchSetSpeaker"
-      @export-srt="handleExportSrt"
-      @export-csv="handleExportCsv"
-      @export-audio="handleExportAudio"
-      @clear-selection="clearSelection"
-    />
-
-    <!-- 媒体预览 -->
-    <MediaPreview
-      :project="project"
-      :segments="segments"
-      :concatenated-audio-url="concatenatedAudioUrl"
-      :audio-key="audioKey"
-      :final-mixed-audio-url="null"
-      @segment-click="handleSegmentClick"
-      @time-update="handleTimeUpdate"
-    />
 
     <!-- 段落数据表格 -->
     <InlineEditTable

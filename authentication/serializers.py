@@ -28,19 +28,20 @@ class UserConfigSerializer(serializers.ModelSerializer):
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """用户注册序列化器"""
-    password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ['username', 'group_id', 'api_key', 'password']
+        fields = ['username', 'group_id', 'api_key']
         extra_kwargs = {
-            'api_key': {'write_only': True},
-            'password': {'write_only': True}
+            'api_key': {'write_only': True}
         }
 
     def create(self, validated_data):
-        password = validated_data.pop('password')
-        user = User.objects.create_user(password=password, **validated_data)
+        # 设置默认密码（由于Django要求，但我们不使用密码认证）
+        user = User.objects.create_user(
+            password='unused_password_123',
+            **validated_data
+        )
 
         # 创建用户配置
         UserConfig.objects.create(user=user)

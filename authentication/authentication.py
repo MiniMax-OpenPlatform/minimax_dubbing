@@ -1,5 +1,5 @@
 """
-自定义认证类：基于group_id和api_key
+自定义认证类：基于username + group_id + api_key三要素认证
 """
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
@@ -10,34 +10,39 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
-class GroupIDKeyAuthentication(BaseAuthentication):
+class ThreeFactorAuthentication(BaseAuthentication):
     """
-    基于group_id和api_key的认证
+    基于username + group_id + api_key的三要素认证
     """
 
     def authenticate(self, request):
         """
         认证逻辑
-        从请求头或参数中获取group_id和api_key
+        从请求头或参数中获取username、group_id和api_key
         """
         # 从请求头获取认证信息
+        username = request.META.get('HTTP_X_USERNAME') or request.GET.get('username')
         group_id = request.META.get('HTTP_X_GROUP_ID') or request.GET.get('group_id')
         api_key = request.META.get('HTTP_X_API_KEY') or request.GET.get('api_key')
 
-        if not group_id or not api_key:
-            return None  # 未提供认证信息，让其他认证方式处理
+        if not username or not group_id or not api_key:
+            return None  # 未提供完整认证信息，让其他认证方式处理
 
-        return self.authenticate_credentials(group_id, api_key)
+        return self.authenticate_credentials(username, group_id, api_key)
 
-    def authenticate_credentials(self, group_id, api_key):
+    def authenticate_credentials(self, username, group_id, api_key):
         """
-        验证凭据
+        验证三要素凭据
         """
         try:
-            user = User.objects.get(group_id=group_id, api_key=api_key)
+            user = User.objects.get(
+                username=username,
+                group_id=group_id,
+                api_key=api_key
+            )
         except User.DoesNotExist:
-            logger.warning(f"认证失败: group_id={group_id}")
-            raise AuthenticationFailed('Invalid group_id or api_key')
+            logger.warning(f"认证失败: username={username}, group_id={group_id}")
+            raise AuthenticationFailed('Invalid username, group_id or api_key')
 
         if not user.is_active:
             raise AuthenticationFailed('User account is disabled')
@@ -49,4 +54,12 @@ class GroupIDKeyAuthentication(BaseAuthentication):
         """
         返回认证头信息
         """
-        return 'X-Group-ID and X-API-Key'
+        return 'X-Username, X-Group-ID and X-API-Key'
+
+
+# 保留旧的认证类以兼容现有代码
+class GroupIDKeyAuthentication(ThreeFactorAuthentication):
+    """
+    向后兼容的认证类，实际使用三要素认证
+    """
+    pass

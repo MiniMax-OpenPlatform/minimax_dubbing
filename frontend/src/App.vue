@@ -1,19 +1,20 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import AuthSetup from './components/AuthSetup.vue'
+import LoginForm from './components/auth/LoginForm.vue'
 import ProjectList from './components/ProjectList.vue'
 import ProjectDetailContainer from './components/project/ProjectDetailContainer.vue'
 import SystemSettings from './components/SystemSettings.vue'
-import { Document, Setting, List, SwitchButton } from '@element-plus/icons-vue'
+import UserSettings from './components/UserSettings.vue'
+import { Document, Setting, SwitchButton, User, ArrowDown } from '@element-plus/icons-vue'
+import { useAuthStore } from './stores/auth'
 import { logger } from './utils/logger'
 
-const isAuthenticated = ref(false)
+const authStore = useAuthStore()
 const currentView = ref('projects')
 const selectedProjectId = ref<number | null>(null)
 
-const handleAuthenticated = () => {
-  isAuthenticated.value = true
-  logger.addLog('success', '用户认证成功', 'Auth')
+const handleLoginSuccess = () => {
+  logger.addLog('success', '用户登录成功', 'Auth')
 }
 
 const showProjectDetail = (projectId: number) => {
@@ -29,9 +30,7 @@ const backToProjects = () => {
 }
 
 const logout = () => {
-  localStorage.removeItem('group_id')
-  localStorage.removeItem('api_key')
-  isAuthenticated.value = false
+  authStore.logout()
   currentView.value = 'projects'
   selectedProjectId.value = null
   logger.addLog('info', '用户退出登录', 'Auth')
@@ -43,26 +42,30 @@ const navigateTo = (view: string) => {
   selectedProjectId.value = null
   const viewNames: Record<string, string> = {
     'projects': '项目管理',
-    'settings': '系统设置'
+    'settings': '系统设置',
+    'user-settings': '账户设置'
   }
   logger.addLog('info', `导航到: ${viewNames[view] || view}`, 'Navigation')
 }
 
-onMounted(() => {
-  const groupId = localStorage.getItem('group_id')
-  const apiKey = localStorage.getItem('api_key')
-  if (groupId && apiKey) {
-    isAuthenticated.value = true
-    logger.addLog('info', '应用启动，从本地存储恢复认证信息', 'App')
+onMounted(async () => {
+  if (authStore.isAuthenticated) {
+    logger.addLog('info', '应用启动，检查认证状态', 'App')
+    const isValid = await authStore.checkAuth()
+    if (!isValid) {
+      logger.addLog('warning', '认证已过期，需要重新登录', 'Auth')
+    } else {
+      logger.addLog('success', '认证状态有效', 'Auth')
+    }
   } else {
-    logger.addLog('info', '应用启动，需要用户认证', 'App')
+    logger.addLog('info', '应用启动，需要用户登录', 'App')
   }
 })
 </script>
 
 <template>
-  <!-- 未认证时显示认证设置 -->
-  <AuthSetup v-if="!isAuthenticated" @authenticated="handleAuthenticated" />
+  <!-- 未认证时显示登录界面 -->
+  <LoginForm v-if="!authStore.isAuthenticated" @login-success="handleLoginSuccess" />
 
   <!-- 已认证时显示主应用 -->
   <el-container v-else style="height: 100vh">
@@ -97,7 +100,34 @@ onMounted(() => {
         </el-menu>
 
         <!-- 右侧操作按钮 -->
-        <div style="display: flex; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <!-- 用户信息下拉菜单 -->
+          <el-dropdown trigger="hover">
+            <div style="display: flex; align-items: center; cursor: pointer; color: white; padding: 8px 12px; border-radius: 6px; transition: background-color 0.3s;"
+                 class="user-info-trigger">
+              <el-icon style="margin-right: 8px;"><User /></el-icon>
+              <span>{{ authStore.username }}</span>
+              <el-icon style="margin-left: 8px; transform: rotate(0deg); transition: transform 0.3s;">
+                <ArrowDown />
+              </el-icon>
+            </div>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item>
+                  <div style="padding: 8px 0;">
+                    <div style="font-weight: bold; margin-bottom: 4px;">{{ authStore.username }}</div>
+                    <div style="font-size: 12px; color: #909399; margin-bottom: 2px;">Group ID: {{ authStore.group_id }}</div>
+                    <div style="font-size: 12px; color: #909399;">API Key: {{ authStore.api_key.slice(0, 8) }}...</div>
+                  </div>
+                </el-dropdown-item>
+                <el-dropdown-item divided @click="navigateTo('user-settings')">
+                  <el-icon><Setting /></el-icon>
+                  <span>账户设置</span>
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+
           <el-button type="danger" @click="logout">
             <el-icon><SwitchButton /></el-icon>
             退出登录
@@ -122,6 +152,9 @@ onMounted(() => {
           @back="backToProjects"
         />
 
+
+        <!-- 账户设置页面 -->
+        <UserSettings v-if="currentView === 'user-settings'" @logout="logout" />
 
         <!-- 系统设置页面 -->
         <SystemSettings v-if="currentView === 'settings'" @logout="logout" />
@@ -186,6 +219,15 @@ onMounted(() => {
   .content-container {
     padding: 10px;
   }
+}
+
+/* 用户信息触发器hover效果 */
+.user-info-trigger:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.user-info-trigger:hover .el-icon:last-child {
+  transform: rotate(180deg) !important;
 }
 
 /* 深色主题适配 */

@@ -10,15 +10,16 @@ const api = axios.create({
   }
 })
 
-// 请求拦截器 - 添加认证头
+// 请求拦截器 - 添加三要素认证头
 api.interceptors.request.use(
   (config) => {
     // 从localStorage获取用户认证信息
+    const username = localStorage.getItem('username')
     const groupId = localStorage.getItem('group_id')
     const apiKey = localStorage.getItem('api_key')
 
-
-    if (groupId && apiKey) {
+    if (username && groupId && apiKey) {
+      config.headers['X-Username'] = username
       config.headers['X-Group-ID'] = groupId
       config.headers['X-API-Key'] = apiKey
     }
