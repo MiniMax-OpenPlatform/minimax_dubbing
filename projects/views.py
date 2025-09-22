@@ -158,6 +158,39 @@ class ProjectViewSet(viewsets.ModelViewSet):
         try:
             project = self.get_object()
 
+            # 检查系统级并发限制
+            from system_monitor.models import SystemConfig, TaskMonitor
+            config = SystemConfig.get_config()
+
+            # 检查当前运行的翻译任务数量
+            running_translate_tasks = TaskMonitor.objects.filter(
+                task_type='batch_translate',
+                status='running'
+            ).count()
+
+            if running_translate_tasks >= config.max_concurrent_translate_tasks:
+                return Response({
+                    'success': False,
+                    'error': f'系统翻译任务已达上限（{config.max_concurrent_translate_tasks}个），请稍后再试'
+                }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+            # 检查用户级并发限制（每个用户最多1个翻译任务）
+            user_running_tasks = TaskMonitor.objects.filter(
+                task_type='batch_translate',
+                status='running'
+            ).values('project_id').distinct()
+
+            user_projects = Project.objects.filter(
+                user=request.user,
+                id__in=[task['project_id'] for task in user_running_tasks]
+            ).count()
+
+            if user_projects > 0:
+                return Response({
+                    'success': False,
+                    'error': '您已有翻译任务在运行中，请等待完成后再启动新任务'
+                }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
             # 获取需要翻译的段落
             segments = project.segments.filter(
                 original_text__isnull=False
@@ -417,6 +450,39 @@ class ProjectViewSet(viewsets.ModelViewSet):
         """
         try:
             project = self.get_object()
+
+            # 检查系统级并发限制
+            from system_monitor.models import SystemConfig, TaskMonitor
+            config = SystemConfig.get_config()
+
+            # 检查当前运行的TTS任务数量
+            running_tts_tasks = TaskMonitor.objects.filter(
+                task_type='batch_tts',
+                status='running'
+            ).count()
+
+            if running_tts_tasks >= config.max_concurrent_tts_tasks:
+                return Response({
+                    'success': False,
+                    'error': f'系统TTS任务已达上限（{config.max_concurrent_tts_tasks}个），请稍后再试'
+                }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+            # 检查用户级并发限制（每个用户最多1个TTS任务）
+            user_running_tasks = TaskMonitor.objects.filter(
+                task_type='batch_tts',
+                status='running'
+            ).values('project_id').distinct()
+
+            user_projects = Project.objects.filter(
+                user=request.user,
+                id__in=[task['project_id'] for task in user_running_tasks]
+            ).count()
+
+            if user_projects > 0:
+                return Response({
+                    'success': False,
+                    'error': '您已有TTS任务在运行中，请等待完成后再启动新任务'
+                }, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
             # 获取需要TTS的段落
             segments = project.segments.filter(

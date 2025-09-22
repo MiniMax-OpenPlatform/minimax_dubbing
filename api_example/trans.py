@@ -20,6 +20,7 @@ headers = {
 }
 payload = {
   "model": "MiniMax-Text-01",
+  "max_tokens": 4096,
   "messages": [
     {
       "role": "system",
@@ -33,7 +34,7 @@ payload = {
   ]
 }
 
-response = requests.post(url, headers=headers, json=payload)
+responst= requests.post(url, headers=headers, json=payload)
 
 # 解析JSON响应并只打印翻译结果
 try:

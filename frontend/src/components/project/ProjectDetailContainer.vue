@@ -170,6 +170,15 @@ watch(project, (newProject) => {
   }
 }, { immediate: true })
 
+// 监听项目数据的concatenated_audio_url变化，确保音频预览同步更新
+watch(() => project.value?.concatenated_audio_url, (newUrl) => {
+  if (newUrl && newUrl !== concatenatedAudioUrl.value) {
+    console.log('检测到项目拼接音频URL更新，同步到预览:', newUrl)
+    concatenatedAudioUrl.value = newUrl
+    audioKey.value++
+  }
+}, { immediate: true })
+
 // 页面初始化
 onMounted(() => {
   refreshData()
@@ -345,6 +354,8 @@ const handleBatchTts = async () => {
                 message += `，静音${silentCount}个`
               }
               ElMessage.success(message)
+
+              // TTS完成后刷新数据，确保获取最新的项目和段落信息
               refreshData()
             } else if (progress.status === 'failed') {
               batchProgress.setErrorState('tts', progress.error_messages.join('; ') || 'TTS任务失败')
@@ -416,6 +427,8 @@ const startProgressPolling = (taskId: string, type: 'translate' | 'tts') => {
           pollingIntervals.value.delete(taskId)
           batchProgress.completeBatchOperation(type)
           ElMessage.success(`批量${type === 'translate' ? '翻译' : 'TTS'}完成！成功${progress.completed}个，失败${progress.failed}个`)
+
+          // 批量操作完成后刷新数据，确保获取最新的项目和段落信息
           refreshData()
         } else if (progress.status === 'failed') {
           clearInterval(pollInterval)
