@@ -50,6 +50,7 @@
       @pause-operation="handlePauseOperation"
       @resume-operation="handleResumeOperation"
       @cancel-operation="handleCancelOperation"
+      @dismiss-operation="handleDismissOperation"
     />
 
     <!-- 主内容区：左右分栏 -->
@@ -446,6 +447,10 @@ const handleCancelOperation = async (type: 'translate' | 'tts') => {
     console.error('取消任务失败', error)
     ElMessage.error('取消任务失败')
   }
+}
+
+const handleDismissOperation = (type: 'translate' | 'tts') => {
+  batchProgress.dismissProgress(type)
 }
 
 // 批量设置处理

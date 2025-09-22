@@ -96,6 +96,17 @@
               <el-icon><Close /></el-icon>
               取消
             </el-button>
+
+            <!-- 已完成状态的关闭按钮 -->
+            <el-button
+              v-if="['completed', 'error', 'cancelled'].includes(progress.status)"
+              text
+              size="small"
+              @click="handleDismiss(progress.type)"
+            >
+              <el-icon><Close /></el-icon>
+              关闭
+            </el-button>
           </div>
         </div>
 
@@ -169,6 +180,7 @@ const emit = defineEmits<{
   pauseOperation: [type: 'translate' | 'tts']
   resumeOperation: [type: 'translate' | 'tts']
   cancelOperation: [type: 'translate' | 'tts']
+  dismissOperation: [type: 'translate' | 'tts']
 }>()
 
 const expanded = ref(false)
@@ -246,6 +258,11 @@ const handleCancel = async (type: 'translate' | 'tts') => {
   } catch {
     // 用户取消了取消操作
   }
+}
+
+// 处理关闭操作
+const handleDismiss = (type: 'translate' | 'tts') => {
+  emit('dismissOperation', type)
 }
 
 // 获取已用时间

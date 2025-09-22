@@ -52,17 +52,17 @@ export function useBatchProgress() {
     }
   })
 
-  // 是否有活跃的进度
+  // 是否有活跃的进度（包括已完成但需要显示的）
   const hasActiveProgress = computed(() => {
     return Object.values(progressState).some(progress =>
-      ['running', 'paused'].includes(progress.status)
+      ['running', 'paused', 'completed', 'error', 'cancelled'].includes(progress.status)
     )
   })
 
-  // 获取活跃的进度列表
+  // 获取活跃的进度列表（包括已完成但需要显示的）
   const activeProgresses = computed(() => {
     return Object.values(progressState).filter(progress =>
-      ['running', 'paused'].includes(progress.status)
+      ['running', 'paused', 'completed', 'error', 'cancelled'].includes(progress.status)
     )
   })
 
@@ -77,12 +77,16 @@ export function useBatchProgress() {
   ) => {
     const progress = progressState[type]
 
+    // 清除之前的状态（当开始新任务时，隐藏之前的完成状态）
     progress.status = 'running'
     progress.total = total
     progress.completed = 0
     progress.failed = 0
     progress.startTime = Date.now()
     progress.errorMessages = []
+    progress.currentItem = undefined
+    progress.estimatedTimeRemaining = undefined
+    progress.speed = undefined
     progress.canCancel = options?.canCancel ?? true
     progress.canPause = options?.canPause ?? true
 
@@ -178,6 +182,24 @@ export function useBatchProgress() {
     console.error(`[BatchProgress] Error in ${type} operation:`, error)
   }
 
+  // 关闭进度显示（手动隐藏已完成的任务）
+  const dismissProgress = (type: 'translate' | 'tts') => {
+    const progress = progressState[type]
+    if (['completed', 'error', 'cancelled'].includes(progress.status)) {
+      progress.status = 'idle'
+      progress.total = 0
+      progress.completed = 0
+      progress.failed = 0
+      progress.currentItem = undefined
+      progress.startTime = undefined
+      progress.estimatedTimeRemaining = undefined
+      progress.speed = undefined
+      progress.errorMessages = []
+
+      console.log(`[BatchProgress] Dismissed ${type} progress display`)
+    }
+  }
+
   // 重置进度
   const resetProgress = (type?: 'translate' | 'tts') => {
     const types = type ? [type] : ['translate', 'tts'] as const
@@ -255,6 +277,7 @@ export function useBatchProgress() {
     cancelBatchOperation,
     togglePauseBatchOperation,
     setErrorState,
+    dismissProgress,
     resetProgress,
 
     // 工具方法
