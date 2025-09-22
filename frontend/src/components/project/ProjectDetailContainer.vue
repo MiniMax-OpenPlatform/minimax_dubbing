@@ -33,6 +33,7 @@
       @concatenate-audio="handleConcatenateAudio"
       @export="handleExport"
       @upload-srt="handleUploadSrt"
+      @upload-video="handleUploadVideo"
       @auto-assign-speaker="handleAutoAssignSpeaker"
       @batch-speaker="handleBatchSpeaker"
     />
@@ -542,6 +543,34 @@ const handleUploadSrt = async (file: File) => {
   } catch (error) {
     console.error('SRT上传失败', error)
     ElMessage.error('SRT文件上传失败')
+  }
+}
+
+// 视频上传处理
+const handleUploadVideo = async (file: File) => {
+  try {
+    const formData = new FormData()
+    formData.append('video_file', file)
+
+    const api = (await import('../../utils/api')).default
+    await api.post(`/projects/${props.projectId}/upload_video/`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+
+    ElMessage.success('视频文件上传成功')
+
+    // 刷新项目数据以获取新的视频URL
+    refreshData()
+
+  } catch (error: any) {
+    console.error('视频上传失败', error)
+    if (error.response?.data?.message) {
+      ElMessage.error(error.response.data.message)
+    } else {
+      ElMessage.error('视频文件上传失败')
+    }
   }
 }
 

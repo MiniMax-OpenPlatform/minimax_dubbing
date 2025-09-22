@@ -1,26 +1,6 @@
 <template>
   <div class="video-player-container">
-    <div class="video-header">
-      <h4>{{ title }}</h4>
-      <div class="video-controls">
-        <el-switch
-          v-model="isVisible"
-          :active-text="isVisible ? '显示' : '隐藏'"
-          @change="$emit('visibility-change', isVisible)"
-        />
-        <el-button
-          v-if="videoUrl && isVisible"
-          @click="downloadVideo"
-          type="primary"
-          size="small"
-        >
-          <el-icon><Download /></el-icon>
-          下载
-        </el-button>
-      </div>
-    </div>
-
-    <div v-if="isVisible" class="video-content">
+    <div class="video-content">
       <div v-if="videoUrl" class="video-wrapper">
         <video
           ref="videoRef"
@@ -30,6 +10,7 @@
           class="video-element"
           @loadedmetadata="onVideoLoaded"
           @timeupdate="onTimeUpdate"
+          @seeked="onVideoSeeked"
         >
           您的浏览器不支持视频播放
         </video>
@@ -49,26 +30,20 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { Download } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
 
 interface Props {
   title: string
   videoUrl?: string
-  defaultVisible?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  defaultVisible: true
-})
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  'visibility-change': [visible: boolean]
   'time-update': [time: number]
+  'seek': [time: number]
 }>()
 
 const videoRef = ref<HTMLVideoElement>()
-const isVisible = ref(props.defaultVisible)
 const duration = ref(0)
 const currentTime = ref(0)
 
@@ -85,6 +60,13 @@ const onTimeUpdate = () => {
   }
 }
 
+const onVideoSeeked = () => {
+  if (videoRef.value) {
+    currentTime.value = videoRef.value.currentTime
+    emit('seek', currentTime.value)
+  }
+}
+
 const formatTime = (seconds: number): string => {
   if (!seconds || isNaN(seconds)) return '00:00'
 
@@ -93,23 +75,6 @@ const formatTime = (seconds: number): string => {
   return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
 }
 
-const downloadVideo = () => {
-  if (!props.videoUrl) {
-    ElMessage.error('视频文件不存在')
-    return
-  }
-
-  try {
-    const link = document.createElement('a')
-    link.href = props.videoUrl
-    link.download = `${props.title.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}.mp4`
-    link.click()
-    ElMessage.success('视频下载已开始')
-  } catch (error) {
-    ElMessage.error('下载失败')
-    console.error('Download error:', error)
-  }
-}
 
 // 暴露方法给父组件
 const seekTo = (time: number) => {
@@ -152,27 +117,6 @@ watch(() => props.videoUrl, () => {
   background: white;
 }
 
-.video-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  background: #f5f7fa;
-  border-bottom: 1px solid #e4e7ed;
-}
-
-.video-header h4 {
-  margin: 0;
-  font-size: 14px;
-  color: #303133;
-  font-weight: 600;
-}
-
-.video-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
 
 .video-content {
   padding: 16px;
@@ -209,16 +153,6 @@ watch(() => props.videoUrl, () => {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .video-header {
-    flex-direction: column;
-    gap: 8px;
-    align-items: stretch;
-  }
-
-  .video-controls {
-    justify-content: space-between;
-  }
-
   .video-element {
     max-height: 200px;
   }

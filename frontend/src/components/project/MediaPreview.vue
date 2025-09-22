@@ -35,7 +35,9 @@
       <!-- 视频播放器 -->
       <div v-if="isVideoType" class="video-container">
         <VideoPlayer
+          ref="videoPlayerRef"
           v-if="currentMediaUrl"
+          :title="getCurrentMediaLabel()"
           :video-url="currentMediaUrl"
           @seek="handleVideoSeek"
         />
@@ -109,6 +111,9 @@ import AudioController from '../audio/AudioController.vue'
 import WaveformDisplay from '../audio/WaveformDisplay.vue'
 import ProgressBar from '../audio/ProgressBar.vue'
 import { useAudioWaveform } from '../../composables/useAudioWaveform'
+
+// Backend base URL for media files
+const BACKEND_BASE_URL = 'http://10.11.17.19:5172'
 
 interface Segment {
   id: number
@@ -184,8 +189,12 @@ const seekToSegmentStart = (segment: Segment) => {
   // 更新当前时间
   currentTime.value = startTimeInSeconds
 
-  // 如果有音频，也更新音频位置
-  if (audioRef.value && !isNaN(startTimeInSeconds)) {
+  // 如果是视频类型，更新视频位置
+  if (isVideoType.value && videoPlayerRef.value?.seekTo) {
+    videoPlayerRef.value.seekTo(startTimeInSeconds)
+  }
+  // 如果是音频类型，更新音频位置
+  else if (!isVideoType.value && audioRef.value && !isNaN(startTimeInSeconds)) {
     audioRef.value.currentTime = startTimeInSeconds
   }
 
@@ -217,7 +226,7 @@ const mediaOptions = computed<MediaOption[]>(() => {
     {
       key: 'original_video',
       label: '原始视频',
-      url: props.project?.video_url || null,
+      url: props.project?.video_url ? `${BACKEND_BASE_URL}${props.project.video_url}` : null,
       available: !!props.project?.video_url,
       priority: 2,
       type: 'video'
@@ -225,7 +234,7 @@ const mediaOptions = computed<MediaOption[]>(() => {
     {
       key: 'original_audio',
       label: '原始音频',
-      url: props.project?.audio_url || null,
+      url: props.project?.audio_url ? `${BACKEND_BASE_URL}${props.project.audio_url}` : null,
       available: !!props.project?.audio_url,
       priority: 3,
       type: 'audio'
@@ -293,6 +302,7 @@ const isVideoType = computed(() => currentMedia.value?.type === 'video')
 
 // 音频播放相关状态
 const audioRef = ref<HTMLAudioElement>()
+const videoPlayerRef = ref()
 const isPlaying = ref(false)
 const duration = ref(100) // 设置默认duration以便测试滑块
 const currentTime = ref(0)
@@ -313,6 +323,9 @@ const handleMediaChange = (value: string) => {
 }
 
 const handleVideoSeek = (time: number) => {
+  // 更新当前时间
+  currentTime.value = time
+  // 触发时间更新事件，让父组件知道时间已更改
   emit('timeUpdate', time)
 }
 

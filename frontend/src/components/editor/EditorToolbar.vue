@@ -47,6 +47,19 @@
         </el-button>
       </el-upload>
 
+      <!-- 上传视频 -->
+      <el-upload
+        ref="videoUploadRef"
+        :show-file-list="false"
+        :before-upload="handleUploadVideo"
+        accept=".mp4,.avi,.mov,.wmv,.flv,.mkv"
+        style="margin-left: 8px"
+      >
+        <el-button :icon="VideoCamera" type="primary">
+          上传视频
+        </el-button>
+      </el-upload>
+
       <!-- 说话人管理 -->
       <el-dropdown @command="handleSpeakerCommand" style="margin-left: 8px">
         <el-button :icon="User">
@@ -92,7 +105,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, ArrowDown, Upload, User } from '@element-plus/icons-vue'
+import { Search, ArrowDown, Upload, User, VideoCamera } from '@element-plus/icons-vue'
 
 interface Props {
   selectedCount: number
@@ -108,6 +121,7 @@ const emit = defineEmits<{
   'concatenate-audio': []
   'export': [type: string]
   'upload-srt': [file: File]
+  'upload-video': [file: File]
   'auto-assign-speaker': []
   'batch-speaker': []
 }>()
@@ -131,6 +145,26 @@ const handleUploadSrt = (file: File) => {
   }
 
   emit('upload-srt', file)
+  return false // 阻止自动上传
+}
+
+const handleUploadVideo = (file: File) => {
+  // 验证文件类型
+  const allowedTypes = ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.mkv']
+  const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
+
+  if (!allowedTypes.includes(fileExtension)) {
+    ElMessage.error('请选择支持的视频格式 (MP4, AVI, MOV, WMV, FLV, MKV)')
+    return false
+  }
+
+  // 验证文件大小 (500MB)
+  if (file.size > 500 * 1024 * 1024) {
+    ElMessage.error('视频文件大小不能超过500MB')
+    return false
+  }
+
+  emit('upload-video', file)
   return false // 阻止自动上传
 }
 

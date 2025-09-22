@@ -140,9 +140,10 @@ class Project(models.Model):
 
     @property
     def audio_url(self):
-        """返回音频文件URL"""
-        if self.video_file_path:
-            return self.video_file_path.url
+        """返回音频文件URL - 从视频中提取的音频或单独的音频文件"""
+        # 如果项目有单独的音频文件，优先返回音频文件
+        # 否则可以从视频文件中提取音频，但这里暂时返回None
+        # 因为我们不应该直接把视频URL当作音频URL使用
         return None
 
     @property

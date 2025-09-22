@@ -106,6 +106,49 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 'message': f'SRT文件上传成功，创建了{len(segments_data)}个段落'
             }, status=status.HTTP_201_CREATED)
 
+    @handle_business_logic_error
+    @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser])
+    def upload_video(self, request, pk=None):
+        """
+        为现有项目上传视频文件
+        """
+        project = self.get_object()
+
+        if 'video_file' not in request.FILES:
+            raise ValidationError("请提供视频文件")
+
+        video_file = request.FILES['video_file']
+
+        # 验证文件类型
+        allowed_extensions = ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.mkv']
+        file_extension = os.path.splitext(video_file.name)[1].lower()
+
+        if file_extension not in allowed_extensions:
+            raise ValidationError(f"不支持的视频格式，请使用: {', '.join(allowed_extensions)}")
+
+        # 验证文件大小 (500MB)
+        if video_file.size > 500 * 1024 * 1024:
+            raise ValidationError("视频文件大小不能超过500MB")
+
+        try:
+            # 保存视频文件到项目
+            project.video_file_path = video_file
+            project.save(update_fields=['video_file_path'])
+
+            logger.info(f"视频上传成功: 项目{project.name}, 文件{video_file.name}")
+
+            return Response({
+                'success': True,
+                'project_id': project.id,
+                'project_name': project.name,
+                'video_url': project.video_url,
+                'message': '视频文件上传成功'
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"视频上传失败: {str(e)}")
+            raise ValidationError(f"视频上传失败: {str(e)}")
+
     @action(detail=True, methods=['post'])
     def batch_translate(self, request, pk=None):
         """
