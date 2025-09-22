@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'segments',
     'services',
     'logs.apps.LogsConfig',
+    'system_monitor',
 ]
 
 MIDDLEWARE = [
@@ -231,7 +232,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Shanghai'
 
 USE_I18N = True
 
@@ -250,3 +251,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # 自定义用户模型
 AUTH_USER_MODEL = 'authentication.User'
+
+# 批量翻译配置
+# 批量翻译请求间隔（秒），控制API调用频率以避免过载
+BATCH_TRANSLATE_REQUEST_INTERVAL = 1.0  # 默认每秒1个请求

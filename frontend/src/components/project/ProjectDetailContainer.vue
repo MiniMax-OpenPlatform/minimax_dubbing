@@ -38,6 +38,20 @@
       @batch-speaker="handleBatchSpeaker"
     />
 
+    <!-- 批量操作进度条 -->
+    <BatchProgressBar
+      v-if="batchProgress?.hasActiveProgress.value"
+      :progress-state="batchProgress.progressState"
+      :has-active-progress="batchProgress.hasActiveProgress.value"
+      :active-progresses="batchProgress.activeProgresses.value"
+      :get-progress-percentage="batchProgress.getProgressPercentage"
+      :format-time="batchProgress.formatTime"
+      :get-status-text="batchProgress.getStatusText"
+      @pause-operation="handlePauseOperation"
+      @resume-operation="handleResumeOperation"
+      @cancel-operation="handleCancelOperation"
+    />
+
     <!-- 主内容区：左右分栏 -->
     <div class="main-content-layout">
       <!-- 左侧：数据表格区 -->
@@ -86,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Setting, Refresh } from '@element-plus/icons-vue'
 
@@ -95,11 +109,12 @@ import MediaPreview from './MediaPreview.vue'
 import InlineEditTable from '../editor/InlineEditTable.vue'
 import ProjectSettings from './ProjectSettings.vue'
 import EditorToolbar from '../editor/EditorToolbar.vue'
-import BatchOperations from './BatchOperations.vue'
+import BatchProgressBar from '../progress/BatchProgressBar.vue'
 
 // 导入composables
 import { useProjectData } from '../../composables/useProjectData'
 import { useAudioOperations } from '../../composables/useAudioOperations'
+import { useBatchProgress } from '../../composables/useBatchProgress'
 import type { Segment } from '../../composables/useProjectData'
 
 // Props 和 Emits
@@ -129,10 +144,20 @@ const {
   initializeConcatenatedAudio
 } = useAudioOperations(props.projectId)
 
+// 批量进度管理
+const batchProgress = useBatchProgress()
+
 // 本地状态
 const settingsSaving = ref(false)
 const showSettings = ref(false)
 const selectedSegments = ref<Segment[]>([])
+
+// 任务ID存储
+const currentTranslateTaskId = ref<string | null>(null)
+const currentTtsTaskId = ref<string | null>(null)
+
+// 轮询定时器
+const pollingIntervals = ref<Map<string, number>>(new Map())
 
 // MediaPreview组件引用
 const mediaPreviewRef = ref<{ seekToSegmentStart: (segment: Segment) => void }>()
@@ -147,6 +172,15 @@ watch(project, (newProject) => {
 // 页面初始化
 onMounted(() => {
   refreshData()
+})
+
+// 页面卸载时清理定时器
+onUnmounted(() => {
+  // 清理所有轮询定时器
+  pollingIntervals.value.forEach((interval) => {
+    clearInterval(interval)
+  })
+  pollingIntervals.value.clear()
 })
 
 // 保存项目设置
@@ -202,13 +236,53 @@ const handleBatchTranslate = async () => {
   try {
     const api = (await import('../../utils/api')).default
 
-    // 项目级别的批量翻译，翻译所有待处理的段落
-    await api.post(`/projects/${props.projectId}/batch_translate/`)
+    // 检查是否已有翻译任务在运行
+    if (batchProgress.progressState.translate.status === 'running') {
+      ElMessage.warning('已有翻译任务在进行中')
+      return
+    }
 
-    ElMessage.success('开始批量翻译项目中的所有待处理段落')
-    refreshData()
+    // 获取待翻译的段落数量
+    const untranslatedSegments = segments.value.filter(s =>
+      s.original_text && (!s.translated_text || s.status === 'pending')
+    )
+
+    if (untranslatedSegments.length === 0) {
+      ElMessage.warning('没有需要翻译的段落')
+      return
+    }
+
+    // 开始进度跟踪
+    batchProgress.startBatchOperation('translate', untranslatedSegments.length)
+
+    // 启动批量翻译任务（统一异步模式）
+    const response = await api.post(`/projects/${props.projectId}/batch_translate/`)
+
+    if (response.data.success) {
+      if (response.data.task_id) {
+        // 有任务ID：需要轮询进度（不管是否标记为异步）
+        const { task_id, total_segments } = response.data
+
+        // 存储任务ID用于轮询
+        currentTranslateTaskId.value = task_id
+
+        ElMessage.success(response.data.message || `批量翻译任务已启动，共 ${total_segments} 个段落`)
+
+        // 开始轮询进度
+        startProgressPolling(task_id, 'translate')
+      } else {
+        // 无任务ID：翻译已完成（真正的同步模式）
+        batchProgress.completeBatchOperation('translate')
+        ElMessage.success(response.data.message)
+        refreshData()
+      }
+    } else {
+      batchProgress.setErrorState('translate', response.data.error || '批量翻译失败')
+      ElMessage.error(response.data.error || '批量翻译失败')
+    }
   } catch (error) {
     console.error('批量翻译失败', error)
+    batchProgress.setErrorState('translate', '批量翻译启动失败')
     ElMessage.error('批量翻译失败')
   }
 }
@@ -217,19 +291,162 @@ const handleBatchTts = async () => {
   try {
     const api = (await import('../../utils/api')).default
 
+    // 获取待TTS的段落
+    const translatedSegments = selectedSegments.value.filter(s =>
+      s.translated_text && (!s.translated_audio_url || s.status === 'translated')
+    )
+
+    if (translatedSegments.length === 0) {
+      ElMessage.warning('没有需要TTS的段落')
+      return
+    }
+
+    // 开始进度跟踪
+    batchProgress.startBatchOperation('tts', translatedSegments.length)
+
     // 段落级别的批量TTS
     await api.post(`/projects/${props.projectId}/segments/batch_tts/`)
 
-    ElMessage.success('开始批量TTS项目中的所有已翻译段落')
+    ElMessage.success(`开始批量TTS ${translatedSegments.length} 个段落`)
+
+    // TODO: 后续需要实现批量TTS的异步任务和进度跟踪
+    // 暂时使用模拟进度，等待后端支持
+    let completed = 0
+    const interval = setInterval(() => {
+      completed++
+      batchProgress.updateProgress('tts', completed, {
+        currentItem: `段落 ${completed}/${translatedSegments.length}`
+      })
+
+      if (completed >= translatedSegments.length) {
+        clearInterval(interval)
+        batchProgress.completeBatchOperation('tts')
+        ElMessage.success('批量TTS完成')
+        refreshData()
+      }
+    }, 3000) // 每3秒更新一次
+
     refreshData()
   } catch (error) {
     console.error('批量TTS失败', error)
+    batchProgress.setErrorState('tts', '批量TTS启动失败')
     ElMessage.error('批量TTS失败')
   }
 }
 
 // 使用useAudioOperations中的concatenateAudio函数
 const handleConcatenateAudio = concatenateAudio
+
+// 进度轮询
+const startProgressPolling = (taskId: string, type: 'translate' | 'tts') => {
+  // 清除之前的轮询
+  const existingInterval = pollingIntervals.value.get(taskId)
+  if (existingInterval) {
+    clearInterval(existingInterval)
+  }
+
+  const pollInterval = setInterval(async () => {
+    try {
+      const api = (await import('../../utils/api')).default
+      const response = await api.get(`/projects/${props.projectId}/batch_translate_progress/`, {
+        params: { task_id: taskId }
+      })
+
+      if (response.data.success) {
+        const progress = response.data.progress
+
+        // 更新进度状态
+        batchProgress.updateProgress(type, progress.completed, {
+          currentItem: progress.current_segment_text || `段落 ${progress.completed}/${progress.total}`,
+          failed: progress.failed,
+          estimatedTimeRemaining: progress.estimated_time_remaining,
+          errorMessages: progress.error_messages || []
+        })
+
+        // 检查任务是否完成
+        if (progress.status === 'completed') {
+          clearInterval(pollInterval)
+          pollingIntervals.value.delete(taskId)
+          batchProgress.completeBatchOperation(type)
+          ElMessage.success(`批量${type === 'translate' ? '翻译' : 'TTS'}完成！成功${progress.completed}个，失败${progress.failed}个`)
+          refreshData()
+        } else if (progress.status === 'failed') {
+          clearInterval(pollInterval)
+          pollingIntervals.value.delete(taskId)
+          batchProgress.setErrorState(type, progress.last_error || '任务执行失败')
+          ElMessage.error(`批量${type === 'translate' ? '翻译' : 'TTS'}失败`)
+        } else if (progress.status === 'cancelled') {
+          clearInterval(pollInterval)
+          pollingIntervals.value.delete(taskId)
+          batchProgress.cancelBatchOperation(type)
+          ElMessage.info(`批量${type === 'translate' ? '翻译' : 'TTS'}已取消`)
+        }
+      } else {
+        // 任务不存在或已过期，停止轮询
+        clearInterval(pollInterval)
+        pollingIntervals.value.delete(taskId)
+        batchProgress.setErrorState(type, '任务不存在或已过期')
+      }
+    } catch (error) {
+      console.error('获取进度失败', error)
+      // 继续轮询，不因为单次失败就停止
+    }
+  }, 2000) // 每2秒轮询一次
+
+  pollingIntervals.value.set(taskId, pollInterval)
+}
+
+// 进度条操作处理
+const handlePauseOperation = async (type: 'translate' | 'tts') => {
+  // 暂停功能暂时不实现，显示提示
+  ElMessage.info(`暂停功能暂未实现，请使用取消操作`)
+}
+
+const handleResumeOperation = async (type: 'translate' | 'tts') => {
+  // 恢复功能暂时不实现
+  ElMessage.info(`恢复功能暂未实现`)
+}
+
+const handleCancelOperation = async (type: 'translate' | 'tts') => {
+  try {
+    const taskId = type === 'translate' ? currentTranslateTaskId.value : currentTtsTaskId.value
+
+    if (!taskId) {
+      ElMessage.warning('没有正在运行的任务')
+      return
+    }
+
+    const api = (await import('../../utils/api')).default
+    const response = await api.post(`/projects/${props.projectId}/batch_translate_stop/`, {
+      task_id: taskId
+    })
+
+    if (response.data.success) {
+      // 停止轮询
+      const interval = pollingIntervals.value.get(taskId)
+      if (interval) {
+        clearInterval(interval)
+        pollingIntervals.value.delete(taskId)
+      }
+
+      // 更新UI状态
+      batchProgress.cancelBatchOperation(type)
+      ElMessage.success(`已取消${type === 'translate' ? '翻译' : 'TTS'}操作`)
+
+      // 清除任务ID
+      if (type === 'translate') {
+        currentTranslateTaskId.value = null
+      } else {
+        currentTtsTaskId.value = null
+      }
+    } else {
+      ElMessage.error(response.data.error || '取消任务失败')
+    }
+  } catch (error) {
+    console.error('取消任务失败', error)
+    ElMessage.error('取消任务失败')
+  }
+}
 
 // 批量设置处理
 const handleBatchSetVoice = async (voiceId: string) => {
@@ -297,6 +514,35 @@ const handleBatchSetSpeaker = async (speaker: string) => {
     refreshData()
   } catch (error) {
     ElMessage.error('批量设置说话人失败')
+  }
+}
+
+const handleBatchDelete = async () => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedSegments.value.length} 个段落吗？`,
+      '批量删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    const api = (await import('../../utils/api')).default
+    const segmentIds = selectedSegments.value.map(s => s.id)
+
+    await api.post(`/projects/${props.projectId}/segments/batch_delete/`, {
+      segment_ids: segmentIds
+    })
+
+    ElMessage.success('批量删除成功')
+    clearSelection()
+    refreshData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('批量删除失败')
+    }
   }
 }
 

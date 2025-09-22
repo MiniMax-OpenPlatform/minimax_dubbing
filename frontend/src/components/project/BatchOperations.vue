@@ -8,6 +8,20 @@
       </span>
     </div>
 
+    <!-- 进度条显示区域 -->
+    <BatchProgressBar
+      v-if="batchProgress"
+      :progress-state="batchProgress.progressState"
+      :has-active-progress="batchProgress.hasActiveProgress.value"
+      :active-progresses="batchProgress.activeProgresses.value"
+      :get-progress-percentage="batchProgress.getProgressPercentage"
+      :format-time="batchProgress.formatTime"
+      :get-status-text="batchProgress.getStatusText"
+      @pause-operation="handlePauseOperation"
+      @resume-operation="handleResumeOperation"
+      @cancel-operation="handleCancelOperation"
+    />
+
     <div class="batch-actions">
       <!-- 批量翻译 -->
       <el-button
@@ -92,6 +106,8 @@ import {
   Select, Document, Microphone, Setting, Download, Close, ArrowDown
 } from '@element-plus/icons-vue'
 import BatchSettingsDialog from './BatchSettingsDialog.vue'
+import BatchProgressBar from '../progress/BatchProgressBar.vue'
+import type { UseBatchProgress } from '../../composables/useBatchProgress'
 
 interface Segment {
   id: number
@@ -114,6 +130,7 @@ interface LoadingStates {
 const props = defineProps<{
   selectedSegments: Segment[]
   loadingStates: LoadingStates
+  batchProgress?: UseBatchProgress | null
 }>()
 
 const emit = defineEmits<{
@@ -128,6 +145,9 @@ const emit = defineEmits<{
   exportCsv: []
   exportAudio: []
   clearSelection: []
+  pauseOperation: [type: 'translate' | 'tts']
+  resumeOperation: [type: 'translate' | 'tts']
+  cancelOperation: [type: 'translate' | 'tts']
 }>()
 
 const showBatchSettings = ref(false)
@@ -224,6 +244,19 @@ const handleBatchSettingsConfirm = (value: any) => {
       break
   }
   showBatchSettings.value = false
+}
+
+// 进度条操作处理
+const handlePauseOperation = (type: 'translate' | 'tts') => {
+  emit('pauseOperation', type)
+}
+
+const handleResumeOperation = (type: 'translate' | 'tts') => {
+  emit('resumeOperation', type)
+}
+
+const handleCancelOperation = (type: 'translate' | 'tts') => {
+  emit('cancelOperation', type)
 }
 </script>
 
