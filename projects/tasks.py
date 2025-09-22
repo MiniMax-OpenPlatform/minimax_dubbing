@@ -15,10 +15,12 @@ logger = logging.getLogger(__name__)
 class BatchTranslateTask:
     """批量翻译任务类"""
 
-    def __init__(self, task_id: str, project_id: int, segment_ids: list):
+    def __init__(self, task_id: str, project_id: int, segment_ids: list, user_api_key: str = None, user_group_id: str = None):
         self.task_id = task_id
         self.project_id = project_id
         self.segment_ids = segment_ids
+        self.user_api_key = user_api_key
+        self.user_group_id = user_group_id
 
         # 进度状态
         self.status = 'pending'  # pending, running, completed, failed, cancelled
@@ -100,8 +102,8 @@ class BatchTranslateTask:
                 project=project
             ).order_by('index')
 
-            # 初始化翻译客户端
-            client = MiniMaxClient()
+            # 初始化翻译客户端 - 使用用户的API Key
+            client = MiniMaxClient(api_key=self.user_api_key, group_id=self.user_group_id)
             target_lang_display = project.get_target_lang_display()
             custom_vocabulary = project.custom_vocabulary or []
 
@@ -247,7 +249,7 @@ class BatchTranslateTaskManager:
         self.tasks: Dict[str, BatchTranslateTask] = {}
         self._lock = threading.Lock()
 
-    def create_task(self, project_id: int, segment_ids: list) -> str:
+    def create_task(self, project_id: int, segment_ids: list, user_api_key: str = None, user_group_id: str = None) -> str:
         """创建新的批量翻译任务"""
         task_id = f"translate_{project_id}_{int(time.time())}"
 
@@ -256,7 +258,7 @@ class BatchTranslateTaskManager:
             self.stop_project_tasks(project_id)
 
             # 创建新任务
-            task = BatchTranslateTask(task_id, project_id, segment_ids)
+            task = BatchTranslateTask(task_id, project_id, segment_ids, user_api_key, user_group_id)
             self.tasks[task_id] = task
 
             logger.info(f"创建批量翻译任务: {task_id}, 项目{project_id}, {len(segment_ids)}个段落")
