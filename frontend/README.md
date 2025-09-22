@@ -70,7 +70,9 @@ npm run preview
 ```
 
 ### Development Server
-The development server runs on `http://10.11.17.19:5173/` and connects to the Django backend at `http://10.11.17.19:5172/`.
+The development server runs on `http://localhost:5173/` (本地访问) 或 `http://YOUR_IP:5173/` (外部访问) and connects to the Django backend at `http://localhost:5172/`.
+
+> 💡 外部访问时请将 YOUR_IP 替换为实际IP地址
 
 ## 🎯 Key Features
 
@@ -94,7 +96,7 @@ The development server runs on `http://10.11.17.19:5173/` and connects to the Dj
 ### API Configuration
 The API base URL is configured in `src/utils/api.ts`:
 ```typescript
-const API_BASE_URL = 'http://10.11.17.19:5172/api/'
+const API_BASE_URL = 'http://localhost:5172/api/'
 ```
 
 ### Build Configuration

@@ -80,8 +80,8 @@ cd frontend && npm run dev
 ```
 
 **That's it! 🎉**
-- Frontend: http://10.11.17.19:5173/
-- Backend: http://10.11.17.19:5172/api/
+- Frontend: http://localhost:5173/ (本地访问) 或 http://YOUR_IP:5173/ (外部访问)
+- Backend: http://localhost:5172/api/ (本地访问) 或 http://YOUR_IP:5172/api/ (外部访问)
 
 ### 📋 Prerequisites
 - Python 3.10+
@@ -139,9 +139,11 @@ cd frontend && npm run dev
 </details>
 
 ### 🌐 Access Points
-- **Frontend**: http://10.11.17.19:5173/
-- **Backend API**: http://10.11.17.19:5172/api/
-- **Admin Panel**: http://10.11.17.19:5172/admin/
+- **Frontend**: http://localhost:5173/ (本地) 或 http://YOUR_IP:5173/ (外部)
+- **Backend API**: http://localhost:5172/api/ (本地) 或 http://YOUR_IP:5172/api/ (外部)
+- **Admin Panel**: http://localhost:5172/admin/ (本地) 或 http://YOUR_IP:5172/admin/ (外部)
+
+> 💡 **外部访问说明**: 将 `YOUR_IP` 替换为你的实际IP地址（如 192.168.1.100）
 
 ## 📖 Usage
 
@@ -189,7 +191,7 @@ Configure your MiniMax API credentials in the Django admin panel or directly in 
 ### Authentication
 All API requests require authentication via API key:
 ```bash
-curl -H "X-API-KEY: your-api-key" http://10.11.17.19:5172/api/projects/
+curl -H "X-API-KEY: your-api-key" http://localhost:5172/api/projects/
 ```
 
 ### Key Endpoints

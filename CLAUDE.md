@@ -20,8 +20,10 @@ cd frontend && npm run dev
 ```
 
 **访问地址**:
-- 前端: `http://10.11.17.19:5173/`
-- 后端: `http://10.11.17.19:5172/`
+- 前端: `http://localhost:5173/` (本地) 或 `http://YOUR_IP:5173/` (外部)
+- 后端: `http://localhost:5172/` (本地) 或 `http://YOUR_IP:5172/` (外部)
+
+> 💡 外部访问：将 YOUR_IP 替换为实际IP地址
 
 ### 环境要求
 - Python 3.10+
@@ -43,7 +45,7 @@ cd /home/Devin/minimax_translation
 python3 manage.py runserver 0.0.0.0:5172
 ```
 
-**后端地址**: `http://10.11.17.19:5172/`
+**后端地址**: `http://localhost:5172/` (本地) 或 `http://YOUR_IP:5172/` (外部)
 
 #### 2. 启动前端 Vue 应用
 
@@ -55,7 +57,7 @@ cd /home/Devin/minimax_translation/frontend
 npm run dev
 ```
 
-**前端地址**: `http://10.11.17.19:5173/`
+**前端地址**: `http://localhost:5173/` (本地) 或 `http://YOUR_IP:5173/` (外部)
 
 </details>
 
