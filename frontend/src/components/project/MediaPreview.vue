@@ -112,8 +112,15 @@ import WaveformDisplay from '../audio/WaveformDisplay.vue'
 import ProgressBar from '../audio/ProgressBar.vue'
 import { useAudioWaveform } from '../../composables/useAudioWaveform'
 
-// Backend base URL for media files
-const BACKEND_BASE_URL = 'http://10.11.17.19:5172'
+// 动态获取后端基础URL用于媒体文件
+const getBackendBaseUrl = () => {
+  const protocol = window.location.protocol
+  const hostname = window.location.hostname
+  const port = hostname === 'localhost' || hostname === '127.0.0.1' ? ':5172' : ':5172'
+  return `${protocol}//${hostname}${port}`
+}
+
+const BACKEND_BASE_URL = getBackendBaseUrl()
 
 interface Segment {
   id: number

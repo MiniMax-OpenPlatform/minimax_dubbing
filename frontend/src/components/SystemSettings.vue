@@ -27,8 +27,8 @@
             <el-descriptions :column="1" border>
               <el-descriptions-item label="应用名称">MiniMax 翻译工具</el-descriptions-item>
               <el-descriptions-item label="版本">v1.0.0</el-descriptions-item>
-              <el-descriptions-item label="后端地址">http://10.11.17.19:5172</el-descriptions-item>
-              <el-descriptions-item label="前端地址">http://10.11.17.19:5173</el-descriptions-item>
+              <el-descriptions-item label="后端地址">{{ getBackendUrl() }}</el-descriptions-item>
+              <el-descriptions-item label="前端地址">{{ getFrontendUrl() }}</el-descriptions-item>
             </el-descriptions>
           </el-card>
 
@@ -266,6 +266,21 @@ const activeTab = ref('system')
 
 const getStorageItem = (key: string) => {
   return localStorage.getItem(key)
+}
+
+// 动态获取后端和前端URL
+const getBackendUrl = () => {
+  const protocol = window.location.protocol
+  const hostname = window.location.hostname
+  const port = hostname === 'localhost' || hostname === '127.0.0.1' ? ':5172' : ':5172'
+  return `${protocol}//${hostname}${port}`
+}
+
+const getFrontendUrl = () => {
+  const protocol = window.location.protocol
+  const hostname = window.location.hostname
+  const port = hostname === 'localhost' || hostname === '127.0.0.1' ? ':5173' : ':5173'
+  return `${protocol}//${hostname}${port}`
 }
 
 const systemInfo = {

@@ -1,9 +1,26 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
+// 动态获取API基础URL
+const getApiBaseUrl = () => {
+  // 优先使用环境变量
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL
+  }
+
+  // 自动检测当前域名和端口
+  const protocol = window.location.protocol
+  const hostname = window.location.hostname
+
+  // 开发环境默认后端端口5172，生产环境使用相同域名
+  const port = hostname === 'localhost' || hostname === '127.0.0.1' ? ':5172' : ':5172'
+
+  return `${protocol}//${hostname}${port}/api`
+}
+
 // 创建axios实例
 const api = axios.create({
-  baseURL: 'http://10.11.17.19:5172/api',
+  baseURL: getApiBaseUrl(),
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'

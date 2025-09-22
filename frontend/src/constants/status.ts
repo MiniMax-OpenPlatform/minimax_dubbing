@@ -16,8 +16,15 @@ export const SEGMENT_STATUS_MAP = {
   'silent': { type: 'info', text: '静音' }
 } as const
 
-// API相关常量
-export const API_BASE_URL = 'http://10.11.17.19:5172/api'
+// API相关常量 - 动态获取基础URL
+const getApiBaseUrl = () => {
+  const protocol = window.location.protocol
+  const hostname = window.location.hostname
+  const port = hostname === 'localhost' || hostname === '127.0.0.1' ? ':5172' : ':5172'
+  return `${protocol}//${hostname}${port}/api`
+}
+
+export const API_BASE_URL = getApiBaseUrl()
 
 // UI相关常量
 export const UPLOAD_FILE_SIZE_LIMIT = 1 * 1024 * 1024 // 1MB
