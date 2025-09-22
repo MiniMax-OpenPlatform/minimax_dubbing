@@ -72,10 +72,13 @@ pip install -r requirements.txt
 cd frontend && npm install && cd ..
 
 # 3. Setup database
-python manage.py migrate
+python3 manage.py migrate
 
 # 4. Start both servers (in separate terminals)
-python manage.py runserver 0.0.0.0:5172 &
+# Terminal 1: Backend
+python3 manage.py runserver 0.0.0.0:5172
+
+# Terminal 2: Frontend
 cd frontend && npm run dev
 ```
 
@@ -105,10 +108,10 @@ cd minimax_translation
 pip install -r requirements.txt
 
 # Setup database
-python manage.py migrate
+python3 manage.py migrate
 
 # Create admin user (optional)
-python manage.py createsuperuser
+python3 manage.py createsuperuser
 ```
 
 #### 3. Frontend Setup
@@ -130,7 +133,7 @@ nano .env
 #### 5. Start Development Servers
 ```bash
 # Terminal 1: Backend
-python manage.py runserver 0.0.0.0:5172
+python3 manage.py runserver 0.0.0.0:5172
 
 # Terminal 2: Frontend
 cd frontend && npm run dev
@@ -206,7 +209,7 @@ curl -H "X-API-KEY: your-api-key" http://localhost:5172/api/projects/
 
 ### Backend Tests
 ```bash
-python manage.py test
+python3 manage.py test
 ```
 
 ### Frontend Tests
@@ -223,10 +226,77 @@ npm run test
 pip install -r requirements.txt
 
 # Collect static files
-python manage.py collectstatic
+python3 manage.py collectstatic
 
 # Run with gunicorn
 gunicorn backend.wsgi:application
+```
+
+### 🔄 Background Service (Persistent Running)
+
+#### For Development (Terminal Closes, Service Continues):
+```bash
+# Backend - Using nohup
+nohup python3 manage.py runserver 0.0.0.0:5172 > backend.log 2>&1 &
+
+# Frontend - Using nohup
+cd frontend
+nohup npm run dev > frontend.log 2>&1 &
+
+# Check running processes
+ps aux | grep python3
+ps aux | grep node
+
+# Stop services
+pkill -f "python3 manage.py runserver"
+pkill -f "npm run dev"
+```
+
+#### For Production (Using systemd):
+```bash
+# 1. Create backend service file
+sudo nano /etc/systemd/system/minimax-backend.service
+
+# Content:
+[Unit]
+Description=MiniMax Translation Backend
+After=network.target
+
+[Service]
+Type=simple
+User=your-username
+WorkingDirectory=/path/to/minimax_translation
+ExecStart=/usr/bin/python3 manage.py runserver 0.0.0.0:5172
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
+# 2. Enable and start service
+sudo systemctl daemon-reload
+sudo systemctl enable minimax-backend
+sudo systemctl start minimax-backend
+
+# 3. Check status
+sudo systemctl status minimax-backend
+```
+
+#### Alternative: Using screen/tmux:
+```bash
+# Using screen
+screen -S minimax-backend
+python3 manage.py runserver 0.0.0.0:5172
+# Press Ctrl+A then D to detach
+
+screen -S minimax-frontend
+cd frontend && npm run dev
+# Press Ctrl+A then D to detach
+
+# List running screens
+screen -ls
+
+# Reattach to screen
+screen -r minimax-backend
 ```
 
 ### Frontend
