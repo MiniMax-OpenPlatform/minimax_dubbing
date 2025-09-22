@@ -102,7 +102,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import { ArrowLeft, Setting, Refresh } from '@element-plus/icons-vue'
 
 // 导入子组件
@@ -891,12 +891,75 @@ const handleUploadVideo = async (file: File) => {
 // 说话人管理
 const handleAutoAssignSpeaker = async () => {
   try {
-    // 这个功能可能需要根据实际后端API来实现
-    // 暂时使用批量更新来模拟自动分配
-    ElMessage.info('自动分配说话人功能需要后端支持，请手动设置')
+    if (!project.value) {
+      ElMessage.warning('项目信息不存在')
+      return
+    }
+
+    // 检查项目是否配置了角色
+    const voiceMappings = project.value.voice_mappings || []
+    if (voiceMappings.length < 2) {
+      ElMessage.warning('请先在项目设置中配置至少2个说话人角色才能进行自动分配')
+      return
+    }
+
+    // 显示确认对话框
+    await ElMessageBox.confirm(
+      `将使用LLM分析对话内容自动分配说话人，当前配置的角色：${voiceMappings.map(v => v.speaker).join('、')}。此操作会覆盖现有的说话人设置，是否继续？`,
+      '自动分配说话人',
+      {
+        confirmButtonText: '开始分配',
+        cancelButtonText: '取消',
+        type: 'info',
+      }
+    )
+
+    // 显示加载状态
+    const loading = ElLoading.service({
+      lock: true,
+      text: '正在调用LLM分析对话内容...',
+      background: 'rgba(0, 0, 0, 0.7)'
+    })
+
+    try {
+      // 动态导入API模块
+      const api = (await import('../../utils/api')).default
+
+      // 调用后端自动分配说话人API
+      const response = await api.post(`/projects/${props.projectId}/auto_assign_speakers/`)
+
+      loading.close()
+
+      if (response.data.success) {
+        ElMessage.success(response.data.message || '自动分配说话人完成')
+
+        // 显示详细信息
+        if (response.data.trace_id) {
+          console.log('LLM API trace_id:', response.data.trace_id)
+        }
+
+        // 刷新数据以显示更新后的说话人信息
+        refreshData()
+      } else {
+        ElMessage.error(response.data.error || '自动分配说话人失败')
+      }
+    } catch (apiError: any) {
+      loading.close()
+
+      if (apiError.response?.data?.error) {
+        ElMessage.error(apiError.response.data.error)
+      } else {
+        ElMessage.error('自动分配说话人失败，请稍后重试')
+      }
+      console.error('自动分配说话人API调用失败:', apiError)
+    }
+
   } catch (error) {
-    console.error('自动分配说话人失败', error)
-    ElMessage.error('自动分配说话人失败')
+    // 用户取消或其他错误
+    if (error !== 'cancel') {
+      console.error('自动分配说话人失败', error)
+      ElMessage.error('自动分配说话人失败')
+    }
   }
 }
 

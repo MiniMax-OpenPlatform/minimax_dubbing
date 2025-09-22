@@ -744,6 +744,297 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 'error': f'停止任务失败: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=True, methods=['post'])
+    def auto_assign_speakers(self, request, pk=None):
+        """
+        自动分配说话人（使用LLM分析对话内容）
+        """
+        try:
+            project = self.get_object()
+
+            # 获取项目的voice_mappings（角色配置）
+            voice_mappings = project.voice_mappings or []
+            if not voice_mappings:
+                return Response({
+                    'success': False,
+                    'error': '项目未配置角色，请先在项目设置中配置角色分配'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # 提取说话人名称
+            speakers = [mapping.get('speaker', '') for mapping in voice_mappings if mapping.get('speaker')]
+            if len(speakers) < 2:
+                return Response({
+                    'success': False,
+                    'error': '至少需要配置2个说话人才能进行自动分配'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # 获取项目的所有段落，生成SRT格式文本
+            segments = project.segments.filter(
+                original_text__isnull=False
+            ).exclude(original_text__exact='').order_by('index')
+
+            if not segments.exists():
+                return Response({
+                    'success': False,
+                    'error': '项目中没有可用的段落文本'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # 构建SRT格式文本用于LLM分析
+            srt_blocks = []
+            for segment in segments:
+                start_time_str = self._seconds_to_srt_time(float(segment.start_time))
+                end_time_str = self._seconds_to_srt_time(float(segment.end_time))
+                srt_block = f"{segment.index}\n{start_time_str} --> {end_time_str}\n{segment.original_text}\n"
+                srt_blocks.append(srt_block)
+
+            srt_content = '\n'.join(srt_blocks)
+
+            # 调用LLM API进行说话人分配
+            import requests
+            import json
+            import time
+            import re
+
+            # 从api_example/trans.py获取API配置
+            api_key = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiLmnZzno4oiLCJVc2VyTmFtZSI6IuadnOejiiIsIkFjY291bnQiOiIiLCJTdWJqZWN0SUQiOiIxNzQ3MTc5MTg3ODQ5OTI0NzU4IiwiUGhvbmUiOiIxMzAyNTQ5MDQyMyIsIkdyb3VwSUQiOiIxNzQ3MTc5MTg3ODQxNTM2MTUwIiwiUGFnZU5hbWUiOiIiLCJNYWlsIjoiZGV2aW5AbWluaW1heGkuY29tIiwiQ3JlYXRlVGltZSI6IjIwMjQtMTItMjMgMTE6NTE6NTQiLCJUb2tlblR5cGUiOjEsImlzcyI6Im1pbmltYXgifQ.szVUN2AH7lJ9fQ3EYfzcLcamSCFAOye3Y6yO3Wj_tlNhnhBIYxEEMvZsVgH9mgOe6uhRczOqibmEMbVMUD_1DqtykrbD5klaB4_nhRnDl8fbaAf7m8B1OTRTUIiqgXRVglITenx3K_ugZ6teqiqypByJoLleHbZCSPWvy1-NaDiynb7qAsGzN1V6N4BOTNza1hL5PYdlrXLe2yjQv3YW8nOjQDIGCO1ZqnVBF0UghVaO4V-GZu1Z_0JnkLa7x_2ZXKXAe-LWhk9npwGFzQfLL3aH4oUzlsoEDGnuz3RZdZsFCe95MUiG8dCWfsxhVqlQ5GoFM3LQBAXuLZyqDpmSgg"
+            url = "https://api.minimaxi.com/v1/text/chatcompletion_v2"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+
+            # 构建prompt，参考api_example/prompt_speakers
+            speakers_str = "，".join(speakers)
+            prompt_template = f"""请根据对话内容推断说话人，
+1）说话人请用提供的人名，
+2）严格按照示例格式输出推理过程和标注结果。
+以下是示例：
+----举例开始----
+输入：
+以下是小张，小王，小明之间的对话，请补充说话人
+----
+1
+00:00:27,100 --> 00:00:28,833
+你是谁啊
+
+2
+00:00:33,866 --> 00:00:36,900
+我是小明啊
+
+3
+00:01:00,466 --> 00:01:02,333
+那他呢？
+
+4
+00:01:02,533 --> 00:01:03,866
+我是小王
+----
+输出：
+
+推理过程：
+{{
+1. 首先，我注意到有3个不同的说话人：
+   - 一个是打招呼问话的人
+   - 一个是小明
+   - 还有一个是小王
+
+2. 根据对话内容：
+   - 第1句是SPEAKER_00打招呼
+   - 第2句是是小明回答
+   - 第3句是SPEAKER_00向另一个人打招呼
+   - 第4句是小王回答
+}}
+标注结果：
+{{
+1
+00:00:27,100 --> 00:00:28,833 小张
+你是谁啊
+
+2
+00:00:33,866 --> 00:00:36,900 小明
+我是小明啊
+
+3
+00:01:00,466 --> 00:01:02,333 小张
+那他呢？
+
+4
+00:01:02,533 --> 00:01:03,866 小王
+我是小王
+}}
+----举例结束----
+
+以下是{speakers_str}之间的对话，请补充说话人
+{srt_content}
+
+请输出推理过程和标注结果："""
+
+            payload = {
+                "model": "MiniMax-Text-01",
+                "max_tokens": 8192,  # 增大token限制
+                "temperature": 0.01,  # 降低随机性，提高输出稳定性
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "你的任务是分析对话内容分配说话人"
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt_template
+                    }
+                ]
+            }
+
+            # 最多重试2次
+            for attempt in range(2):
+                try:
+                    logger.info(f"[自动分配说话人] 第{attempt + 1}次尝试调用LLM API")
+
+                    # 增加超时时间，因为文本较长
+                    response = requests.post(url, headers=headers, json=payload, timeout=60)
+
+                    if response.status_code != 200:
+                        logger.error(f"[自动分配说话人] API请求失败: {response.status_code}, {response.text}")
+                        continue
+
+                    response_data = response.json()
+
+                    # 获取trace_id，尝试多种可能的头部名称
+                    trace_id = (response.headers.get('X-Trace-Id') or
+                              response.headers.get('Trace-ID') or
+                              response.headers.get('trace-id') or
+                              response.headers.get('X-Request-Id') or
+                              'unknown')
+
+                    logger.info(f"[自动分配说话人] API调用成功, trace_id: {trace_id}")
+                    print(f"Trace-ID: {trace_id}")
+                    print(f"响应头信息: {dict(response.headers)}")
+
+                    if 'choices' not in response_data or not response_data['choices']:
+                        logger.error(f"[自动分配说话人] API响应格式错误: {response_data}")
+                        continue
+
+                    llm_result = response_data['choices'][0]['message']['content']
+                    logger.info(f"[自动分配说话人] LLM返回结果长度: {len(llm_result)}")
+
+                    # 解析LLM返回的结果
+                    speaker_assignments = self._parse_speaker_assignment(llm_result, segments, speakers)
+
+                    if speaker_assignments:
+                        # 批量更新段落的说话人信息
+                        updated_count = 0
+                        for segment_id, speaker in speaker_assignments.items():
+                            try:
+                                segment = segments.get(id=segment_id)
+                                segment.speaker = speaker
+                                segment.save(update_fields=['speaker'])
+                                updated_count += 1
+                            except Exception as e:
+                                logger.error(f"[自动分配说话人] 更新段落{segment_id}失败: {str(e)}")
+
+                        logger.info(f"[自动分配说话人] 成功更新{updated_count}个段落的说话人信息")
+                        return Response({
+                            'success': True,
+                            'message': f'自动分配说话人完成，成功更新{updated_count}个段落',
+                            'updated_count': updated_count,
+                            'trace_id': trace_id
+                        })
+                    else:
+                        logger.warning(f"[自动分配说话人] 第{attempt + 1}次尝试解析失败，LLM返回格式无法识别")
+                        if attempt == 1:  # 最后一次尝试
+                            return Response({
+                                'success': False,
+                                'error': 'LLM返回格式无法解析，请检查项目角色配置是否正确',
+                                'trace_id': trace_id
+                            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                        continue
+
+                except requests.exceptions.Timeout:
+                    logger.error(f"[自动分配说话人] 第{attempt + 1}次API调用超时")
+                    if attempt == 1:
+                        return Response({
+                            'success': False,
+                            'error': 'API调用超时，请稍后重试'
+                        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                except Exception as e:
+                    logger.error(f"[自动分配说话人] 第{attempt + 1}次API调用异常: {str(e)}")
+                    if attempt == 1:
+                        return Response({
+                            'success': False,
+                            'error': f'API调用失败: {str(e)}'
+                        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        except Exception as e:
+            logger.error(f"[自动分配说话人] 处理失败: {str(e)}")
+            return Response({
+                'success': False,
+                'error': f'自动分配说话人失败: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def _seconds_to_srt_time(self, seconds):
+        """将秒数转换为SRT时间格式"""
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        secs = int(seconds % 60)
+        milliseconds = int((seconds % 1) * 1000)
+        return f"{hours:02d}:{minutes:02d}:{secs:02d},{milliseconds:03d}"
+
+    def _parse_speaker_assignment(self, llm_result, segments, speakers):
+        """解析LLM返回的说话人分配结果"""
+        try:
+            import re
+
+            # 提取"标注结果"部分
+            result_pattern = r'标注结果：\s*\{(.*?)\}'
+            result_match = re.search(result_pattern, llm_result, re.DOTALL)
+
+            if not result_match:
+                logger.error("[解析说话人] 未找到标注结果部分")
+                return None
+
+            result_content = result_match.group(1)
+
+            # 解析每个段落的说话人分配
+            # 格式示例：1\n00:00:27,100 --> 00:00:28,833 小张\n你是谁啊
+            segment_pattern = r'(\d+)\s*\n[\d:,]+ --> [\d:,]+ ([^\n]+)\n'
+            matches = re.findall(segment_pattern, result_content)
+
+            if not matches:
+                logger.error("[解析说话人] 未找到有效的段落-说话人匹配")
+                return None
+
+            # 构建段落ID到说话人的映射
+            speaker_assignments = {}
+            segments_by_index = {segment.index: segment for segment in segments}
+
+            for index_str, speaker_name in matches:
+                try:
+                    index = int(index_str)
+                    speaker_name = speaker_name.strip()
+
+                    # 验证说话人名称是否在允许的列表中
+                    if speaker_name not in speakers:
+                        logger.warning(f"[解析说话人] 说话人'{speaker_name}'不在配置列表中: {speakers}")
+                        continue
+
+                    # 找到对应的段落
+                    if index in segments_by_index:
+                        segment = segments_by_index[index]
+                        speaker_assignments[segment.id] = speaker_name
+                    else:
+                        logger.warning(f"[解析说话人] 段落索引{index}不存在")
+
+                except (ValueError, AttributeError) as e:
+                    logger.error(f"[解析说话人] 解析段落{index_str}失败: {str(e)}")
+                    continue
+
+            logger.info(f"[解析说话人] 成功解析{len(speaker_assignments)}个段落的说话人分配")
+            return speaker_assignments
+
+        except Exception as e:
+            logger.error(f"[解析说话人] 解析异常: {str(e)}")
+            return None
+
     @action(detail=True, methods=['get'])
     def export_srt(self, request, pk=None):
         """
