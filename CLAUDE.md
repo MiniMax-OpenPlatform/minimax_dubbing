@@ -4,12 +4,36 @@ A Vue 3 + Django translation management system with inline editing capabilities.
 
 ## 🚀 项目启动指南
 
+### ⚡ 快速启动 (2分钟)
+
+```bash
+# 1. 安装依赖
+pip install -r requirements.txt
+cd frontend && npm install && cd ..
+
+# 2. 初始化数据库
+python manage.py migrate
+
+# 3. 启动服务 (两个终端)
+python manage.py runserver 0.0.0.0:5172
+cd frontend && npm run dev
+```
+
+**访问地址**:
+- 前端: `http://10.11.17.19:5173/`
+- 后端: `http://10.11.17.19:5172/`
+
 ### 环境要求
 - Python 3.10+
 - Node.js 16+
 - npm 或 yarn
 
-### 1. 启动后端 Django 服务器
+### 详细启动步骤
+
+<details>
+<summary>展开查看详细步骤</summary>
+
+#### 1. 启动后端 Django 服务器
 
 ```bash
 # 在项目根目录
@@ -21,7 +45,7 @@ python3 manage.py runserver 0.0.0.0:5172
 
 **后端地址**: `http://10.11.17.19:5172/`
 
-### 2. 启动前端 Vue 应用
+#### 2. 启动前端 Vue 应用
 
 ```bash
 # 在新的终端窗口
@@ -32,6 +56,8 @@ npm run dev
 ```
 
 **前端地址**: `http://10.11.17.19:5173/`
+
+</details>
 
 ### 3. 查看实时日志
 

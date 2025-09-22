@@ -60,54 +60,88 @@ minimax_translation/
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### ⚡ Super Quick Setup (2 minutes)
+
+```bash
+# 1. Clone and setup
+git clone https://github.com/backearth1/minimax_translation.git
+cd minimax_translation
+
+# 2. Install dependencies
+pip install -r requirements.txt
+cd frontend && npm install && cd ..
+
+# 3. Setup database
+python manage.py migrate
+
+# 4. Start both servers (in separate terminals)
+python manage.py runserver 0.0.0.0:5172 &
+cd frontend && npm run dev
+```
+
+**That's it! 🎉**
+- Frontend: http://10.11.17.19:5173/
+- Backend: http://10.11.17.19:5172/api/
+
+### 📋 Prerequisites
 - Python 3.10+
 - Node.js 16+
-- npm or yarn
+- npm
 
-### Installation
+### 🔧 Detailed Setup
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd minimax_translation
-   ```
+<details>
+<summary>Click for step-by-step instructions</summary>
 
-2. **Setup Backend**
-   ```bash
-   # Install Python dependencies
-   pip install -r requirements.txt
+#### 1. Clone Repository
+```bash
+git clone https://github.com/backearth1/minimax_translation.git
+cd minimax_translation
+```
 
-   # Run database migrations
-   python manage.py migrate
+#### 2. Backend Setup
+```bash
+# Install Python dependencies
+pip install -r requirements.txt
 
-   # Create superuser (optional)
-   python manage.py createsuperuser
-   ```
+# Setup database
+python manage.py migrate
 
-3. **Setup Frontend**
-   ```bash
-   cd frontend
-   npm install
-   ```
+# Create admin user (optional)
+python manage.py createsuperuser
+```
 
-### Development
+#### 3. Frontend Setup
+```bash
+cd frontend
+npm install
+cd ..
+```
 
-1. **Start Backend Server**
-   ```bash
-   python manage.py runserver 0.0.0.0:5172
-   ```
+#### 4. Environment Configuration (Optional)
+```bash
+# Copy environment template
+cp .env.example .env
 
-2. **Start Frontend Server**
-   ```bash
-   cd frontend
-   npm run dev
-   ```
+# Edit .env file with your API keys
+nano .env
+```
 
-3. **Access the Application**
-   - Frontend: http://10.11.17.19:5173/
-   - Backend API: http://10.11.17.19:5172/api/
-   - Admin Panel: http://10.11.17.19:5172/admin/
+#### 5. Start Development Servers
+```bash
+# Terminal 1: Backend
+python manage.py runserver 0.0.0.0:5172
+
+# Terminal 2: Frontend
+cd frontend && npm run dev
+```
+
+</details>
+
+### 🌐 Access Points
+- **Frontend**: http://10.11.17.19:5173/
+- **Backend API**: http://10.11.17.19:5172/api/
+- **Admin Panel**: http://10.11.17.19:5172/admin/
 
 ## 📖 Usage
 
