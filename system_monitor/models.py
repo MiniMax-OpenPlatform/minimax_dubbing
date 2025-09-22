@@ -31,6 +31,21 @@ class SystemConfig(models.Model):
         help_text="批量翻译任务的最长执行时间，范围：5-300分钟"
     )
 
+    # TTS API并发控制
+    batch_tts_request_interval = models.FloatField(
+        default=2.0,
+        validators=[MinValueValidator(0.5), MaxValueValidator(20.0)],
+        verbose_name="批量TTS请求间隔（秒）",
+        help_text="控制批量TTS API请求之间的间隔时间，范围：0.5-20秒"
+    )
+
+    max_concurrent_tts_tasks = models.IntegerField(
+        default=2,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        verbose_name="最大并发TTS任务数",
+        help_text="系统同时运行的批量TTS任务数量限制，范围：1-5"
+    )
+
     # 日志和监控
     enable_detailed_logging = models.BooleanField(
         default=True,
@@ -100,6 +115,11 @@ class TaskMonitor(models.Model):
     total_segments = models.IntegerField(default=0, verbose_name="总段落数")
     completed_segments = models.IntegerField(default=0, verbose_name="已完成段落数")
     failed_segments = models.IntegerField(default=0, verbose_name="失败段落数")
+
+    # TTS特有字段
+    silent_segments = models.IntegerField(default=0, verbose_name="静音段落数", help_text="时间戳对齐失败设为静音的段落数")
+    current_step = models.CharField(max_length=100, blank=True, verbose_name="当前步骤", help_text="如：第2步：LLM优化")
+    alignment_details = models.JSONField(default=dict, blank=True, verbose_name="对齐详情", help_text="时间戳对齐过程的详细信息")
 
     start_time = models.DateTimeField(null=True, blank=True, verbose_name="开始时间")
     end_time = models.DateTimeField(null=True, blank=True, verbose_name="结束时间")

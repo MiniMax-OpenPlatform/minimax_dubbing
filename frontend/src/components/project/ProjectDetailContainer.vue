@@ -293,8 +293,8 @@ const handleBatchTts = async () => {
     const api = (await import('../../utils/api')).default
 
     // 获取待TTS的段落
-    const translatedSegments = selectedSegments.value.filter(s =>
-      s.translated_text && (!s.translated_audio_url || s.status === 'translated')
+    const translatedSegments = segments.value.filter(s =>
+      s.translated_text && s.translated_text.trim()
     )
 
     if (translatedSegments.length === 0) {
@@ -305,29 +305,75 @@ const handleBatchTts = async () => {
     // 开始进度跟踪
     batchProgress.startBatchOperation('tts', translatedSegments.length)
 
-    // 段落级别的批量TTS
-    await api.post(`/projects/${props.projectId}/segments/batch_tts/`)
+    // 调用真实的异步批量TTS API
+    const response = await api.post(`/projects/${props.projectId}/batch_tts/`)
 
-    ElMessage.success(`开始批量TTS ${translatedSegments.length} 个段落`)
+    if (response.data.success) {
+      const taskId = response.data.task_id
+      currentTtsTaskId.value = taskId
 
-    // TODO: 后续需要实现批量TTS的异步任务和进度跟踪
-    // 暂时使用模拟进度，等待后端支持
-    let completed = 0
-    const interval = setInterval(() => {
-      completed++
-      batchProgress.updateProgress('tts', completed, {
-        currentItem: `段落 ${completed}/${translatedSegments.length}`
-      })
+      ElMessage.success(`批量TTS任务已启动，共${response.data.total_segments}个段落`)
 
-      if (completed >= translatedSegments.length) {
-        clearInterval(interval)
-        batchProgress.completeBatchOperation('tts')
-        ElMessage.success('批量TTS完成')
-        refreshData()
+      // 开始轮询进度
+      const pollProgress = async () => {
+        try {
+          const progressResponse = await api.get(`/projects/${props.projectId}/batch_tts_progress/`, {
+            params: { task_id: taskId }
+          })
+
+          if (progressResponse.data.success) {
+            const progress = progressResponse.data.progress
+
+            // 更新进度条
+            batchProgress.updateProgress('tts', progress.completed, {
+              failed: progress.failed,
+              currentItem: progress.current_step || progress.current_segment_text || '',
+              addError: progress.error_messages.length > 0 ? progress.error_messages[progress.error_messages.length - 1] : undefined
+            })
+
+            // 检查任务状态
+            if (progress.status === 'completed') {
+              batchProgress.completeBatchOperation('tts')
+              clearInterval(pollingInterval)
+              pollingIntervals.value.delete(taskId)
+              currentTtsTaskId.value = null
+
+              // 显示TTS特有的完成信息
+              const silentCount = progress.silent || 0
+              let message = `批量TTS完成: 成功${progress.completed}个，失败${progress.failed}个`
+              if (silentCount > 0) {
+                message += `，静音${silentCount}个`
+              }
+              ElMessage.success(message)
+              refreshData()
+            } else if (progress.status === 'failed') {
+              batchProgress.setErrorState('tts', progress.error_messages.join('; ') || 'TTS任务失败')
+              clearInterval(pollingInterval)
+              pollingIntervals.value.delete(taskId)
+              currentTtsTaskId.value = null
+              ElMessage.error('批量TTS失败')
+            } else if (progress.status === 'cancelled') {
+              batchProgress.cancelBatchOperation('tts')
+              clearInterval(pollingInterval)
+              pollingIntervals.value.delete(taskId)
+              currentTtsTaskId.value = null
+              ElMessage.info('批量TTS已取消')
+            }
+          }
+        } catch (error) {
+          console.error('获取TTS进度失败', error)
+          // 继续轮询，不中断
+        }
       }
-    }, 3000) // 每3秒更新一次
 
-    refreshData()
+      // 立即获取一次进度，然后每2秒轮询一次
+      await pollProgress()
+      const pollingInterval = setInterval(pollProgress, 2000)
+      pollingIntervals.value.set(taskId, pollingInterval)
+    } else {
+      batchProgress.setErrorState('tts', response.data.error || 'TTS任务启动失败')
+      ElMessage.error(response.data.error || '批量TTS失败')
+    }
   } catch (error) {
     console.error('批量TTS失败', error)
     batchProgress.setErrorState('tts', '批量TTS启动失败')
@@ -418,7 +464,11 @@ const handleCancelOperation = async (type: 'translate' | 'tts') => {
     }
 
     const api = (await import('../../utils/api')).default
-    const response = await api.post(`/projects/${props.projectId}/batch_translate_stop/`, {
+    const stopEndpoint = type === 'translate'
+      ? `/projects/${props.projectId}/batch_translate_stop/`
+      : `/projects/${props.projectId}/batch_tts_stop/`
+
+    const response = await api.post(stopEndpoint, {
       task_id: taskId
     })
 

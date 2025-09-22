@@ -410,6 +410,274 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 'error': f'停止任务失败: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=True, methods=['post'])
+    def batch_tts(self, request, pk=None):
+        """
+        批量TTS音频生成（统一异步模式）
+        """
+        try:
+            project = self.get_object()
+
+            # 获取需要TTS的段落
+            segments = project.segments.filter(
+                translated_text__isnull=False
+            ).exclude(translated_text__exact='').order_by('index')
+
+            if not segments.exists():
+                return Response({
+                    'success': True,
+                    'message': '没有可TTS的段落（译文为空）'
+                }, status=status.HTTP_200_OK)
+
+            segment_ids = list(segments.values_list('id', flat=True))
+
+            # 使用异步方式启动TTS任务，避免阻塞HTTP响应
+            import time
+            import threading
+
+            # 创建任务ID
+            task_id = f"tts_{project.id}_{int(time.time())}"
+
+            logger.info(f"批量TTS任务启动: {task_id}, 项目{project.id}, {len(segment_ids)}个段落")
+
+            # 异步启动真实的TTS任务（不阻塞HTTP响应）
+            def async_tts_task():
+                try:
+                    logger.info(f"[{task_id}] 开始异步TTS任务")
+
+                    # 进行真实的批量TTS
+                    from services.business.segment_service import SegmentService
+                    from system_monitor.models import SystemConfig, TaskMonitor
+
+                    # 获取系统配置
+                    config = SystemConfig.get_config()
+
+                    # 创建任务监控记录
+                    monitor, created = TaskMonitor.objects.get_or_create(
+                        task_id=task_id,
+                        defaults={
+                            'task_type': 'batch_tts',
+                            'project_id': project.id,
+                            'project_name': project.name,
+                            'total_segments': len(segment_ids),
+                            'start_time': timezone.now(),
+                            'status': 'running'
+                        }
+                    )
+
+                    # 初始化服务
+                    service = SegmentService(user=request.user)
+
+                    completed = 0
+                    failed = 0
+                    silent = 0
+
+                    # 获取所有需要TTS的段落
+                    segments_to_process = project.segments.filter(
+                        id__in=segment_ids
+                    ).order_by('index')
+
+                    for segment in segments_to_process:
+                        try:
+                            # 检查是否有译文
+                            if not segment.translated_text or not segment.translated_text.strip():
+                                logger.warning(f"[{task_id}] 段落{segment.index}没有译文，跳过")
+                                continue
+
+                            logger.info(f"[{task_id}] 开始TTS段落{segment.index}: {segment.translated_text[:50]}...")
+
+                            # 更新当前步骤
+                            monitor.current_step = f"处理段落{segment.index}"
+                            monitor.current_segment_text = segment.translated_text[:50] + "..." if len(segment.translated_text) > 50 else segment.translated_text
+                            monitor.save()
+
+                            # 调用现有的单段落TTS处理逻辑
+                            from services.algorithms.timestamp_aligner import TimestampAligner
+                            from services.clients.minimax_client import MiniMaxClient
+
+                            # 初始化客户端和对齐器
+                            client = MiniMaxClient(api_key=request.user.api_key, group_id=request.user.group_id)
+                            aligner = TimestampAligner(client)
+
+                            # 调用现有的TTS处理逻辑，保持不变
+                            result = service._process_single_tts(segment, project, aligner, project.target_lang)
+
+                            if result == 'success':
+                                completed += 1
+                                logger.info(f"[{task_id}] 段落{segment.index}TTS成功")
+                            elif result == 'silent':
+                                silent += 1
+                                logger.info(f"[{task_id}] 段落{segment.index}设为静音")
+                            else:
+                                failed += 1
+                                logger.error(f"[{task_id}] 段落{segment.index}TTS失败")
+
+                            # 更新监控记录
+                            monitor.completed_segments = completed
+                            monitor.failed_segments = failed
+                            monitor.silent_segments = silent
+                            monitor.save()
+
+                            # 控制API调用频率 - TTS比翻译需要更严格的控制
+                            request_interval = config.batch_tts_request_interval
+                            if completed + failed + silent < len(segment_ids):  # 最后一个请求不需要等待
+                                logger.debug(f"[{task_id}] 等待{request_interval}秒后处理下一个段落")
+                                time.sleep(request_interval)
+
+                        except Exception as e:
+                            failed += 1
+                            error_msg = f"段落{segment.index}TTS异常: {str(e)}"
+                            logger.error(f"[{task_id}] {error_msg}")
+
+                            monitor.completed_segments = completed
+                            monitor.failed_segments = failed
+                            monitor.silent_segments = silent
+                            monitor.error_message = error_msg
+                            monitor.save()
+
+                    # 任务完成，更新监控记录
+                    monitor.status = 'completed'
+                    monitor.end_time = timezone.now()
+                    monitor.completed_segments = completed
+                    monitor.failed_segments = failed
+                    monitor.silent_segments = silent
+                    monitor.current_step = "任务完成"
+                    monitor.save()
+
+                    logger.info(f"[{task_id}] 批量TTS完成，成功{completed}个，静音{silent}个，失败{failed}个")
+
+                except Exception as e:
+                    logger.error(f"[{task_id}] TTS任务执行失败: {str(e)}")
+
+                    # 更新监控记录为失败状态
+                    try:
+                        monitor = TaskMonitor.objects.get(task_id=task_id)
+                        monitor.status = 'failed'
+                        monitor.error_message = str(e)
+                        monitor.end_time = timezone.now()
+                        monitor.save()
+                    except Exception:
+                        pass
+
+            # 在单独线程中启动任务，不阻塞当前HTTP响应
+            threading.Thread(target=async_tts_task, daemon=True).start()
+
+            # 立即返回响应
+            return Response({
+                'success': True,
+                'task_id': task_id,
+                'total_segments': len(segment_ids),
+                'message': f'批量TTS任务已启动，共{len(segment_ids)}个段落'
+            })
+
+        except Exception as e:
+            logger.error(f"批量TTS失败: {str(e)}")
+            return Response({
+                'error': f'批量TTS失败: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['get'])
+    def batch_tts_progress(self, request, pk=None):
+        """
+        获取批量TTS进度
+        """
+        try:
+            project = self.get_object()
+            task_id = request.query_params.get('task_id')
+
+            if task_id:
+                # 使用数据库任务监控获取进度
+                from system_monitor.models import TaskMonitor
+
+                try:
+                    monitor = TaskMonitor.objects.get(task_id=task_id)
+
+                    # 转换为前端期望的格式，包含TTS特有字段
+                    progress = {
+                        'status': monitor.status,
+                        'total': monitor.total_segments,
+                        'completed': monitor.completed_segments,
+                        'failed': monitor.failed_segments,
+                        'silent': monitor.silent_segments,  # TTS特有：静音段落数
+                        'current_segment_text': monitor.current_segment_text or '',
+                        'current_step': monitor.current_step or '',  # TTS特有：当前步骤
+                        'estimated_time_remaining': 0,  # 可以后续根据时间计算
+                        'error_messages': [monitor.error_message] if monitor.error_message else []
+                    }
+
+                    logger.info(f"返回TTS进度: 任务{task_id}, {progress['completed']}/{progress['total']}, 静音{progress['silent']}, 状态: {progress['status']}")
+
+                    return Response({
+                        'success': True,
+                        'progress': progress
+                    })
+
+                except TaskMonitor.DoesNotExist:
+                    # 任务不存在
+                    return Response({
+                        'success': False,
+                        'error': '任务不存在或已过期'
+                    }, status=status.HTTP_404_NOT_FOUND)
+            else:
+                return Response({
+                    'success': True,
+                    'tasks': []
+                })
+
+        except Exception as e:
+            logger.error(f"获取批量TTS进度失败: {str(e)}")
+            return Response({
+                'error': f'获取进度失败: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['post'])
+    def batch_tts_stop(self, request, pk=None):
+        """
+        停止批量TTS任务
+        """
+        try:
+            from system_monitor.models import TaskMonitor
+
+            project = self.get_object()
+            task_id = request.data.get('task_id')
+
+            if not task_id:
+                return Response({
+                    'error': '缺少task_id参数'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # 停止任务
+            try:
+                monitor = TaskMonitor.objects.get(task_id=task_id)
+                if monitor.status == 'running':
+                    monitor.status = 'cancelled'
+                    monitor.end_time = timezone.now()
+                    monitor.current_step = "任务已取消"
+                    monitor.save()
+
+                    logger.info(f"手动停止批量TTS任务: {task_id}")
+
+                    return Response({
+                        'success': True,
+                        'message': '批量TTS任务已停止'
+                    })
+                else:
+                    return Response({
+                        'success': False,
+                        'error': f'任务已是{monitor.status}状态，无法停止'
+                    })
+            except TaskMonitor.DoesNotExist:
+                return Response({
+                    'success': False,
+                    'error': '任务不存在或已过期'
+                }, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            logger.error(f"停止批量TTS任务失败: {str(e)}")
+            return Response({
+                'error': f'停止任务失败: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     @action(detail=True, methods=['get'])
     def export_srt(self, request, pk=None):
         """
