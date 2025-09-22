@@ -214,6 +214,10 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
             logger.info(f"批量翻译任务启动: {task_id}, 项目{project.id}, {len(segment_ids)}个段落")
 
+            # 保存用户API Key信息用于异步任务
+            user_api_key = request.user.api_key
+            user_group_id = request.user.group_id
+
             # 异步启动真实的翻译任务（不阻塞HTTP响应）
             def async_translate_task():
                 try:
@@ -240,8 +244,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
                         }
                     )
 
-                    # 初始化翻译客户端
-                    client = MiniMaxClient()
+                    # 初始化翻译客户端 - 使用用户的API Key
+                    client = MiniMaxClient(api_key=user_api_key, group_id=user_group_id)
                     target_lang_display = project.get_target_lang_display()
                     custom_vocabulary = project.custom_vocabulary or []
 
@@ -795,15 +799,15 @@ class ProjectViewSet(viewsets.ModelViewSet):
             import time
             import re
 
-            # 从环境变量获取API配置
-            from django.conf import settings
-            api_key = getattr(settings, 'MINIMAX_API_KEY', None)
+            # 使用用户的API Key而不是settings中的默认Key
+            api_key = request.user.api_key
             if not api_key:
                 return Response({
                     'success': False,
-                    'error': 'MiniMax API key not configured'
+                    'error': 'User API key not configured'
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+            from django.conf import settings
             url = getattr(settings, 'MINIMAX_API_URL', "https://api.minimaxi.com/v1/text/chatcompletion_v2")
             headers = {
                 "Authorization": f"Bearer {api_key}",
