@@ -129,6 +129,10 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # 静态文件配置
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# MiniMax API Configuration
+MINIMAX_API_KEY = os.getenv('MINIMAX_API_KEY', '')
+MINIMAX_API_URL = os.getenv('MINIMAX_API_URL', 'https://api.minimaxi.com/v1/text/chatcompletion_v2')
+
 # REST Framework配置
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [

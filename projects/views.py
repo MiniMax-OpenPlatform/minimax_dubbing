@@ -795,9 +795,16 @@ class ProjectViewSet(viewsets.ModelViewSet):
             import time
             import re
 
-            # 从api_example/trans.py获取API配置
-            api_key = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiLmnZzno4oiLCJVc2VyTmFtZSI6IuadnOejiiIsIkFjY291bnQiOiIiLCJTdWJqZWN0SUQiOiIxNzQ3MTc5MTg3ODQ5OTI0NzU4IiwiUGhvbmUiOiIxMzAyNTQ5MDQyMyIsIkdyb3VwSUQiOiIxNzQ3MTc5MTg3ODQxNTM2MTUwIiwiUGFnZU5hbWUiOiIiLCJNYWlsIjoiZGV2aW5AbWluaW1heGkuY29tIiwiQ3JlYXRlVGltZSI6IjIwMjQtMTItMjMgMTE6NTE6NTQiLCJUb2tlblR5cGUiOjEsImlzcyI6Im1pbmltYXgifQ.szVUN2AH7lJ9fQ3EYfzcLcamSCFAOye3Y6yO3Wj_tlNhnhBIYxEEMvZsVgH9mgOe6uhRczOqibmEMbVMUD_1DqtykrbD5klaB4_nhRnDl8fbaAf7m8B1OTRTUIiqgXRVglITenx3K_ugZ6teqiqypByJoLleHbZCSPWvy1-NaDiynb7qAsGzN1V6N4BOTNza1hL5PYdlrXLe2yjQv3YW8nOjQDIGCO1ZqnVBF0UghVaO4V-GZu1Z_0JnkLa7x_2ZXKXAe-LWhk9npwGFzQfLL3aH4oUzlsoEDGnuz3RZdZsFCe95MUiG8dCWfsxhVqlQ5GoFM3LQBAXuLZyqDpmSgg"
-            url = "https://api.minimaxi.com/v1/text/chatcompletion_v2"
+            # 从环境变量获取API配置
+            from django.conf import settings
+            api_key = getattr(settings, 'MINIMAX_API_KEY', None)
+            if not api_key:
+                return Response({
+                    'success': False,
+                    'error': 'MiniMax API key not configured'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            url = getattr(settings, 'MINIMAX_API_URL', "https://api.minimaxi.com/v1/text/chatcompletion_v2")
             headers = {
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json"
