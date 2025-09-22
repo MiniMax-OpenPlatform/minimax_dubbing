@@ -61,16 +61,20 @@ MIDDLEWARE = [
 ]
 
 # CORS配置(允许前端访问)
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://10.11.17.19:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
-    "http://10.11.17.19:5174",
-    "http://localhost:5215",
-    "http://127.0.0.1:5215",
-]
+# 从环境变量读取允许的origins，支持多IP部署
+CORS_ALLOWED_ORIGINS_ENV = os.getenv('CORS_ALLOWED_ORIGINS', '')
+if CORS_ALLOWED_ORIGINS_ENV:
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS_ENV.split(',')]
+else:
+    # 默认配置 - 开发环境
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+
+# 开发模式下允许所有origins（仅用于开发）
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'accept',
