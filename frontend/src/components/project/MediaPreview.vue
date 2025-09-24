@@ -50,8 +50,8 @@
       <!-- 音频播放器 -->
       <div v-else class="audio-container">
         <div v-if="currentMediaUrl" class="audio-player-wrapper">
-          <!-- 独立音频播放器 -->
-          <SimpleAudioPlayer
+          <!-- 基础音频播放器 -->
+          <BasicAudioPlayer
             ref="simplePlayerRef"
             :audio-url="currentMediaUrl"
             :show-status="true"
@@ -69,11 +69,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watchEffect, nextTick, onMounted } from 'vue'
+import { computed, ref, watch, watchEffect, nextTick, onMounted } from 'vue'
 import { VideoCamera, Microphone, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import VideoPlayer from '../VideoPlayer.vue'
 import SimpleAudioPlayer from '../audio/SimpleAudioPlayer.vue'
+import BasicAudioPlayer from '../audio/BasicAudioPlayer.vue'
 
 // 动态获取后端基础URL用于媒体文件
 const getBackendBaseUrl = () => {
@@ -322,6 +323,22 @@ const handleSimplePlayerSeek = (time: number) => {
   emit('timeUpdate', time)
 }
 
+// 监听simplePlayerRef的变化，执行缓存的跳转
+watch(() => simplePlayerRef.value, (newRef) => {
+  if (newRef && pendingSeekTime.value !== null) {
+    console.log(`[MediaPreview] 播放器就绪，执行缓存的跳转: ${pendingSeekTime.value}秒`)
+    nextTick(() => {
+      if (simplePlayerRef.value && pendingSeekTime.value !== null) {
+        simplePlayerRef.value.seekTo(pendingSeekTime.value)
+        pendingSeekTime.value = null
+      }
+    })
+  }
+})
+
+
+// 缓存的跳转请求
+const pendingSeekTime = ref<number | null>(null)
 
 // 段落跳转函数
 const seekToSegmentStart = (segment: Segment) => {
@@ -329,6 +346,7 @@ const seekToSegmentStart = (segment: Segment) => {
   console.log(`[MediaPreview] 跳转到段落 ${segment.index} 开始时间: ${startTimeInSeconds}秒`)
   console.log(`[MediaPreview] 是否为视频类型: ${isVideoType.value}`)
   console.log(`[MediaPreview] simplePlayerRef存在: ${!!simplePlayerRef.value}`)
+  console.log(`[MediaPreview] currentMediaUrl存在: ${!!currentMediaUrl.value}`)
 
   // 如果是视频类型，更新视频位置
   if (isVideoType.value && videoPlayerRef.value?.seekTo) {
@@ -336,10 +354,18 @@ const seekToSegmentStart = (segment: Segment) => {
     videoPlayerRef.value.seekTo(startTimeInSeconds)
   }
   // 如果是音频类型，使用独立播放器跳转
-  else if (!isVideoType.value && simplePlayerRef.value) {
-    console.log(`[MediaPreview] 调用独立音频播放器跳转`)
-    console.log(`[MediaPreview] simplePlayerRef.seekTo方法存在: ${typeof simplePlayerRef.value.seekTo}`)
-    simplePlayerRef.value.seekTo(startTimeInSeconds)
+  else if (!isVideoType.value) {
+    if (simplePlayerRef.value) {
+      console.log(`[MediaPreview] 调用独立音频播放器跳转`)
+      console.log(`[MediaPreview] simplePlayerRef.seekTo方法存在: ${typeof simplePlayerRef.value.seekTo}`)
+      simplePlayerRef.value.seekTo(startTimeInSeconds)
+      pendingSeekTime.value = null // 清除缓存
+    } else if (currentMediaUrl.value) {
+      console.log(`[MediaPreview] 播放器未就绪，缓存跳转请求: ${startTimeInSeconds}秒`)
+      pendingSeekTime.value = startTimeInSeconds
+    } else {
+      console.warn(`[MediaPreview] 音频文件未加载，无法跳转`)
+    }
   } else {
     console.warn(`[MediaPreview] 无法跳转: isVideoType=${isVideoType.value}, simplePlayerRef=${!!simplePlayerRef.value}`)
   }
