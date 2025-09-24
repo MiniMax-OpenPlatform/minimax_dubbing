@@ -73,18 +73,49 @@ cd frontend && npm install && cd ..
 
 # 3. Setup database
 python3 manage.py migrate
+```
 
-# 4. Start both servers (in separate terminals)
-# Terminal 1: Backend
+### 🚀 启动服务
+
+#### 方法1: 两个终端窗口 (推荐)
+
+**终端1 - 启动后端服务:**
+```bash
+cd minimax_translation
 python3 manage.py runserver 0.0.0.0:5172
+```
 
-# Terminal 2: Frontend
+**终端2 - 启动前端服务:**
+```bash
+cd minimax_translation/frontend
+npm run dev
+```
+
+#### 方法2: 单个终端 (后台运行)
+
+如果只有一个终端，可以将后端放到后台运行：
+
+```bash
+cd minimax_translation
+
+# 1. 后台启动后端服务
+nohup python3 manage.py runserver 0.0.0.0:5172 > backend.log 2>&1 &
+
+# 2. 启动前端服务
 cd frontend && npm run dev
 ```
 
-**That's it! 🎉**
-- Frontend: http://localhost:5173/ (本地访问) 或 http://YOUR_IP:5173/ (外部访问)
-- Backend: http://localhost:5172/api/ (本地访问) 或 http://YOUR_IP:5172/api/ (外部访问)
+**停止后台服务:**
+```bash
+# 查找并停止后端服务
+pkill -f "python3 manage.py runserver"
+```
+
+**访问地址 🎉**
+- **前端应用**: http://localhost:5173/ (本地) 或 http://YOUR_IP:5173/ (外部)
+- **后端API**: http://localhost:5172/api/ (本地) 或 http://YOUR_IP:5172/api/ (外部)
+
+> ⚠️ **重要**: 必须同时运行两个服务才能正常访问！前端在5173端口，后端在5172端口。
 
 ### 📋 Prerequisites
 - Python 3.10+
@@ -130,14 +161,21 @@ cp .env.example .env
 nano .env
 ```
 
-#### 5. Start Development Servers
-```bash
-# Terminal 1: Backend
-python3 manage.py runserver 0.0.0.0:5172
+#### 5. Start Development Servers (需要两个终端)
 
-# Terminal 2: Frontend
-cd frontend && npm run dev
+**终端1 - 后端服务:**
+```bash
+cd minimax_translation
+python3 manage.py runserver 0.0.0.0:5172
 ```
+
+**终端2 - 前端服务:**
+```bash
+cd minimax_translation/frontend
+npm run dev
+```
+
+> 💡 **提示**: 两个服务必须同时运行！前端服务在5173端口，后端服务在5172端口。
 
 </details>
 
