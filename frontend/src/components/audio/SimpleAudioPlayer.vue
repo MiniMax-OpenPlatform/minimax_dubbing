@@ -158,13 +158,26 @@ const togglePlay = async () => {
 
   try {
     if (isPlaying.value) {
+      console.log(`[SimpleAudioPlayer] 暂停播放，当前位置: ${audioRef.value.currentTime}秒`)
       audioRef.value.pause()
       isPlaying.value = false
       statusText.value = '已暂停'
     } else {
+      console.log(`[SimpleAudioPlayer] 开始播放`)
+      console.log(`[SimpleAudioPlayer] 播放前位置: ${audioRef.value.currentTime}秒`)
+      console.log(`[SimpleAudioPlayer] UI显示位置: currentTime=${currentTime.value}, sliderValue=${sliderValue.value}`)
+
+      // 确保音频位置与UI状态同步
+      if (Math.abs(audioRef.value.currentTime - currentTime.value) > 0.1) {
+        console.log(`[SimpleAudioPlayer] 检测到位置不同步，将音频位置从 ${audioRef.value.currentTime} 同步到 ${currentTime.value}`)
+        audioRef.value.currentTime = currentTime.value
+      }
+
       await audioRef.value.play()
       isPlaying.value = true
       statusText.value = '正在播放'
+
+      console.log(`[SimpleAudioPlayer] 播放开始后位置: ${audioRef.value.currentTime}秒`)
     }
   } catch (error) {
     console.error('播放控制失败:', error)
