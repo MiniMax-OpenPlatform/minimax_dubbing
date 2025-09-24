@@ -11,6 +11,17 @@
       @error="onError"
     ></audio>
 
+    <!-- 波形显示区域 -->
+    <div class="waveform-section">
+      <SimpleWaveform
+        ref="waveformRef"
+        :current-time="currentTime"
+        :duration="totalDuration"
+        :is-playing="isPlaying"
+        @seek="onWaveformSeek"
+      />
+    </div>
+
     <!-- 播放器控制界面 -->
     <div class="player-controls">
       <!-- 播放/暂停按钮 -->
@@ -57,6 +68,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
 import { VideoPlay, VideoPause } from '@element-plus/icons-vue'
+import SimpleWaveform from './SimpleWaveform.vue'
 
 
 interface Props {
@@ -76,6 +88,7 @@ const emit = defineEmits<{
 
 // 组件引用
 const audioRef = ref<HTMLAudioElement>()
+const waveformRef = ref()
 
 // 播放状态
 const isPlaying = ref(false)
@@ -107,6 +120,13 @@ const onLoadedMetadata = () => {
     isLoaded.value = true
     statusText.value = '可播放'
     console.log('音频加载完成，时长:', totalDuration.value)
+
+    // 音频加载完成后，手动触发波形生成
+    if (waveformRef.value && props.audioUrl) {
+      setTimeout(() => {
+        waveformRef.value.generateWaveformFor(props.audioUrl)
+      }, 200)
+    }
   }
 }
 
@@ -177,6 +197,14 @@ const onSliderChange = (value: number) => {
   }, 100)
 }
 
+// 波形点击控制 - 使用与进度条相同的逻辑
+const onWaveformSeek = (time: number) => {
+  console.log('波形跳转到:', time)
+
+  // 使用与进度条相同的处理逻辑
+  onSliderChange(time)
+}
+
 // 监听音频URL变化
 watch(() => props.audioUrl, (newUrl) => {
   if (newUrl && newUrl !== '') {
@@ -229,6 +257,10 @@ defineExpose({
   border-radius: 8px;
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.waveform-section {
+  margin-bottom: 16px;
 }
 
 .player-controls {
