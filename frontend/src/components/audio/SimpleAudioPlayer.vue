@@ -46,6 +46,7 @@
       <span class="time-display">{{ formatTime(totalDuration) }}</span>
     </div>
 
+
     <!-- 状态信息 -->
     <div class="player-status" v-if="showStatus">
       <span>{{ statusText }}</span>
@@ -56,6 +57,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
 import { VideoPlay, VideoPause } from '@element-plus/icons-vue'
+
 
 interface Props {
   audioUrl?: string
@@ -85,6 +87,7 @@ const sliderValue = ref(0)
 // 用户交互状态
 const isUserSeeking = ref(false)
 
+
 // 状态文本
 const statusText = ref('准备中...')
 
@@ -95,6 +98,7 @@ const formatTime = (seconds: number): string => {
   const secs = Math.floor(seconds % 60)
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
+
 
 // 音频事件处理
 const onLoadedMetadata = () => {
@@ -204,10 +208,12 @@ watch(() => props.audioUrl, (newUrl) => {
 defineExpose({
   seekTo: (time: number) => {
     if (audioRef.value && isLoaded.value) {
-      console.log('外部跳转到:', time)
+      console.log('跳转到时间:', time, '(不自动播放)')
+      // 设置音频位置但不播放
       audioRef.value.currentTime = time
       currentTime.value = time
       sliderValue.value = time
+      // 不调用play()，让用户手动控制播放
     }
   },
   getCurrentTime: () => currentTime.value,
@@ -270,6 +276,7 @@ defineExpose({
   transform: scale(1.1);
   transition: transform 0.2s ease;
 }
+
 
 .player-status {
   margin-top: 8px;

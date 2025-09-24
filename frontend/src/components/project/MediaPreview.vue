@@ -509,6 +509,7 @@ const handleSimplePlayerSeek = (time: number) => {
   emit('timeUpdate', time)
 }
 
+
 // 增强的seekToSegmentStart函数，支持两种播放器
 const seekToSegmentStart = (segment: Segment) => {
   const startTimeInSeconds = parseTimeToSeconds(segment.start_time)
