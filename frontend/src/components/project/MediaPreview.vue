@@ -73,7 +73,6 @@ import { computed, ref, watch, watchEffect, nextTick, onMounted } from 'vue'
 import { VideoCamera, Microphone, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import VideoPlayer from '../VideoPlayer.vue'
-import SimpleAudioPlayer from '../audio/SimpleAudioPlayer.vue'
 import BasicAudioPlayer from '../audio/BasicAudioPlayer.vue'
 
 // 动态获取后端基础URL用于媒体文件
