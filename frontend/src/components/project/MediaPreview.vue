@@ -54,9 +54,6 @@
           <BasicAudioPlayer
             ref="simplePlayerRef"
             :audio-url="currentMediaUrl"
-            :show-status="true"
-            @time-update="handleSimplePlayerTimeUpdate"
-            @seek="handleSimplePlayerSeek"
           />
         </div>
         <div v-else class="media-placeholder">

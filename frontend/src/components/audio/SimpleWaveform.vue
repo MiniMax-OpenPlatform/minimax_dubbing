@@ -87,10 +87,16 @@ const generateWaveform = async (audioUrl?: string) => {
     return
   }
 
-  // 实际音频文件分析
+  // 实际音频文件分析 - 独立的AudioContext，不干扰主播放器
   try {
+    // 创建独立的AudioContext专用于波形分析
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-    const response = await fetch(audioUrl)
+
+    // 使用独立的fetch请求，添加cache控制避免冲突
+    const response = await fetch(audioUrl, {
+      cache: 'force-cache',
+      mode: 'cors'
+    })
 
     if (!response.ok) {
       throw new Error(`Failed to fetch audio: ${response.status}`)
