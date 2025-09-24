@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'services',
     'logs.apps.LogsConfig',
     'system_monitor',
+    'voices',
 ]
 
 MIDDLEWARE = [

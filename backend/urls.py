@@ -12,6 +12,7 @@ urlpatterns = [
     path('api/', include('projects.urls')),
     path('api/', include('segments.urls')),
     path('api/logs/', include('logs.urls')),
+    path('', include('voices.urls')),
 ]
 
 # 添加媒体文件URL配置

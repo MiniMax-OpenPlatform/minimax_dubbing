@@ -5,7 +5,8 @@ import ProjectList from './components/ProjectList.vue'
 import ProjectDetailContainer from './components/project/ProjectDetailContainer.vue'
 import SystemSettings from './components/SystemSettings.vue'
 import UserSettings from './components/UserSettings.vue'
-import { Document, Setting, SwitchButton, User, ArrowDown } from '@element-plus/icons-vue'
+import VoiceManagement from './components/voice/VoiceManagement.vue'
+import { Document, Setting, SwitchButton, User, ArrowDown, Microphone } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/auth'
 import { logger } from './utils/logger'
 
@@ -42,6 +43,7 @@ const navigateTo = (view: string) => {
   selectedProjectId.value = null
   const viewNames: Record<string, string> = {
     'projects': '项目管理',
+    'voices': '音色管理',
     'settings': '系统设置',
     'user-settings': '账户设置'
   }
@@ -92,6 +94,10 @@ onMounted(async () => {
             <span>项目管理</span>
           </el-menu-item>
 
+          <el-menu-item index="voices" style="color: white;">
+            <el-icon><Microphone /></el-icon>
+            <span>音色管理</span>
+          </el-menu-item>
 
           <el-menu-item index="settings" style="color: white;">
             <el-icon><Setting /></el-icon>
@@ -152,6 +158,8 @@ onMounted(async () => {
           @back="backToProjects"
         />
 
+        <!-- 音色管理页面 -->
+        <VoiceManagement v-if="currentView === 'voices'" />
 
         <!-- 账户设置页面 -->
         <UserSettings v-if="currentView === 'user-settings'" @logout="logout" />

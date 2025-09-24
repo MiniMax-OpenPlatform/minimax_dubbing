@@ -1,0 +1,22 @@
+"""
+本示例用于查询可用音色。注意：需要先将密钥信息写入环境变量 `MINIMAX_API_KEY`。
+"""
+import requests
+import os
+
+api_key = os.environ.get("MINIMAX_API_KEY")
+
+url = f'https://api.minimaxi.com/v1/get_voice'
+headers = {
+    'authority': 'api.minimaxi.com',
+    'Authorization': f'Bearer {api_key}',
+    'content-type': 'application/json'
+}
+
+data = {
+    'voice_type': 'all'
+}
+
+response = requests.post(url, headers=headers, json=data)
+print(response.text)
+
