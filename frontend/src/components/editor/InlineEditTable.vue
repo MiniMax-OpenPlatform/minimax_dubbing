@@ -93,19 +93,7 @@
             placeholder="输入译文内容或点击翻译"
             @blur="handleFieldChange(row, 'translated_text', row.translated_text)"
             @keydown.ctrl.enter="handleFieldChange(row, 'translated_text', row.translated_text)"
-          >
-            <template #suffix>
-              <el-button
-                v-if="row.original_text && !row.translated_text"
-                size="small"
-                type="primary"
-                @click="translateSingle(row)"
-                :loading="row._translating"
-              >
-                翻译
-              </el-button>
-            </template>
-          </el-input>
+          />
         </template>
       </el-table-column>
 
@@ -172,10 +160,21 @@
       </el-table-column>
 
       <!-- 操作列 -->
-      <el-table-column label="操作" width="140" fixed="right">
+      <el-table-column label="操作" width="170" fixed="right">
         <template #default="{ row }">
           <div class="row-actions grid">
             <div class="button-row">
+              <el-button
+                size="small"
+                type="primary"
+                @click="translateSingle(row)"
+                :disabled="!row.original_text"
+                :loading="row._translating"
+                class="action-btn-small"
+                :title="row.translated_text ? '重新翻译' : '翻译'"
+              >
+                {{ row.translated_text ? '重译' : '翻译' }}
+              </el-button>
               <el-button
                 size="small"
                 type="primary"
@@ -776,9 +775,9 @@ const getRowClassName = ({ row }: { row: Segment }) => {
 }
 
 .action-btn-small {
-  width: 40px !important;
-  font-size: 11px !important;
-  padding: 4px 2px !important;
+  width: 36px !important;
+  font-size: 10px !important;
+  padding: 4px 1px !important;
 }
 
 /* 行状态样式 */
