@@ -163,19 +163,50 @@ const togglePlay = async () => {
       isPlaying.value = false
       statusText.value = '已暂停'
     } else {
+      // 确保音频处于可播放状态
+      if (audioRef.value.readyState < 2) {
+        console.log(`[SimpleAudioPlayer] 音频未就绪，readyState: ${audioRef.value.readyState}`)
+        statusText.value = '加载中...'
+        return
+      }
       console.log(`[SimpleAudioPlayer] 开始播放`)
       console.log(`[SimpleAudioPlayer] 播放前位置: ${audioRef.value.currentTime}秒`)
       console.log(`[SimpleAudioPlayer] UI显示位置: currentTime=${currentTime.value}, sliderValue=${sliderValue.value}`)
 
       // 确保音频位置与UI状态同步
-      if (Math.abs(audioRef.value.currentTime - currentTime.value) > 0.1) {
-        console.log(`[SimpleAudioPlayer] 检测到位置不同步，将音频位置从 ${audioRef.value.currentTime} 同步到 ${currentTime.value}`)
-        audioRef.value.currentTime = currentTime.value
+      const targetTime = currentTime.value
+      if (Math.abs(audioRef.value.currentTime - targetTime) > 0.1) {
+        console.log(`[SimpleAudioPlayer] 检测到位置不同步，将音频位置从 ${audioRef.value.currentTime} 同步到 ${targetTime}`)
+        audioRef.value.currentTime = targetTime
       }
 
       await audioRef.value.play()
       isPlaying.value = true
       statusText.value = '正在播放'
+
+      // 播放后立即检查位置，如果被重置则修正
+      if (Math.abs(audioRef.value.currentTime - targetTime) > 0.1) {
+        console.log(`[SimpleAudioPlayer] play()后位置被重置，立即同步到 ${targetTime}`)
+        isUserSeeking.value = true
+        audioRef.value.currentTime = targetTime
+        setTimeout(() => {
+          isUserSeeking.value = false
+        }, 100)
+      }
+
+      // 播放后延迟检查位置，某些浏览器可能在play()后重置位置
+      setTimeout(() => {
+        if (audioRef.value && Math.abs(audioRef.value.currentTime - targetTime) > 0.1) {
+          console.log(`[SimpleAudioPlayer] 延迟检测到位置重置，最终同步到 ${targetTime}`)
+          // 设置保护标志，防止timeupdate干扰
+          isUserSeeking.value = true
+          audioRef.value.currentTime = targetTime
+          // 延迟恢复，让位置设置稳定
+          setTimeout(() => {
+            isUserSeeking.value = false
+          }, 100)
+        }
+      }, 50)
 
       console.log(`[SimpleAudioPlayer] 播放开始后位置: ${audioRef.value.currentTime}秒`)
     }
