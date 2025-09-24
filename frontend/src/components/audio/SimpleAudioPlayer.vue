@@ -206,21 +206,24 @@ const onWaveformSeek = (time: number) => {
 }
 
 // 监听音频URL变化
-watch(() => props.audioUrl, (newUrl) => {
+watch(() => props.audioUrl, (newUrl, oldUrl) => {
   if (newUrl && newUrl !== '') {
-    // 重置状态
-    isPlaying.value = false
-    isLoaded.value = false
-    currentTime.value = 0
-    totalDuration.value = 0
-    sliderValue.value = 0
-    statusText.value = '加载中...'
+    // 只有URL真正变化时才重置状态
+    if (newUrl !== oldUrl) {
+      // 重置状态
+      isPlaying.value = false
+      isLoaded.value = false
+      currentTime.value = 0
+      totalDuration.value = 0
+      sliderValue.value = 0
+      statusText.value = '加载中...'
 
-    nextTick(() => {
-      if (audioRef.value) {
-        audioRef.value.load()
-      }
-    })
+      nextTick(() => {
+        if (audioRef.value) {
+          audioRef.value.load()
+        }
+      })
+    }
   } else {
     // 清空音频
     isPlaying.value = false
@@ -241,7 +244,12 @@ defineExpose({
       audioRef.value.currentTime = time
       currentTime.value = time
       sliderValue.value = time
+      // 发出跳转事件
+      emit('seek', time)
+      emit('time-update', time)
       // 不调用play()，让用户手动控制播放
+    } else {
+      console.log('音频未加载，无法跳转到:', time)
     }
   },
   getCurrentTime: () => currentTime.value,

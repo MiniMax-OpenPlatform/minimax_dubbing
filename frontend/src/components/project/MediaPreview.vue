@@ -329,11 +329,15 @@ onMounted(() => {
 
 // 独立播放器事件处理
 const handleSimplePlayerTimeUpdate = (time: number) => {
+  // 同步时间状态
+  currentTime.value = time
   // 同步时间到父组件
   emit('timeUpdate', time)
 }
 
 const handleSimplePlayerSeek = (time: number) => {
+  // 同步时间状态
+  currentTime.value = time
   // 处理独立播放器的跳转事件
   emit('timeUpdate', time)
 }
