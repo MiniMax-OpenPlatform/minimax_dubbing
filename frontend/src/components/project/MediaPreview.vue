@@ -300,31 +300,11 @@ const getSegmentsForMedia = () => {
   return props.segments
 }
 
-// 监听音频URL变化
-watchEffect(() => {
-  const newUrl = currentMediaUrl.value
-  if (newUrl && !isVideoType.value) {
-    isPlaying.value = false
-    currentTime.value = 0
-    duration.value = 0
-    progressValue.value = 0
-
-    // 等待下一个tick后重新加载和分析
-    nextTick(() => {
-      if (audioRef.value) {
-        audioRef.value.load()
-        generateWaveform(newUrl)
-      }
-    })
-  }
-})
 
 // 组件挂载时初始化
 onMounted(() => {
-  // 立即生成默认波形以提供视觉反馈
-  nextTick(() => {
-    generateWaveform()
-  })
+  // 初始化项目数据
+  initializeDefaultMedia()
 })
 
 // 独立播放器事件处理
