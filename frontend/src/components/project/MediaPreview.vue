@@ -49,49 +49,71 @@
 
       <!-- 音频播放器 -->
       <div v-else class="audio-container">
-        <div v-if="currentMediaUrl" class="simple-audio-player">
-          <!-- 音频播放控制器 -->
-          <AudioController
-            :is-playing="isPlaying"
-            :has-audio="!!currentMediaUrl"
-            :current-time="currentTime"
-            :duration="duration"
-            :volume="volume"
-            @toggle-play="togglePlay"
-            @stop="stopAudio"
-            @volume-change="updateVolume"
-          />
+        <div v-if="currentMediaUrl" class="audio-player-wrapper">
+          <!-- 播放器切换选项 -->
+          <div class="player-selector">
+            <el-radio-group v-model="audioPlayerType" size="small">
+              <el-radio-button label="original">原版播放器</el-radio-button>
+              <el-radio-button label="simple">独立播放器</el-radio-button>
+            </el-radio-group>
+          </div>
 
-          <!-- 波形显示 -->
-          <WaveformDisplay
-            :waveform-data="waveformData"
-            :current-time="currentTime"
-            :duration="duration"
-            :color="'#409eff'"
-            :is-analyzing="isAnalyzingWaveform"
-            @seek-to-position="seekToPosition"
-          />
+          <!-- 原版音频播放器 -->
+          <div v-if="audioPlayerType === 'original'" class="original-audio-player">
+            <!-- 音频播放控制器 -->
+            <AudioController
+              :is-playing="isPlaying"
+              :has-audio="!!currentMediaUrl"
+              :current-time="currentTime"
+              :duration="duration"
+              :volume="volume"
+              @toggle-play="togglePlay"
+              @stop="stopAudio"
+              @volume-change="updateVolume"
+            />
 
-          <!-- 进度条 -->
-          <ProgressBar
-            :current-time="currentTime"
-            :duration="duration"
-            @seek-to="seekTo"
-            @progress-input="onProgressInput"
-          />
+            <!-- 波形显示 -->
+            <WaveformDisplay
+              :waveform-data="waveformData"
+              :current-time="currentTime"
+              :duration="duration"
+              :color="'#409eff'"
+              :is-analyzing="isAnalyzingWaveform"
+              @seek-to-position="seekToPosition"
+            />
 
-          <!-- 隐藏的音频元素 -->
-          <audio
-            ref="audioRef"
-            :src="currentMediaUrl"
-            preload="metadata"
-            @loadedmetadata="onAudioLoaded"
-            @timeupdate="onTimeUpdate"
-            @ended="onAudioEnded"
-            @loadstart="onLoadStart"
-            @canplay="onCanPlay"
-            @error="onAudioError"
-          ></audio>
+            <!-- 进度条 -->
+            <ProgressBar
+              :current-time="currentTime"
+              :duration="duration"
+              @seek-to="seekTo"
+              @progress-input="onProgressInput"
+            />
+
+            <!-- 隐藏的音频元素 -->
+            <audio
+              ref="audioRef"
+              :src="currentMediaUrl"
+              preload="metadata"
+              @loadedmetadata="onAudioLoaded"
+              @timeupdate="onTimeUpdate"
+              @ended="onAudioEnded"
+              @loadstart="onLoadStart"
+              @canplay="onCanPlay"
+              @error="onAudioError"
+            ></audio>
+          </div>
+
+          <!-- 独立音频播放器 -->
+          <div v-else-if="audioPlayerType === 'simple'" class="simple-audio-player-wrapper">
+            <SimpleAudioPlayer
+              ref="simplePlayerRef"
+              :audio-url="currentMediaUrl"
+              :show-status="true"
+              @time-update="handleSimplePlayerTimeUpdate"
+              @seek="handleSimplePlayerSeek"
+            />
+          </div>
         </div>
         <div v-else class="media-placeholder">
           <el-icon><Microphone /></el-icon>
@@ -110,6 +132,7 @@ import VideoPlayer from '../VideoPlayer.vue'
 import AudioController from '../audio/AudioController.vue'
 import WaveformDisplay from '../audio/WaveformDisplay.vue'
 import ProgressBar from '../audio/ProgressBar.vue'
+import SimpleAudioPlayer from '../audio/SimpleAudioPlayer.vue'
 import { useAudioWaveform } from '../../composables/useAudioWaveform'
 
 // 动态获取后端基础URL用于媒体文件
@@ -188,26 +211,6 @@ const parseTimeToSeconds = (timeStr: string | number): number => {
   return isNaN(numValue) ? 0 : numValue
 }
 
-// 跳转到指定段落的开始时间
-const seekToSegmentStart = (segment: Segment) => {
-  const startTimeInSeconds = parseTimeToSeconds(segment.start_time)
-  console.log(`跳转到段落 ${segment.index} 开始时间: ${startTimeInSeconds}秒`)
-
-  // 更新当前时间
-  currentTime.value = startTimeInSeconds
-
-  // 如果是视频类型，更新视频位置
-  if (isVideoType.value && videoPlayerRef.value?.seekTo) {
-    videoPlayerRef.value.seekTo(startTimeInSeconds)
-  }
-  // 如果是音频类型，更新音频位置
-  else if (!isVideoType.value && audioRef.value && !isNaN(startTimeInSeconds)) {
-    audioRef.value.currentTime = startTimeInSeconds
-  }
-
-  // 触发时间更新事件
-  emit('timeUpdate', startTimeInSeconds)
-}
 
 // 媒体选项定义
 interface MediaOption {
@@ -310,11 +313,15 @@ const isVideoType = computed(() => currentMedia.value?.type === 'video')
 // 音频播放相关状态
 const audioRef = ref<HTMLAudioElement>()
 const videoPlayerRef = ref()
+const simplePlayerRef = ref()
 const isPlaying = ref(false)
 const duration = ref(100) // 设置默认duration以便测试滑块
 const currentTime = ref(0)
 const progressValue = ref(0)
 const volume = ref(80)
+
+// 播放器类型选择
+const audioPlayerType = ref('simple') // 默认使用独立播放器
 
 // 使用音频波形功能
 const { waveformData, isAnalyzingWaveform, generateWaveform } = useAudioWaveform()
@@ -491,6 +498,42 @@ onMounted(() => {
   })
 })
 
+// 独立播放器事件处理
+const handleSimplePlayerTimeUpdate = (time: number) => {
+  // 同步时间到父组件
+  emit('timeUpdate', time)
+}
+
+const handleSimplePlayerSeek = (time: number) => {
+  // 处理独立播放器的跳转事件
+  emit('timeUpdate', time)
+}
+
+// 增强的seekToSegmentStart函数，支持两种播放器
+const seekToSegmentStart = (segment: Segment) => {
+  const startTimeInSeconds = parseTimeToSeconds(segment.start_time)
+  console.log(`跳转到段落 ${segment.index} 开始时间: ${startTimeInSeconds}秒`)
+
+  // 如果是视频类型，更新视频位置
+  if (isVideoType.value && videoPlayerRef.value?.seekTo) {
+    videoPlayerRef.value.seekTo(startTimeInSeconds)
+  }
+  // 如果是音频类型
+  else if (!isVideoType.value) {
+    if (audioPlayerType.value === 'simple' && simplePlayerRef.value) {
+      // 使用独立播放器跳转
+      simplePlayerRef.value.seekTo(startTimeInSeconds)
+    } else if (audioRef.value && !isNaN(startTimeInSeconds)) {
+      // 使用原版播放器跳转
+      audioRef.value.currentTime = startTimeInSeconds
+      currentTime.value = startTimeInSeconds
+    }
+  }
+
+  // 触发时间更新事件
+  emit('timeUpdate', startTimeInSeconds)
+}
+
 // 暴露方法给父组件
 defineExpose({
   seekToSegmentStart
@@ -572,12 +615,30 @@ defineExpose({
   flex-direction: column;
 }
 
-.simple-audio-player {
+/* 播放器选择器 */
+.player-selector {
+  margin-bottom: 12px;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  text-align: center;
+}
+
+/* 原版播放器容器 */
+.original-audio-player {
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding: 16px;
   background: white;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+}
+
+/* 独立播放器容器 */
+.simple-audio-player-wrapper {
+  padding: 8px;
+  background: #fafbfc;
   border-radius: 8px;
   border: 1px solid #e4e7ed;
 }

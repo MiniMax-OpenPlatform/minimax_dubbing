@@ -7,7 +7,8 @@ import SystemSettings from './components/SystemSettings.vue'
 import UserSettings from './components/UserSettings.vue'
 import VoiceManagement from './components/voice/VoiceManagement.vue'
 import VoiceCloning from './components/voice/VoiceCloning.vue'
-import { Document, Setting, SwitchButton, User, ArrowDown, Microphone, MagicStick } from '@element-plus/icons-vue'
+import AudioPlayerTest from './components/audio/AudioPlayerTest.vue'
+import { Document, Setting, SwitchButton, User, ArrowDown, Microphone, MagicStick, VideoPlay } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/auth'
 import { logger } from './utils/logger'
 
@@ -46,6 +47,7 @@ const navigateTo = (view: string) => {
     'projects': '项目管理',
     'voices': '音色管理',
     'voice-cloning': '音色克隆',
+    'audio-test': '音频播放器测试',
     'settings': '系统设置',
     'user-settings': '账户设置'
   }
@@ -104,6 +106,11 @@ onMounted(async () => {
           <el-menu-item index="voice-cloning" style="color: white;">
             <el-icon><MagicStick /></el-icon>
             <span>音色克隆</span>
+          </el-menu-item>
+
+          <el-menu-item index="audio-test" style="color: white;">
+            <el-icon><VideoPlay /></el-icon>
+            <span>音频测试</span>
           </el-menu-item>
 
           <el-menu-item index="settings" style="color: white;">
@@ -170,6 +177,9 @@ onMounted(async () => {
 
         <!-- 音色克隆页面 -->
         <VoiceCloning v-if="currentView === 'voice-cloning'" />
+
+        <!-- 音频播放器测试页面 -->
+        <AudioPlayerTest v-if="currentView === 'audio-test'" />
 
         <!-- 账户设置页面 -->
         <UserSettings v-if="currentView === 'user-settings'" @logout="logout" />
