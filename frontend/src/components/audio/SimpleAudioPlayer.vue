@@ -207,9 +207,12 @@ const onWaveformSeek = (time: number) => {
 
 // 监听音频URL变化
 watch(() => props.audioUrl, (newUrl, oldUrl) => {
+  console.log(`[SimpleAudioPlayer] audioUrl变化: ${oldUrl} -> ${newUrl}`)
+
   if (newUrl && newUrl !== '') {
     // 只有URL真正变化时才重置状态
     if (newUrl !== oldUrl) {
+      console.log(`[SimpleAudioPlayer] URL真正变化，重置状态`)
       // 重置状态
       isPlaying.value = false
       isLoaded.value = false
@@ -223,8 +226,11 @@ watch(() => props.audioUrl, (newUrl, oldUrl) => {
           audioRef.value.load()
         }
       })
+    } else {
+      console.log(`[SimpleAudioPlayer] URL相同，跳过重置`)
     }
   } else {
+    console.log(`[SimpleAudioPlayer] 清空音频`)
     // 清空音频
     isPlaying.value = false
     isLoaded.value = false
@@ -238,18 +244,31 @@ watch(() => props.audioUrl, (newUrl, oldUrl) => {
 // 暴露方法给父组件
 defineExpose({
   seekTo: (time: number) => {
+    console.log(`[SimpleAudioPlayer] seekTo被调用: ${time}秒`)
+    console.log(`[SimpleAudioPlayer] 音频状态: isLoaded=${isLoaded.value}, duration=${totalDuration.value}`)
+
     if (audioRef.value && isLoaded.value) {
-      console.log('跳转到时间:', time, '(不自动播放)')
+      console.log(`[SimpleAudioPlayer] 执行跳转到时间: ${time}秒`)
+      // 临时停止时间监听，防止重复触发
+      isUserSeeking.value = true
+
       // 设置音频位置但不播放
       audioRef.value.currentTime = time
       currentTime.value = time
       sliderValue.value = time
+
       // 发出跳转事件
       emit('seek', time)
       emit('time-update', time)
-      // 不调用play()，让用户手动控制播放
+
+      // 短暂延迟后恢复时间更新
+      setTimeout(() => {
+        isUserSeeking.value = false
+      }, 200)
+
+      console.log(`[SimpleAudioPlayer] 跳转完成，当前时间: ${audioRef.value.currentTime}`)
     } else {
-      console.log('音频未加载，无法跳转到:', time)
+      console.warn(`[SimpleAudioPlayer] 音频未加载，无法跳转到: ${time}秒`)
     }
   },
   getCurrentTime: () => currentTime.value,
