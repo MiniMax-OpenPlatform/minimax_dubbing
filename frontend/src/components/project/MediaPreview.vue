@@ -50,70 +50,14 @@
       <!-- 音频播放器 -->
       <div v-else class="audio-container">
         <div v-if="currentMediaUrl" class="audio-player-wrapper">
-          <!-- 播放器切换选项 -->
-          <div class="player-selector">
-            <el-radio-group v-model="audioPlayerType" size="small">
-              <el-radio-button label="original">原版播放器</el-radio-button>
-              <el-radio-button label="simple">独立播放器</el-radio-button>
-            </el-radio-group>
-          </div>
-
-          <!-- 原版音频播放器 -->
-          <div v-if="audioPlayerType === 'original'" class="original-audio-player">
-            <!-- 音频播放控制器 -->
-            <AudioController
-              :is-playing="isPlaying"
-              :has-audio="!!currentMediaUrl"
-              :current-time="currentTime"
-              :duration="duration"
-              :volume="volume"
-              @toggle-play="togglePlay"
-              @stop="stopAudio"
-              @volume-change="updateVolume"
-            />
-
-            <!-- 波形显示 -->
-            <WaveformDisplay
-              :waveform-data="waveformData"
-              :current-time="currentTime"
-              :duration="duration"
-              :color="'#409eff'"
-              :is-analyzing="isAnalyzingWaveform"
-              @seek-to-position="seekToPosition"
-            />
-
-            <!-- 进度条 -->
-            <ProgressBar
-              :current-time="currentTime"
-              :duration="duration"
-              @seek-to="seekTo"
-              @progress-input="onProgressInput"
-            />
-
-            <!-- 隐藏的音频元素 -->
-            <audio
-              ref="audioRef"
-              :src="currentMediaUrl"
-              preload="metadata"
-              @loadedmetadata="onAudioLoaded"
-              @timeupdate="onTimeUpdate"
-              @ended="onAudioEnded"
-              @loadstart="onLoadStart"
-              @canplay="onCanPlay"
-              @error="onAudioError"
-            ></audio>
-          </div>
-
           <!-- 独立音频播放器 -->
-          <div v-else-if="audioPlayerType === 'simple'" class="simple-audio-player-wrapper">
-            <SimpleAudioPlayer
-              ref="simplePlayerRef"
-              :audio-url="currentMediaUrl"
-              :show-status="true"
-              @time-update="handleSimplePlayerTimeUpdate"
-              @seek="handleSimplePlayerSeek"
-            />
-          </div>
+          <SimpleAudioPlayer
+            ref="simplePlayerRef"
+            :audio-url="currentMediaUrl"
+            :show-status="true"
+            @time-update="handleSimplePlayerTimeUpdate"
+            @seek="handleSimplePlayerSeek"
+          />
         </div>
         <div v-else class="media-placeholder">
           <el-icon><Microphone /></el-icon>
@@ -129,11 +73,7 @@ import { computed, ref, watchEffect, nextTick, onMounted } from 'vue'
 import { VideoCamera, Microphone, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import VideoPlayer from '../VideoPlayer.vue'
-import AudioController from '../audio/AudioController.vue'
-import WaveformDisplay from '../audio/WaveformDisplay.vue'
-import ProgressBar from '../audio/ProgressBar.vue'
 import SimpleAudioPlayer from '../audio/SimpleAudioPlayer.vue'
-import { useAudioWaveform } from '../../composables/useAudioWaveform'
 
 // 动态获取后端基础URL用于媒体文件
 const getBackendBaseUrl = () => {
@@ -311,20 +251,9 @@ const currentMediaUrl = computed(() => currentMedia.value?.url || null)
 const isVideoType = computed(() => currentMedia.value?.type === 'video')
 
 // 音频播放相关状态
-const audioRef = ref<HTMLAudioElement>()
 const videoPlayerRef = ref()
 const simplePlayerRef = ref()
-const isPlaying = ref(false)
-const duration = ref(100) // 设置默认duration以便测试滑块
 const currentTime = ref(0)
-const progressValue = ref(0)
-const volume = ref(80)
-
-// 播放器类型选择
-const audioPlayerType = ref('simple') // 默认使用独立播放器
-
-// 使用音频波形功能
-const { waveformData, isAnalyzingWaveform, generateWaveform } = useAudioWaveform()
 
 // 计算翻译后的段落数据
 const translatedSegments = computed(() => {
@@ -354,106 +283,6 @@ const downloadMedia = () => {
   }
 }
 
-// 音频播放相关函数
-const onAudioLoaded = async () => {
-  if (audioRef.value) {
-    duration.value = audioRef.value.duration
-    audioRef.value.volume = volume.value / 100
-    await generateWaveform(currentMediaUrl.value)
-  }
-}
-
-const onTimeUpdate = () => {
-  if (audioRef.value) {
-    currentTime.value = audioRef.value.currentTime
-    progressValue.value = currentTime.value
-    emit('timeUpdate', currentTime.value)
-  }
-}
-
-const onAudioEnded = () => {
-  isPlaying.value = false
-  currentTime.value = 0
-  progressValue.value = 0
-}
-
-const onLoadStart = () => {
-  // Audio loading started
-}
-
-const onCanPlay = () => {
-  if (audioRef.value && duration.value === 0) {
-    duration.value = audioRef.value.duration
-    generateWaveform(currentMediaUrl.value)
-  }
-}
-
-const onAudioError = (event: Event) => {
-  console.error('[MediaPreview] 音频加载错误:', event, currentMediaUrl.value)
-  ElMessage.error('音频加载失败')
-}
-
-const togglePlay = () => {
-  if (!audioRef.value) return
-
-  if (isPlaying.value) {
-    audioRef.value.pause()
-  } else {
-    audioRef.value.play()
-  }
-  isPlaying.value = !isPlaying.value
-}
-
-const stopAudio = () => {
-  if (!audioRef.value) return
-
-  audioRef.value.pause()
-  audioRef.value.currentTime = 0
-  isPlaying.value = false
-  currentTime.value = 0
-  progressValue.value = 0
-}
-
-const seekTo = (time: number) => {
-  console.log('seekTo called with:', time)
-  if (audioRef.value) {
-    audioRef.value.currentTime = time
-    currentTime.value = time
-  } else {
-    // 即使没有音频，也更新时间用于测试
-    currentTime.value = time
-  }
-}
-
-const onProgressInput = (value: number) => {
-  console.log('onProgressInput called with:', value)
-  // 拖拽时也更新音频位置
-  if (audioRef.value && !isNaN(value)) {
-    audioRef.value.currentTime = value
-    currentTime.value = value
-  } else if (!isNaN(value)) {
-    // 即使没有音频，也更新时间用于测试
-    currentTime.value = value
-  }
-}
-
-const seekToPosition = (event: MouseEvent) => {
-  if (!audioRef.value) return
-
-  const target = event.currentTarget as HTMLElement
-  const rect = target.getBoundingClientRect()
-  const x = event.clientX - rect.left
-  const percentage = x / rect.width
-  const time = percentage * duration.value
-
-  seekTo(time)
-}
-
-const updateVolume = (value: number) => {
-  if (audioRef.value) {
-    audioRef.value.volume = value / 100
-  }
-}
 
 const getCurrentMediaLabel = () => {
   return currentMedia.value?.label || '未知媒体'
@@ -510,7 +339,7 @@ const handleSimplePlayerSeek = (time: number) => {
 }
 
 
-// 增强的seekToSegmentStart函数，支持两种播放器
+// 段落跳转函数
 const seekToSegmentStart = (segment: Segment) => {
   const startTimeInSeconds = parseTimeToSeconds(segment.start_time)
   console.log(`跳转到段落 ${segment.index} 开始时间: ${startTimeInSeconds}秒`)
@@ -519,16 +348,9 @@ const seekToSegmentStart = (segment: Segment) => {
   if (isVideoType.value && videoPlayerRef.value?.seekTo) {
     videoPlayerRef.value.seekTo(startTimeInSeconds)
   }
-  // 如果是音频类型
-  else if (!isVideoType.value) {
-    if (audioPlayerType.value === 'simple' && simplePlayerRef.value) {
-      // 使用独立播放器跳转
-      simplePlayerRef.value.seekTo(startTimeInSeconds)
-    } else if (audioRef.value && !isNaN(startTimeInSeconds)) {
-      // 使用原版播放器跳转
-      audioRef.value.currentTime = startTimeInSeconds
-      currentTime.value = startTimeInSeconds
-    }
+  // 如果是音频类型，使用独立播放器跳转
+  else if (!isVideoType.value && simplePlayerRef.value) {
+    simplePlayerRef.value.seekTo(startTimeInSeconds)
   }
 
   // 触发时间更新事件
@@ -616,28 +438,8 @@ defineExpose({
   flex-direction: column;
 }
 
-/* 播放器选择器 */
-.player-selector {
-  margin-bottom: 12px;
-  padding: 8px;
-  background: #f8f9fa;
-  border-radius: 6px;
-  text-align: center;
-}
-
-/* 原版播放器容器 */
-.original-audio-player {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 16px;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #e4e7ed;
-}
-
-/* 独立播放器容器 */
-.simple-audio-player-wrapper {
+/* 音频播放器容器 */
+.audio-player-wrapper {
   padding: 8px;
   background: #fafbfc;
   border-radius: 8px;
