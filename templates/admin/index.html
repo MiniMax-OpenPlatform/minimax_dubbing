@@ -1,0 +1,286 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">{{ site_header|default:_('Django administration') }}</a>
+</h1>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{% block content %}
+<style>
+.dashboard-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.stat-card {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat-card h3 {
+    margin: 0 0 15px 0;
+    color: #495057;
+    font-size: 18px;
+    border-bottom: 2px solid #007cba;
+    padding-bottom: 5px;
+}
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: white;
+    border-radius: 4px;
+    border-left: 4px solid #007cba;
+}
+
+.stat-value {
+    font-weight: bold;
+    color: #007cba;
+    font-size: 18px;
+}
+
+.stat-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.stat-list-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: white;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    border-left: 3px solid #28a745;
+}
+
+.progress-bar {
+    width: 100%;
+    background: #e9ecef;
+    border-radius: 10px;
+    overflow: hidden;
+    height: 20px;
+    margin: 5px 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #007cba, #28a745);
+    transition: width 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+</style>
+
+<div class="dashboard">
+    <h2>{{ title }}</h2>
+
+    <!-- 统计卡片 -->
+    <div class="dashboard-stats">
+        <!-- 用户统计 -->
+        <div class="stat-card">
+            <h3>👥 用户统计</h3>
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <span>总用户数</span>
+                    <span class="stat-value">{{ user_stats.total_users }}</span>
+                </div>
+                <div class="stat-item">
+                    <span>活跃用户</span>
+                    <span class="stat-value">{{ user_stats.active_users }}</span>
+                </div>
+                <div class="stat-item">
+                    <span>管理员</span>
+                    <span class="stat-value">{{ user_stats.staff_users }}</span>
+                </div>
+                <div class="stat-item">
+                    <span>超级用户</span>
+                    <span class="stat-value">{{ user_stats.superusers }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 项目统计 -->
+        <div class="stat-card">
+            <h3>📁 项目统计</h3>
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <span>总项目数</span>
+                    <span class="stat-value">{{ project_stats.total_projects }}</span>
+                </div>
+                <div class="stat-item">
+                    <span>待处理</span>
+                    <span class="stat-value" style="color: #ffc107;">{{ project_stats.pending_projects }}</span>
+                </div>
+                <div class="stat-item">
+                    <span>处理中</span>
+                    <span class="stat-value" style="color: #17a2b8;">{{ project_stats.processing_projects }}</span>
+                </div>
+                <div class="stat-item">
+                    <span>已完成</span>
+                    <span class="stat-value" style="color: #28a745;">{{ project_stats.completed_projects }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 段落统计 -->
+        <div class="stat-card">
+            <h3>📝 段落统计</h3>
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <span>总段落数</span>
+                    <span class="stat-value">{{ segment_stats.total_segments }}</span>
+                </div>
+                <div class="stat-item">
+                    <span>待处理</span>
+                    <span class="stat-value" style="color: #6c757d;">{{ segment_stats.pending_segments }}</span>
+                </div>
+                <div class="stat-item">
+                    <span>已翻译</span>
+                    <span class="stat-value" style="color: #17a2b8;">{{ segment_stats.translated_segments }}</span>
+                </div>
+                <div class="stat-item">
+                    <span>已完成</span>
+                    <span class="stat-value" style="color: #28a745;">{{ segment_stats.completed_segments }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 活跃用户 -->
+        <div class="stat-card">
+            <h3>🏆 活跃用户</h3>
+            <div class="stat-list">
+                {% for user in active_users_with_projects %}
+                <div class="stat-list-item">
+                    <span>
+                        <a href="/admin/authentication/user/{{ user.id }}/change/" style="text-decoration: none; color: #007cba;">
+                            {{ user.username }}
+                        </a>
+                    </span>
+                    <span class="stat-value">{{ user.project_count }} 个项目</span>
+                </div>
+                {% empty %}
+                <div class="stat-list-item">
+                    <span>暂无活跃用户</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 语言对统计 -->
+        <div class="stat-card">
+            <h3>🌍 热门语言对</h3>
+            <div class="stat-list">
+                {% for lang in language_stats %}
+                <div class="stat-list-item">
+                    <span>{{ lang.source_lang }} → {{ lang.target_lang }}</span>
+                    <span class="stat-value">{{ lang.count }} 个项目</span>
+                </div>
+                {% empty %}
+                <div class="stat-list-item">
+                    <span>暂无数据</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 最新项目 -->
+        <div class="stat-card">
+            <h3>🕒 最新项目</h3>
+            <div class="stat-list">
+                {% for project in recent_projects %}
+                <div class="stat-list-item">
+                    <span>
+                        <a href="/admin/projects/project/{{ project.id }}/change/" style="text-decoration: none; color: #007cba;">
+                            {{ project.name|truncatechars:20 }}
+                        </a>
+                        <small style="color: #6c757d; display: block;">by {{ project.user.username }}</small>
+                    </span>
+                    <span>
+                        {% if project.progress_percentage %}
+                        <div class="progress-bar" style="width: 80px; height: 15px;">
+                            <div class="progress-fill" style="width: {{ project.progress_percentage }}%; font-size: 10px;">
+                                {{ project.progress_percentage }}%
+                            </div>
+                        </div>
+                        {% else %}
+                        <span class="stat-value" style="font-size: 12px; color: #6c757d;">0%</span>
+                        {% endif %}
+                    </span>
+                </div>
+                {% empty %}
+                <div class="stat-list-item">
+                    <span>暂无项目</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 原始应用列表 -->
+    <div style="margin-top: 40px;">
+        <h3>📋 应用管理</h3>
+        {% if app_list %}
+            {% for app in app_list %}
+                <div class="app-{{ app.app_label }} module">
+                    <table>
+                        <caption>
+                            <a href="{{ app.app_url }}" class="section" title="{% blocktranslate with name=app.name %}Models in the {{ name }} application{% endblocktranslate %}">{{ app.name }}</a>
+                        </caption>
+                        {% for model in app.models %}
+                            <tr class="model-{{ model.object_name|lower }}">
+                                {% if model.admin_url %}
+                                    <th scope="row"><a href="{{ model.admin_url }}">{{ model.name }}</a></th>
+                                {% else %}
+                                    <th scope="row">{{ model.name }}</th>
+                                {% endif %}
+
+                                {% if model.add_url %}
+                                    <td><a href="{{ model.add_url }}" class="addlink">{% translate 'Add' %}</a></td>
+                                {% else %}
+                                    <td>&nbsp;</td>
+                                {% endif %}
+
+                                {% if model.admin_url %}
+                                    {% if model.view_only %}
+                                        <td><a href="{{ model.admin_url }}" class="viewlink">{% translate 'View' %}</a></td>
+                                    {% else %}
+                                        <td><a href="{{ model.admin_url }}" class="changelink">{% translate 'Change' %}</a></td>
+                                    {% endif %}
+                                {% else %}
+                                    <td>&nbsp;</td>
+                                {% endif %}
+                            </tr>
+                        {% endfor %}
+                    </table>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>{% translate "You don't have permission to view or edit anything." %}</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

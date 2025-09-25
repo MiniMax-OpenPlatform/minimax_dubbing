@@ -8,6 +8,18 @@ A Vue 3 + Django translation management system with inline editing capabilities 
 
 ## 🚀 Development Commands
 
+### ⚡ Quick Setup (一键初始化)
+```bash
+# 快速初始化整个系统
+./init.sh
+
+# 或者手动初始化
+python manage.py init_system
+
+# 或者更细粒度的控制
+python manage.py init_admin --username admin --password admin123
+```
+
 ### Backend (Django)
 ```bash
 # Install dependencies
@@ -16,7 +28,11 @@ pip install -r requirements.txt
 # Database operations
 python manage.py migrate
 python manage.py makemigrations
-python manage.py createsuperuser
+
+# System initialization
+python manage.py init_system                    # 完整系统初始化
+python manage.py init_admin                     # 仅创建管理员账号
+python manage.py init_admin --force             # 强制重新创建管理员
 
 # Development server
 python manage.py runserver 0.0.0.0:5172

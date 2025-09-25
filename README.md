@@ -1,6 +1,13 @@
 # MiniMax Translation
 
-A Vue 3 + Django translation management system with inline editing capabilities and AI-powered features.
+> 🚀 基于Vue 3 + Django的AI视频翻译管理系统
+
+一个专业的视频翻译管理平台，集成MiniMax AI API，支持批量翻译、TTS语音合成、在线编辑等功能。
+
+![Python](https://img.shields.io/badge/Python-3.10+-blue)
+![Vue](https://img.shields.io/badge/Vue-3.0+-green)
+![Django](https://img.shields.io/badge/Django-5.2+-orange)
+![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
 ## ✨ Features
 
