@@ -3,11 +3,10 @@ import { ref, onMounted } from 'vue'
 import LoginForm from './components/auth/LoginForm.vue'
 import ProjectList from './components/ProjectList.vue'
 import ProjectDetailContainer from './components/project/ProjectDetailContainer.vue'
-import SystemSettings from './components/SystemSettings.vue'
 import UserSettings from './components/UserSettings.vue'
 import VoiceManagement from './components/voice/VoiceManagement.vue'
 import VoiceCloning from './components/voice/VoiceCloning.vue'
-import { Document, Setting, SwitchButton, User, ArrowDown, Microphone, MagicStick, VideoPlay } from '@element-plus/icons-vue'
+import { Document, SwitchButton, User, ArrowDown, Microphone, MagicStick, VideoPlay } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/auth'
 import { logger } from './utils/logger'
 
@@ -46,7 +45,6 @@ const navigateTo = (view: string) => {
     'projects': '项目管理',
     'voices': '音色管理',
     'voice-cloning': '音色克隆',
-    'settings': '系统设置',
     'user-settings': '账户设置'
   }
   logger.addLog('info', `导航到: ${viewNames[view] || view}`, 'Navigation')
@@ -107,10 +105,6 @@ onMounted(async () => {
           </el-menu-item>
 
 
-          <el-menu-item index="settings" style="color: white;">
-            <el-icon><Setting /></el-icon>
-            <span>系统设置</span>
-          </el-menu-item>
         </el-menu>
 
         <!-- 右侧操作按钮 -->
@@ -176,8 +170,6 @@ onMounted(async () => {
         <!-- 账户设置页面 -->
         <UserSettings v-if="currentView === 'user-settings'" @logout="logout" />
 
-        <!-- 系统设置页面 -->
-        <SystemSettings v-if="currentView === 'settings'" @logout="logout" />
       </div>
     </el-main>
   </el-container>
