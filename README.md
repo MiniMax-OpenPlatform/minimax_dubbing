@@ -111,6 +111,38 @@ cd frontend && npm run dev
 pkill -f "python3 manage.py runserver"
 ```
 
+#### 方法3: Screen 会话 (生产环境推荐)
+
+使用screen可以防止SSH断开导致的服务停止：
+
+```bash
+# 安装screen (如果没有)
+sudo apt install screen  # Ubuntu/Debian
+
+# 启动后端会话
+screen -S backend
+cd minimax_translation
+python3 manage.py runserver 0.0.0.0:5172
+# 按 Ctrl+A 然后按 D 退出screen
+
+# 启动前端会话
+screen -S frontend
+cd minimax_translation/frontend
+npm run dev
+# 按 Ctrl+A 然后按 D 退出screen
+
+# 查看所有会话
+screen -ls
+
+# 重新连接会话
+screen -r backend   # 连接后端
+screen -r frontend  # 连接前端
+
+# 停止会话
+screen -S backend -X quit
+screen -S frontend -X quit
+```
+
 **访问地址 🎉**
 - **前端应用**: http://localhost:5173/ (本地) 或 http://YOUR_IP:5173/ (外部)
 - **后端API**: http://localhost:5172/api/ (本地) 或 http://YOUR_IP:5172/api/ (外部)
