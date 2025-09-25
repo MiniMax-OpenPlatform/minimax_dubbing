@@ -1,141 +1,230 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # minimax_translation
 
-A Vue 3 + Django translation management system with inline editing capabilities.
+A Vue 3 + Django translation management system with inline editing capabilities and AI-powered features for video/audio translation.
 
-## 🚀 项目启动指南
+## 🚀 Development Commands
 
-### ⚡ 快速启动 (2分钟)
+### Backend (Django)
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Database operations
+python manage.py migrate
+python manage.py makemigrations
+python manage.py createsuperuser
+
+# Development server
+python manage.py runserver 0.0.0.0:5172
+
+# Testing
+python manage.py test
+python manage.py test app_name  # Test specific app
+python manage.py test app_name.tests.TestClassName  # Test specific class
+
+# Database shell
+python manage.py shell
+python manage.py dbshell
+```
+
+### Frontend (Vue 3 + Vite)
+```bash
+# Install dependencies
+cd frontend && npm install
+
+# Development server
+npm run dev  # Runs on port 5173
+
+# Build for production
+npm run build
+
+# Type checking
+vue-tsc -b
+
+# Preview production build
+npm run preview
+```
+
+### Required Dual Server Setup
+**Critical**: Both backend (port 5172) and frontend (port 5173) must run simultaneously for the application to work.
 
 ```bash
-# 1. 安装依赖
-pip install -r requirements.txt
-cd frontend && npm install && cd ..
-
-# 2. 初始化数据库
-python manage.py migrate
-
-# 3. 启动服务 (两个终端)
+# Terminal 1 - Backend
 python manage.py runserver 0.0.0.0:5172
+
+# Terminal 2 - Frontend
 cd frontend && npm run dev
 ```
 
-**访问地址**:
-- 前端: `http://localhost:5173/` (本地) 或 `http://YOUR_IP:5173/` (外部)
-- 后端: `http://localhost:5172/` (本地) 或 `http://YOUR_IP:5172/` (外部)
+## 🏗️ Architecture Overview
 
-> 💡 外部访问：将 YOUR_IP 替换为实际IP地址
+### Technology Stack
+- **Frontend**: Vue 3 + TypeScript + Element Plus + Vite + Pinia
+- **Backend**: Django 5.2.6 + Django REST Framework
+- **Database**: SQLite (development) / PostgreSQL (production)
+- **AI Integration**: MiniMax API for translation and TTS
 
-### 环境要求
-- Python 3.10+
-- Node.js 16+
-- npm 或 yarn
+### Application Structure
+```
+/
+├── backend/                    # Django settings and core configuration
+├── authentication/             # Custom user auth with API key system
+├── projects/                   # Project management (main entity)
+├── segments/                   # Translation segments with timestamps
+├── services/                   # Business logic and AI integrations
+│   ├── algorithms/             # Timestamp alignment algorithms
+│   ├── business/               # Core business services
+│   ├── clients/                # External API clients (MiniMax)
+│   └── parsers/                # SRT/subtitle file parsers
+├── system_monitor/             # Background task monitoring
+├── logs/                       # Centralized logging system
+├── voices/                     # Voice management for TTS
+├── voice_cloning/              # Voice cloning features
+└── frontend/src/
+    ├── components/
+    │   ├── editor/             # Inline editing components
+    │   ├── audio/              # Audio playback and visualization
+    │   ├── project/            # Project management UI
+    │   └── voice/              # Voice/speaker management
+    ├── composables/            # Vue 3 composition functions
+    │   ├── useInlineEditor.ts  # Core editing logic with debounced saves
+    │   ├── useSegmentSelection.ts  # Multi-select operations
+    │   ├── useSegmentValidation.ts # Real-time validation
+    │   └── useSegmentBatch.ts  # Batch operations (translate/TTS)
+    ├── stores/                 # Pinia state management
+    └── utils/                  # Shared utilities
+```
 
-### 详细启动步骤
+### Key Design Patterns
 
-<details>
-<summary>展开查看详细步骤</summary>
+#### Backend Architecture
+- **Django Apps**: Modular design with separate apps for authentication, projects, segments, services
+- **Custom Authentication**: API key-based auth via `X-API-KEY` header
+- **Service Layer**: Business logic separated into `services/` with algorithm and client abstractions
+- **Nested REST Routes**: Projects contain segments via DRF nested routers
 
-#### 1. 启动后端 Django 服务器
+#### Frontend Architecture
+- **Composition API**: All Vue 3 components use `<script setup>` with TypeScript
+- **Composables Pattern**: Business logic extracted into reusable composables
+- **Inline Editing**: Direct table editing with 800ms debounced auto-save
+- **Batch Operations**: Progress-tracked bulk operations for translation and TTS
 
+## 🔧 Core Features & Workflows
+
+### Translation Workflow
+1. **Project Creation**: Upload SRT file or create empty project
+2. **Speaker Configuration**: Map speakers to voice models
+3. **Auto Speaker Assignment**: LLM-based speaker detection
+4. **Batch Translation**: AI-powered bulk translation with progress tracking
+5. **TTS Generation**: Convert translated text to speech
+6. **Audio Concatenation**: Merge segment audio into complete tracks
+
+### Key Business Logic
+- **Timestamp Alignment**: Smart timestamp optimization for natural speech flow
+- **Debounced Saves**: 800ms auto-save prevents excessive API calls
+- **Progress Monitoring**: Real-time batch operation tracking
+- **Voice Mapping**: Different TTS voices per speaker
+- **Segment Validation**: Real-time field validation with error feedback
+
+## 📝 Configuration & Environment
+
+### Critical Settings
+- **Frontend Port**: 5173 (fixed, do not change)
+- **Backend Port**: 5172 (fixed, do not change)
+- **CORS Configuration**: Allows all origins in DEBUG mode
+- **Custom User Model**: `authentication.User` with group-based access
+- **API Authentication**: `GroupIDKeyAuthentication` class
+- **Time Zone**: Asia/Shanghai
+
+### Environment Variables
+```env
+DEBUG=True
+SECRET_KEY=django-insecure-key-for-dev
+ALLOWED_HOSTS=*
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+MINIMAX_API_KEY=your-api-key
+MINIMAX_GROUP_ID=your-group-id
+```
+
+### API Configuration
+- **Base URL**: `http://localhost:5172/api/`
+- **Authentication**: Header `X-API-KEY: your-key`
+- **Pagination**: 20 items per page
+- **CORS**: Full cross-origin support enabled
+
+## 🧪 Testing Strategy
+
+### Backend Testing
 ```bash
-# 在项目根目录
-cd /home/Devin/minimax_translation
+# Run all tests
+python manage.py test
 
-# 启动Django开发服务器
-python3 manage.py runserver 0.0.0.0:5172
+# Test specific apps
+python manage.py test authentication
+python manage.py test projects
+python manage.py test segments
+python manage.py test services
+
+# Test with verbose output
+python manage.py test --verbosity=2
 ```
 
-**后端地址**: `http://localhost:5172/` (本地) 或 `http://YOUR_IP:5172/` (外部)
+### Test Files Location
+- `authentication/tests.py`
+- `projects/tests.py`
+- `segments/tests.py`
+- `services/tests.py`
+- `system_monitor/tests.py`
+- `voices/tests.py`
 
-#### 2. 启动前端 Vue 应用
-
+### Frontend Testing
 ```bash
-# 在新的终端窗口
-cd /home/Devin/minimax_translation/frontend
-
-# 启动前端开发服务器
-npm run dev
+cd frontend
+npm run test  # If test scripts are configured
 ```
 
-**前端地址**: `http://localhost:5173/` (本地) 或 `http://YOUR_IP:5173/` (外部)
+## 🔍 Development Guidelines
 
-</details>
+### Vue 3 Best Practices
+- Use TypeScript for all components and composables
+- Prefer `<script setup>` syntax with Composition API
+- Extract business logic into composables for reusability
+- Use Pinia for state management
+- Follow Element Plus component patterns
 
-### 3. 查看实时日志
+### Django Best Practices
+- RESTful API design with DRF
+- Custom authentication via API keys
+- Modular app structure
+- Service layer pattern for business logic
+- Comprehensive logging configuration
 
-Django服务器的实时日志会显示在运行后端的终端中，包括：
-- API请求详情
-- 用户认证状态
-- 数据库操作
-- 错误信息
+### File Editing Conventions
+- **Vue Components**: Use `<script setup lang="ts">` with TypeScript
+- **Django Models**: Follow existing field naming conventions
+- **API Endpoints**: Use DRF ViewSets with proper serializers
+- **Composables**: Export typed functions with clear interfaces
 
-## 🏗️ 项目架构
+## 🚨 Important Notes
 
-### 技术栈
-- **前端**: Vue 3 + TypeScript + Element Plus + Vite
-- **后端**: Django 5.2.6 + Django REST Framework
-- **数据库**: SQLite (开发环境)
+1. **Never change frontend port from 5173** - hardcoded in configurations
+2. **Always run both servers** - frontend depends on backend API
+3. **Use existing authentication patterns** - API key via headers
+4. **Follow existing component structure** - especially in `frontend/src/components/`
+5. **Maintain timestamp precision** - critical for audio synchronization
+6. **Respect debounce patterns** - prevent API rate limiting
+7. **Test batch operations thoroughly** - they involve external AI APIs
 
-### 前端架构
-```
-frontend/src/
-├── components/
-│   ├── editor/              # 编辑器组件
-│   │   ├── InlineEditTable.vue      # 行内编辑表格
-│   │   ├── SegmentInlineEditor.vue  # 段落编辑器容器
-│   │   └── EditorToolbar.vue        # 编辑工具栏
-│   ├── audio/               # 音频组件
-│   ├── project/             # 项目组件
-│   └── ...
-├── composables/             # Vue 3 组合式函数
-│   ├── useInlineEditor.ts   # 主编辑逻辑
-│   ├── useSegmentSelection.ts  # 选择管理
-│   ├── useSegmentValidation.ts # 验证系统
-│   └── useSegmentBatch.ts   # 批量操作
-└── utils/                   # 工具函数
-```
+## 🔐 Security Considerations
 
-### 后端架构
-```
-项目根目录/
-├── projects/                # 项目管理应用
-├── segments/                # 段落管理应用
-├── authentication/          # 认证系统
-├── logs/                    # 日志系统
-└── backend/                 # Django设置
-```
+- API keys stored in Django settings (development only)
+- CORS configured for development (allow all origins when DEBUG=True)
+- Custom authentication middleware for API access
+- No sensitive data in frontend code
+- All external API calls go through backend proxy
 
-## ✨ 核心功能
-
-### 前端编辑器 (已优化)
-- ✅ **行内编辑**: 直接在表格中编辑，无需弹窗
-- ✅ **防抖自动保存**: 800ms延迟自动保存
-- ✅ **实时验证**: 字段验证和错误提示
-- ✅ **批量操作**: 翻译、TTS、属性更新
-- ✅ **进度监控**: 批量操作进度显示
-- ✅ **键盘快捷键**: Ctrl+Enter保存等
-
-### API 端点
-- `/api/projects/` - 项目管理
-- `/api/projects/{id}/segments/` - 段落管理
-- `/api/auth/test-auth/` - 认证测试
-
-## 🔧 开发规范
-
-### Vue 3 组合式API
-- 使用 TypeScript 进行类型安全
-- 组件职责单一，避免巨石文件
-- 使用 composables 抽离业务逻辑
-
-### Django 开发
-- RESTful API 设计
-- 认证基于 API Key
-- CORS 配置支持前端跨域
-
-## 📝 配置信息
-
-- **前端端口**: 5173 (固定)
-- **后端端口**: 5172 (固定)
-- **API Base URL**: `http://10.11.17.19:5172/api/`
-- **CORS**: 已配置允许前端域名
-- 前端固定使用5173端口，不要改变
+This codebase implements a sophisticated translation management system with real-time editing, AI-powered batch operations, and comprehensive audio processing capabilities.

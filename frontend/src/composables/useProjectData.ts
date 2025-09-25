@@ -53,6 +53,29 @@ export function useProjectData(projectId: number) {
   const hasSegments = computed(() => segments.value.length > 0)
   const projectProgress = computed(() => project.value?.progress_percentage || 0)
 
+  // 格式化时间戳为显示格式
+  const formatTimestampForDisplay = (timestamp: number | string): string => {
+    if (!timestamp) return '00:00:00,000'
+
+    // 如果已经是字符串格式，直接返回
+    if (typeof timestamp === 'string' && /^\d{2}:\d{2}:\d{2},\d{3}$/.test(timestamp)) {
+      return timestamp
+    }
+
+    // 如果是数字（秒），转换为HH:MM:SS,mmm格式
+    const seconds = parseFloat(timestamp.toString())
+    if (!isNaN(seconds)) {
+      const hours = Math.floor(seconds / 3600)
+      const mins = Math.floor((seconds % 3600) / 60)
+      const secs = Math.floor(seconds % 60)
+      const milliseconds = Math.floor((seconds % 1) * 1000)
+
+      return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${milliseconds.toString().padStart(3, '0')}`
+    }
+
+    return '00:00:00,000'
+  }
+
   // 加载项目数据
   const loadProject = async () => {
     try {
@@ -84,7 +107,10 @@ export function useProjectData(projectId: number) {
       }
 
       segments.value = segmentData.map((segment: any) => ({
-        ...segment
+        ...segment,
+        // 初始化时间戳显示字段
+        _start_time_display: formatTimestampForDisplay(segment.start_time),
+        _end_time_display: formatTimestampForDisplay(segment.end_time)
       }))
       console.log('段落数据加载完成:', segmentData.length, '个段落')
       return segments.value

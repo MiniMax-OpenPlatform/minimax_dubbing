@@ -23,9 +23,10 @@
             <div class="time-input-row">
               <label>开始:</label>
               <el-input
-                :model-value="formatTimestamp(row.start_time)"
+                v-model="row._start_time_display"
                 size="small"
                 placeholder="HH:MM:SS,mmm"
+                @focus="initTimestampEdit(row, 'start_time')"
                 @blur="handleTimestampChange(row, 'start_time', $event.target.value)"
                 @keydown.enter="handleTimestampChange(row, 'start_time', $event.target.value)"
                 style="width: 95px;"
@@ -34,9 +35,10 @@
             <div class="time-input-row">
               <label>结束:</label>
               <el-input
-                :model-value="formatTimestamp(row.end_time)"
+                v-model="row._end_time_display"
                 size="small"
                 placeholder="HH:MM:SS,mmm"
+                @focus="initTimestampEdit(row, 'end_time')"
                 @blur="handleTimestampChange(row, 'end_time', $event.target.value)"
                 @keydown.enter="handleTimestampChange(row, 'end_time', $event.target.value)"
                 style="width: 95px;"
@@ -442,11 +444,11 @@ const handleTimestampChange = async (segment: Segment, field: string, value: str
     return
   }
 
-  // 转换为秒数存储（如果后端需要的话）
+  // 转换为秒数存储（后端需要数字格式）
   const totalSeconds = parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds) + parseInt(milliseconds) / 1000
 
-  // 调用通用保存方法，保存原始SRT格式
-  await handleFieldChange(segment, field, value)
+  // 调用通用保存方法，保存秒数格式
+  await handleFieldChange(segment, field, totalSeconds)
 }
 
 // 单个翻译
@@ -676,6 +678,17 @@ const getRowClassName = ({ row }: { row: Segment }) => {
   }
 
   return classes.join(' ')
+}
+
+// 初始化时间戳编辑状态
+const initTimestampEdit = (row: Segment, field: 'start_time' | 'end_time') => {
+  const displayField = `_${field}_display` as keyof Segment
+
+  // 如果还没有初始化显示值，则格式化原始值
+  if (!row[displayField]) {
+    const value = formatTimestamp(row[field] as string)
+    row[displayField] = value as any
+  }
 }
 </script>
 
