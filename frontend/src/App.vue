@@ -6,7 +6,7 @@ import ProjectDetailContainer from './components/project/ProjectDetailContainer.
 import UserSettings from './components/UserSettings.vue'
 import VoiceManagement from './components/voice/VoiceManagement.vue'
 import VoiceCloning from './components/voice/VoiceCloning.vue'
-import { Document, SwitchButton, User, ArrowDown, Microphone, MagicStick, VideoPlay } from '@element-plus/icons-vue'
+import { Document, Setting, SwitchButton, User, ArrowDown, Microphone, MagicStick, VideoPlay } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/auth'
 import { logger } from './utils/logger'
 
@@ -48,6 +48,15 @@ const navigateTo = (view: string) => {
     'user-settings': '账户设置'
   }
   logger.addLog('info', `导航到: ${viewNames[view] || view}`, 'Navigation')
+}
+
+const openAdminPage = () => {
+  // 打开Django后台管理页面
+  const protocol = window.location.protocol
+  const hostname = window.location.hostname
+  const adminUrl = `${protocol}//${hostname}:5172/admin/`
+  window.open(adminUrl, '_blank')
+  logger.addLog('info', '打开Django后台管理页面', 'Navigation')
 }
 
 onMounted(async () => {
@@ -109,6 +118,14 @@ onMounted(async () => {
           >
             <el-icon><MagicStick /></el-icon>
             <span>音色克隆</span>
+          </div>
+
+          <div
+            class="nav-item admin-link"
+            @click="openAdminPage"
+          >
+            <el-icon><Setting /></el-icon>
+            <span>后台管理</span>
           </div>
         </div>
 
@@ -232,6 +249,18 @@ onMounted(async () => {
 .nav-item span {
   font-size: 14px;
   font-weight: 500;
+}
+
+.nav-item.admin-link {
+  color: rgba(255, 255, 255, 0.8);
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  margin-left: 10px;
+  padding-left: 20px;
+}
+
+.nav-item.admin-link:hover {
+  color: #ff9500;
+  background-color: rgba(255, 149, 0, 0.1);
 }
 
 /* 主内容区域 */
