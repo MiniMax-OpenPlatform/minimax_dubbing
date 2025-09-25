@@ -83,29 +83,34 @@ onMounted(async () => {
         </div>
 
         <!-- 中间导航菜单 -->
-        <el-menu
-          :default-active="currentView"
-          mode="horizontal"
-          style="background-color: transparent; border-bottom: none; flex: 1; justify-content: center;"
-          @select="navigateTo"
-        >
-          <el-menu-item index="projects" style="color: white;">
+        <div class="nav-menu">
+          <div
+            class="nav-item"
+            :class="{ active: currentView === 'projects' }"
+            @click="navigateTo('projects')"
+          >
             <el-icon><Document /></el-icon>
             <span>项目管理</span>
-          </el-menu-item>
+          </div>
 
-          <el-menu-item index="voices" style="color: white;">
+          <div
+            class="nav-item"
+            :class="{ active: currentView === 'voices' }"
+            @click="navigateTo('voices')"
+          >
             <el-icon><Microphone /></el-icon>
             <span>音色管理</span>
-          </el-menu-item>
+          </div>
 
-          <el-menu-item index="voice-cloning" style="color: white;">
+          <div
+            class="nav-item"
+            :class="{ active: currentView === 'voice-cloning' }"
+            @click="navigateTo('voice-cloning')"
+          >
             <el-icon><MagicStick /></el-icon>
             <span>音色克隆</span>
-          </el-menu-item>
-
-
-        </el-menu>
+          </div>
+        </div>
 
         <!-- 右侧操作按钮 -->
         <div style="display: flex; align-items: center; gap: 12px;">
@@ -187,21 +192,46 @@ onMounted(async () => {
   align-items: center;
 }
 
-/* 顶部导航菜单样式 */
-.el-menu--horizontal .el-menu-item {
-  color: rgba(255, 255, 255, 0.65) !important;
-  border-bottom: 2px solid transparent !important;
+/* 自定义导航菜单样式 */
+.nav-menu {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex: 1;
+  justify-content: center;
 }
 
-.el-menu--horizontal .el-menu-item:hover {
-  color: #fff !important;
-  background-color: rgba(255, 255, 255, 0.1) !important;
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
 }
 
-.el-menu--horizontal .el-menu-item.is-active {
-  color: #1890ff !important;
-  border-bottom-color: #1890ff !important;
-  background-color: rgba(24, 144, 255, 0.1) !important;
+.nav-item:hover {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-item.active {
+  color: #1890ff;
+  border-bottom-color: #1890ff;
+  background-color: rgba(24, 144, 255, 0.1);
+}
+
+.nav-item .el-icon {
+  font-size: 16px;
+}
+
+.nav-item span {
+  font-size: 14px;
+  font-weight: 500;
 }
 
 /* 主内容区域 */
