@@ -215,7 +215,8 @@ onMounted(async () => {
   align-items: center;
   gap: 20px;
   flex: 1;
-  justify-content: center;
+  justify-content: flex-start;
+  margin-left: 40px;
 }
 
 .nav-item {
@@ -296,6 +297,8 @@ onMounted(async () => {
 .user-area {
   border-left: 1px solid rgba(255, 255, 255, 0.2);
   padding-left: 20px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 /* 用户操作按钮样式 */
