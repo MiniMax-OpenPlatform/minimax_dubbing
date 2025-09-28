@@ -97,6 +97,7 @@
       @close="showSettings = false"
       @save="saveProjectSettings"
     />
+
   </div>
 </template>
 
@@ -867,26 +868,41 @@ const handleUploadVideo = async (file: File) => {
     formData.append('video_file', file)
 
     const api = (await import('../../utils/api')).default
-    await api.post(`/projects/${props.projectId}/upload_video/`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
+    const loadingInstance = ElLoading.service({
+      lock: true,
+      text: '正在上传视频文件...',
+      background: 'rgba(0, 0, 0, 0.7)'
     })
 
-    ElMessage.success('视频文件上传成功')
+    try {
+      await api.post(`/projects/${props.projectId}/upload_video/`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
 
-    // 刷新项目数据以获取新的视频URL
-    refreshData()
+      loadingInstance.close()
+      ElMessage.success('视频文件上传成功')
 
-  } catch (error: any) {
-    console.error('视频上传失败', error)
-    if (error.response?.data?.message) {
-      ElMessage.error(error.response.data.message)
-    } else {
-      ElMessage.error('视频文件上传失败')
+      // 刷新项目数据以获取新的视频URL
+      refreshData()
+    } catch (error: any) {
+      loadingInstance.close()
+      console.error('视频上传失败', error)
+      if (error.response?.data?.message) {
+        ElMessage.error(error.response.data.message)
+      } else {
+        ElMessage.error('视频文件上传失败')
+      }
     }
+  } catch (error) {
+    console.error('视频上传处理失败', error)
+    ElMessage.error('视频上传处理失败')
   }
+
+  return false // 阻止默认上传行为
 }
+
 
 // 说话人管理
 const handleAutoAssignSpeaker = async () => {
