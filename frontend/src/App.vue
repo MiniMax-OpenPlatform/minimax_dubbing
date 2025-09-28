@@ -214,7 +214,6 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 20px;
-  flex: 1;
   justify-content: flex-start;
   margin-left: 40px;
 }
