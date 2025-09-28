@@ -130,7 +130,7 @@ onMounted(async () => {
         </div>
 
         <!-- 右侧用户区域 -->
-        <div class="user-area" style="display: flex; align-items: center; gap: 12px;">
+        <div class="user-area">
           <!-- 用户设置按钮 -->
           <div
             class="user-action-item"
@@ -295,9 +295,12 @@ onMounted(async () => {
 
 /* 用户区域样式 */
 .user-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   border-left: 1px solid rgba(255, 255, 255, 0.2);
   padding-left: 20px;
-  margin-left: auto;
+  margin-left: auto !important;
   flex-shrink: 0;
 }
 
