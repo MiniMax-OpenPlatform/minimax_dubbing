@@ -120,27 +120,10 @@ onMounted(async () => {
             <span>音色克隆</span>
           </div>
 
-          <div
-            class="nav-item admin-link"
-            @click="openAdminPage"
-          >
-            <el-icon><Setting /></el-icon>
-            <span>后台管理</span>
-          </div>
         </div>
 
         <!-- 右侧用户区域 -->
         <div class="user-area">
-          <!-- 用户设置按钮 -->
-          <div
-            class="user-action-item"
-            :class="{ active: currentView === 'user-settings' }"
-            @click="navigateTo('user-settings')"
-          >
-            <el-icon><Setting /></el-icon>
-            <span>用户设置</span>
-          </div>
-
           <!-- 用户信息下拉菜单 -->
           <el-dropdown trigger="hover">
             <div class="user-info-trigger">
@@ -158,6 +141,14 @@ onMounted(async () => {
                     <div style="font-size: 12px; color: #909399; margin-bottom: 2px;">Group ID: {{ authStore.group_id }}</div>
                     <div style="font-size: 12px; color: #909399;">API Key: {{ authStore.api_key.slice(0, 8) }}...</div>
                   </div>
+                </el-dropdown-item>
+                <el-dropdown-item divided @click="navigateTo('user-settings')">
+                  <el-icon><Setting /></el-icon>
+                  <span>用户设置</span>
+                </el-dropdown-item>
+                <el-dropdown-item @click="openAdminPage">
+                  <el-icon><Setting /></el-icon>
+                  <span>后台管理</span>
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -251,17 +242,6 @@ onMounted(async () => {
   font-weight: 500;
 }
 
-.nav-item.admin-link {
-  color: rgba(255, 255, 255, 0.8);
-  border-left: 1px solid rgba(255, 255, 255, 0.2);
-  margin-left: 10px;
-  padding-left: 20px;
-}
-
-.nav-item.admin-link:hover {
-  color: #ff9500;
-  background-color: rgba(255, 149, 0, 0.1);
-}
 
 /* 主内容区域 */
 .main-content {
@@ -304,37 +284,6 @@ onMounted(async () => {
   flex-grow: 0;
 }
 
-/* 用户操作按钮样式 */
-.user-action-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  color: rgba(255, 255, 255, 0.8);
-  cursor: pointer;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-}
-
-.user-action-item:hover {
-  color: #fff;
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.user-action-item.active {
-  color: #1890ff;
-  background-color: rgba(24, 144, 255, 0.1);
-}
-
-.user-action-item .el-icon {
-  font-size: 16px;
-}
-
-.user-action-item span {
-  font-size: 14px;
-  font-weight: 500;
-}
 
 /* 用户信息触发器样式 */
 .user-info-trigger {
