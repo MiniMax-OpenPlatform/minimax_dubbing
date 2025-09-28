@@ -163,6 +163,26 @@
         </div>
       </el-form-item>
 
+      <el-form-item label="最大加速倍率" prop="max_speed">
+        <el-slider
+          v-model="formData.max_speed"
+          :min="1.2"
+          :max="2.0"
+          :step="0.1"
+          :precision="1"
+          show-input
+          show-input-controls
+          :input-size="'small'"
+        />
+        <div class="max-speed-hint">
+          <small>
+            TTS时间戳对齐时允许的最大语速倍率。较低的值可获得更自然的语音质量，但可能导致更多段落无法对齐。
+            <br />
+            推荐值：1.6（平衡音质与成功率）| 保守值：1.2-1.4 | 激进值：1.8-2.0
+          </small>
+        </div>
+      </el-form-item>
+
       <el-form-item label="翻译专有词表">
         <el-input
           v-model="formData.custom_vocabulary"
@@ -202,6 +222,7 @@ interface ProjectSettings {
   source_lang: string
   target_lang: string
   tts_model: string
+  max_speed: number
   voice_mappings: SpeakerVoiceMapping[]
   custom_vocabulary: string
 }
@@ -226,6 +247,7 @@ const formData = reactive<ProjectSettings>({
   source_lang: '',
   target_lang: '',
   tts_model: 'speech-2.5-hd-preview',
+  max_speed: 2.0,
   voice_mappings: [
     { speaker: 'SPEAKER_00', voice_id: 'female-tianmei' },
     { speaker: '说话人1', voice_id: '' },
@@ -249,6 +271,10 @@ const rules: FormRules<ProjectSettings> = {
   ],
   tts_model: [
     { required: true, message: '请选择TTS模型', trigger: 'change' }
+  ],
+  max_speed: [
+    { required: true, message: '请设置最大加速倍率', trigger: 'blur' },
+    { type: 'number', min: 1.2, max: 2.0, message: '最大加速倍率必须在1.2-2.0之间', trigger: 'blur' }
   ]
 }
 
@@ -260,6 +286,7 @@ watch(() => props.project, (newProject) => {
     formData.source_lang = newProject.source_lang || ''
     formData.target_lang = newProject.target_lang || ''
     formData.tts_model = newProject.tts_model || 'speech-2.5-hd-preview'
+    formData.max_speed = newProject.max_speed != null ? newProject.max_speed : 2.0
 
     // 解析角色音色映射
     if (newProject.voice_mappings && Array.isArray(newProject.voice_mappings)) {

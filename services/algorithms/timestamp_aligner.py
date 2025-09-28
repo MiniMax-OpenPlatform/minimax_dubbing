@@ -24,6 +24,52 @@ class TimestampAligner:
     def __init__(self, minimax_client: MiniMaxClient):
         self.client = minimax_client
 
+    def calculate_speed_steps(self, max_speed: float) -> dict:
+        """
+        根据max_speed动态计算优化步骤
+
+        Args:
+            max_speed: 允许的最大speed参数
+
+        Returns:
+            dict: 包含各步骤增量的配置
+        """
+        if max_speed >= 2.0:
+            # 高速模式：保持原有逻辑
+            return {
+                'step3_increment': 0.2,
+                'step4_increment': 0.5,
+                'step5_speed': 2.0
+            }
+        elif max_speed >= 1.8:
+            # 较高速模式
+            return {
+                'step3_increment': 0.2,
+                'step4_increment': 0.4,
+                'step5_speed': max_speed
+            }
+        elif max_speed >= 1.6:
+            # 中高速模式
+            return {
+                'step3_increment': 0.2,
+                'step4_increment': 0.3,
+                'step5_speed': max_speed
+            }
+        elif max_speed >= 1.4:
+            # 中等速度模式
+            return {
+                'step3_increment': 0.15,
+                'step4_increment': 0.2,
+                'step5_speed': max_speed
+            }
+        else:  # max_speed >= 1.2
+            # 低速模式：最保守策略
+            return {
+                'step3_increment': 0.1,
+                'step4_increment': 0.1,
+                'step5_speed': max_speed
+            }
+
     def get_audio_duration(self, audio_url: str) -> float:
         """
         获取音频文件的时长（去除前后静音）
@@ -68,7 +114,8 @@ class TimestampAligner:
     def align_timestamp(self, text: str, target_duration: float, voice_id: str,
                        original_text: str = "", target_language: str = "中文",
                        custom_vocabulary: list = None, emotion: str = "auto",
-                       language_boost: str = "Chinese", model: str = "speech-01-turbo") -> Dict[str, Any]:
+                       language_boost: str = "Chinese", model: str = "speech-01-turbo",
+                       max_speed: float = 2.0) -> Dict[str, Any]:
         """
         时间戳对齐算法主函数
         按照PRD文档中定义的5步优化流程
@@ -83,6 +130,7 @@ class TimestampAligner:
             emotion: 情绪参数
             language_boost: 语言增强
             model: TTS模型
+            max_speed: 允许的最大speed参数，范围1.2-2.0
 
         Returns:
             Dict: 对齐结果
@@ -97,7 +145,11 @@ class TimestampAligner:
                 'trace_ids': list
             }
         """
-        logger.info(f"开始时间戳对齐: '{text}' 目标时长={target_duration:.3f}s")
+        logger.info(f"开始时间戳对齐: '{text}' 目标时长={target_duration:.3f}s max_speed={max_speed}")
+
+        # 计算基于max_speed的动态步进策略
+        speed_config = self.calculate_speed_steps(max_speed)
+        logger.info(f"Speed策略配置: {speed_config}")
 
         optimization_steps = []
         trace_ids = []
@@ -216,7 +268,7 @@ class TimestampAligner:
 
             # 第三步：调整speed参数
             logger.info("第三步: 调整speed参数")
-            current_speed = round(min(t_tts / target_duration + 0.2, 2.0), 2)
+            current_speed = round(min(t_tts / target_duration + speed_config['step3_increment'], max_speed), 2)
             step3_result = self.client.text_to_speech(
                 text=current_text,
                 voice_id=voice_id,
@@ -257,9 +309,9 @@ class TimestampAligner:
                         'trace_ids': trace_ids
                     }
 
-            # 第四步：speed增加0.5重试
-            logger.info("第四步: speed增加0.5重试")
-            current_speed = round(min(current_speed + 0.5, 2.0), 2)
+            # 第四步：speed增加重试
+            logger.info("第四步: speed增加重试")
+            current_speed = round(min(current_speed + speed_config['step4_increment'], max_speed), 2)
             step4_result = self.client.text_to_speech(
                 text=current_text,
                 voice_id=voice_id,
@@ -300,9 +352,9 @@ class TimestampAligner:
                         'trace_ids': trace_ids
                     }
 
-            # 第五步：speed=2最后尝试
-            logger.info("第五步: speed=2最后尝试")
-            current_speed = 2.0
+            # 第五步：最大speed最后尝试
+            logger.info(f"第五步: speed={speed_config['step5_speed']}最后尝试")
+            current_speed = speed_config['step5_speed']
             step5_result = self.client.text_to_speech(
                 text=current_text,
                 voice_id=voice_id,

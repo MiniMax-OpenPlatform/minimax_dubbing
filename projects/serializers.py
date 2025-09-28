@@ -35,7 +35,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'description', 'source_lang', 'target_lang',
             'srt_file_path', 'video_file_path', 'concatenated_audio_url', 'tts_model',
-            'voice_mappings', 'custom_vocabulary', 'status',
+            'voice_mappings', 'custom_vocabulary', 'max_speed', 'status',
             'created_at', 'updated_at', 'segment_count',
             'completed_segment_count', 'progress_percentage',
             'audio_url', 'video_url'
@@ -49,7 +49,7 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
         model = Project
         fields = [
             'name', 'description', 'source_lang', 'target_lang',
-            'tts_model', 'voice_mappings', 'custom_vocabulary'
+            'tts_model', 'voice_mappings', 'custom_vocabulary', 'max_speed'
         ]
 
     def create(self, validated_data):

@@ -71,6 +71,10 @@ class Project(models.Model):
     tts_model = models.CharField(max_length=50, default="speech-2.5-hd-preview", help_text="TTS模型")
     voice_mappings = models.JSONField(default=list, help_text="角色音色映射表")
     custom_vocabulary = models.JSONField(default=list, help_text="专有词汇表")
+    max_speed = models.FloatField(
+        default=2.0,
+        help_text="TTS时间戳对齐允许的最大speed参数，范围1.2-2.0"
+    )
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     created_at = models.DateTimeField(auto_now_add=True)

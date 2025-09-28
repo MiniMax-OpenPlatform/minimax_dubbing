@@ -83,9 +83,8 @@ class SegmentService(BaseService):
 
         try:
 
-            # 初始化客户端和对齐器
+            # 初始化客户端
             client = MiniMaxClient(api_key=api_key, group_id=group_id)
-            aligner = TimestampAligner(client)
 
             # 设置音色ID
             if not segment.voice_id:
@@ -101,20 +100,38 @@ class SegmentService(BaseService):
             # 直接使用项目的目标语言作为language_boost
             language_boost = project.target_lang
 
-            # 调用时间戳对齐算法
-            align_result = aligner.align_timestamp(
+            # 直接调用TTS API（不使用时间戳对齐）
+            tts_result = client.text_to_speech(
                 text=segment.translated_text,
-                target_duration=segment.target_duration,
                 voice_id=segment.voice_id,
-                original_text=segment.original_text,
-                target_language=dict(Project.LANGUAGE_CHOICES).get(project.target_lang),
-                custom_vocabulary=project.custom_vocabulary,
+                speed=segment.speed or 1.0,
                 emotion=segment.emotion,
                 language_boost=language_boost,
                 model=project.tts_model
             )
 
-            return self._process_tts_result(segment, align_result)
+            if tts_result['success']:
+                # 更新段落数据
+                segment.translated_audio_url = tts_result['audio_url']
+                segment.save()
+
+                self.log_operation(
+                    f"段落{segment.index}TTS生成成功",
+                    {'segment_id': segment.id, 'audio_url': tts_result['audio_url']}
+                )
+
+                return {
+                    'success': True,
+                    'audio_url': tts_result['audio_url'],
+                    'trace_id': tts_result['trace_id'],
+                    'message': 'TTS生成成功'
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': 'TTS生成失败',
+                    'status_code': 500
+                }
 
         except Exception as e:
             segment.save()
@@ -177,6 +194,7 @@ class SegmentService(BaseService):
         try:
             # 初始化客户端和对齐器
             self.logger.info(f"[批量TTS] 开始处理项目 {project.name} (ID: {project.id})")
+            self.logger.info(f"[批量TTS] 项目max_speed配置: {project.max_speed}")
             self.logger.info(f"[批量TTS] 初始化 MiniMax 客户端和时间戳对齐器")
 
             client = MiniMaxClient(api_key=api_key, group_id=group_id)
@@ -186,7 +204,7 @@ class SegmentService(BaseService):
             language_boost = project.target_lang
             self.logger.info(f"[批量TTS] 目标语言: {project.target_lang}, language_boost: {language_boost}")
 
-            counters = {'success': 0, 'failed': 0, 'silent': 0}
+            counters = {'success': 0, 'failed': 0}
             total_count = segments.count()
             self.logger.info(f"[批量TTS] 共 {total_count} 个段落需要处理")
 
@@ -201,15 +219,14 @@ class SegmentService(BaseService):
                 self.logger.info(f"[批量TTS] 当前进度: {index}/{total_count} 完成")
 
             self.logger.info(f"[批量TTS] 项目 {project.name} 批量TTS完成")
-            self.logger.info(f"[批量TTS] 最终统计 - 成功: {counters['success']}, 失败: {counters['failed']}, 静音: {counters['silent']}")
+            self.logger.info(f"[批量TTS] 最终统计 - 成功: {counters['success']}, 失败: {counters['failed']}")
 
             return {
                 'success': True,
                 'total_segments': total_count,
                 'success_count': counters['success'],
-                'silent_count': counters['silent'],
                 'failed_count': counters['failed'],
-                'message': f'批量TTS完成: 成功{counters["success"]}个，静音{counters["silent"]}个，失败{counters["failed"]}个'
+                'message': f'批量TTS完成: 成功{counters["success"]}个，失败{counters["failed"]}个'
             }
 
         except Exception as e:
@@ -305,7 +322,8 @@ class SegmentService(BaseService):
                 custom_vocabulary=project.custom_vocabulary,
                 emotion=segment.emotion,
                 language_boost=language_boost,
-                model=project.tts_model
+                model=project.tts_model,
+                max_speed=project.max_speed
             )
 
             if align_result['success']:
@@ -321,7 +339,7 @@ class SegmentService(BaseService):
                 segment.t_tts_duration = 0.0
                 segment.calculate_ratio()
                 segment.save()
-                return 'silent'
+                return 'failed'
 
         except Exception as e:
             segment.save()
