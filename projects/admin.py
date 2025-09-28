@@ -4,7 +4,6 @@ from django.db import models
 from .models import Project
 
 
-@admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
     """项目管理"""
 
@@ -25,15 +24,11 @@ class ProjectAdmin(admin.ModelAdmin):
             'fields': ('source_lang', 'target_lang')
         }),
         ('文件信息', {
-            'fields': ('video_url', 'audio_url'),
+            'fields': ('srt_file_path', 'video_file_path', 'concatenated_audio_url'),
             'classes': ('collapse',)
         }),
         ('TTS配置', {
-            'fields': ('default_voice_id', 'default_emotion', 'default_speed', 'voice_mappings'),
-            'classes': ('collapse',)
-        }),
-        ('处理选项', {
-            'fields': ('auto_align', 'skip_empty_segments'),
+            'fields': ('tts_model', 'voice_mappings', 'custom_vocabulary', 'max_speed'),
             'classes': ('collapse',)
         }),
         ('统计信息', {

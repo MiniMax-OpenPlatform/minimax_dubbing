@@ -4,7 +4,6 @@ from django.utils.html import format_html
 from .models import User
 
 
-@admin.register(User)
 class UserAdmin(BaseUserAdmin):
     """自定义用户管理"""
 
