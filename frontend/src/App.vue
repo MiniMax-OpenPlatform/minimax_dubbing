@@ -82,9 +82,9 @@ onMounted(async () => {
   <el-container v-else style="height: 100vh">
     <!-- 顶部导航栏 -->
     <el-header style="background-color: #001529; color: white; padding: 0 20px; border-bottom: 1px solid #f0f0f0;">
-      <div style="display: flex; align-items: center; height: 100%;">
+      <div style="display: flex; align-items: center; height: 100%; width: 100%;">
         <!-- 左侧标题 -->
-        <div style="display: flex; align-items: center;">
+        <div style="display: flex; align-items: center; flex-shrink: 0;">
           <el-icon style="font-size: 24px; margin-right: 12px; color: #1890ff;">
             <Document />
           </el-icon>
@@ -92,7 +92,7 @@ onMounted(async () => {
         </div>
 
         <!-- 中间导航菜单 -->
-        <div class="nav-menu">
+        <div class="nav-menu" style="flex-shrink: 0;">
           <div
             class="nav-item"
             :class="{ active: currentView === 'projects' }"
@@ -299,8 +299,9 @@ onMounted(async () => {
   gap: 12px;
   border-left: 1px solid rgba(255, 255, 255, 0.2);
   padding-left: 20px;
-  margin-left: auto !important;
+  margin-left: auto;
   flex-shrink: 0;
+  flex-grow: 0;
 }
 
 /* 用户操作按钮样式 */
