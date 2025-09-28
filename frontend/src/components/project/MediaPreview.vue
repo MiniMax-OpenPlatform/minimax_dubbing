@@ -53,6 +53,7 @@
           <!-- 基础音频播放器 -->
           <BasicAudioPlayer
             ref="simplePlayerRef"
+            :key="`${selectedMedia}-${props.audioKey}`"
             :audio-url="currentMediaUrl"
           />
         </div>
@@ -239,12 +240,35 @@ watchEffect(() => {
   }
 })
 
+// 监听concatenatedAudioUrl和audioKey变化，强制更新音频
+watch([() => props.concatenatedAudioUrl, () => props.audioKey], ([newUrl, newKey]) => {
+  console.log('[MediaPreview] 音频URL或Key变化:', { newUrl, newKey, currentSelected: selectedMedia.value })
+  if (selectedMedia.value === 'translated_audio' && newUrl) {
+    // 强制重新加载音频组件
+    const finalUrl = currentMediaUrl.value
+    console.log('[MediaPreview] 强制更新翻译音频，最终URL:', finalUrl)
+    // audioKey变化会触发组件重新创建，清除缓存的跳转请求
+    pendingSeekTime.value = null
+  }
+})
+
 // 当前媒体信息
 const currentMedia = computed(() => {
   return mediaOptions.value.find(option => option.key === selectedMedia.value) || null
 })
 
-const currentMediaUrl = computed(() => currentMedia.value?.url || null)
+const currentMediaUrl = computed(() => {
+  const url = currentMedia.value?.url
+  if (!url) return null
+
+  // 为翻译音频添加时间戳来绕过浏览器缓存
+  if (selectedMedia.value === 'translated_audio' && props.audioKey) {
+    const separator = url.includes('?') ? '&' : '?'
+    return `${url}${separator}t=${props.audioKey}`
+  }
+
+  return url
+})
 const isVideoType = computed(() => currentMedia.value?.type === 'video')
 
 // 音频播放相关状态

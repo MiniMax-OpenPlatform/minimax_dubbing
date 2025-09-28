@@ -7,6 +7,7 @@
       controls
       preload="metadata"
       style="width: 100%;"
+      @canplay="checkAndFixSeekable"
     ></audio>
   </div>
 </template>
@@ -30,6 +31,24 @@ const emit = defineEmits<{
 }>()
 
 const audioRef = ref<HTMLAudioElement>()
+
+// 检查并修复 seekable 问题
+const checkAndFixSeekable = () => {
+  if (!audioRef.value) return
+
+  const audio = audioRef.value
+  const isSeekableInvalid = audio.seekable.length === 0 ||
+    (audio.seekable.length > 0 && audio.seekable.end(0) === 0)
+
+  if (isSeekableInvalid && audio.duration > 0) {
+    // 强制重新加载以修复 seekable 异常
+    setTimeout(() => {
+      if (audioRef.value) {
+        audioRef.value.load()
+      }
+    }, 500)
+  }
+}
 
 // 监听URL变化
 watch(() => props.audioUrl, (newUrl) => {
