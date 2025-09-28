@@ -49,3 +49,7 @@ class UserAdmin(BaseUserAdmin):
     def get_queryset(self, request):
         """优化查询性能"""
         return super().get_queryset(request).select_related().prefetch_related('projects')
+
+    def has_add_permission(self, request):
+        """用户应通过前端注册页面创建，不允许在管理后台添加"""
+        return False

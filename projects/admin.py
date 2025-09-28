@@ -94,3 +94,7 @@ class ProjectAdmin(admin.ModelAdmin):
         updated = queryset.update(status='completed')
         self.message_user(request, f'成功将 {updated} 个项目标记为已完成')
     mark_as_completed.short_description = "标记为已完成"
+
+    def has_add_permission(self, request):
+        """项目应通过前端页面创建，不允许在管理后台添加"""
+        return False
