@@ -55,7 +55,18 @@
             ref="simplePlayerRef"
             :key="`${selectedMedia}-${props.audioKey}`"
             :audio-url="currentMediaUrl"
+            @time-update="handleAudioTimeUpdate"
+            @duration-change="handleAudioDurationChange"
           />
+
+          <!-- 波形图 - 仅在翻译音频模式下显示 -->
+          <div v-if="selectedMedia === 'translated_audio'" class="waveform-wrapper">
+            <AudioWaveform
+              :audio-url="currentMediaUrl"
+              :current-time="audioCurrentTime"
+              :duration="audioDuration"
+            />
+          </div>
         </div>
         <div v-else class="media-placeholder">
           <el-icon><Microphone /></el-icon>
@@ -72,6 +83,7 @@ import { VideoCamera, Microphone, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import VideoPlayer from '../VideoPlayer.vue'
 import BasicAudioPlayer from '../audio/BasicAudioPlayer.vue'
+import AudioWaveform from '../audio/AudioWaveform.vue'
 
 // 动态获取后端基础URL用于媒体文件
 const getBackendBaseUrl = () => {
@@ -271,6 +283,8 @@ const isVideoType = computed(() => currentMedia.value?.type === 'video')
 const videoPlayerRef = ref()
 const simplePlayerRef = ref()
 const currentTime = ref(0)
+const audioDuration = ref(0)
+const audioCurrentTime = ref(0)
 
 // 计算翻译后的段落数据
 const translatedSegments = computed(() => {
@@ -324,7 +338,18 @@ onMounted(() => {
   initializeDefaultMedia()
 })
 
-// 独立播放器事件处理
+// 音频播放器事件处理
+const handleAudioTimeUpdate = (time: number) => {
+  audioCurrentTime.value = time
+  currentTime.value = time
+  emit('timeUpdate', time)
+}
+
+const handleAudioDurationChange = (duration: number) => {
+  audioDuration.value = duration
+}
+
+// 独立播放器事件处理（保持兼容性）
 const handleSimplePlayerTimeUpdate = (time: number) => {
   // 同步时间状态
   currentTime.value = time
@@ -460,10 +485,21 @@ defineExpose({
 
 /* 音频播放器容器 */
 .audio-player-wrapper {
-  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
   background: #fafbfc;
   border-radius: 8px;
   border: 1px solid #e4e7ed;
+}
+
+/* 波形图容器 */
+.waveform-wrapper {
+  background: white;
+  border-radius: 6px;
+  padding: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .media-placeholder {

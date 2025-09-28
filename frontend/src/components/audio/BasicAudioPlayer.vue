@@ -8,6 +8,8 @@
       preload="metadata"
       style="width: 100%;"
       @canplay="checkAndFixSeekable"
+      @timeupdate="onTimeUpdate"
+      @loadedmetadata="onLoadedMetadata"
     ></audio>
   </div>
 </template>
@@ -28,9 +30,28 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   'time-update': [time: number]
   'seek': [time: number]
+  'duration-change': [duration: number]
 }>()
 
 const audioRef = ref<HTMLAudioElement>()
+const currentTime = ref(0)
+const duration = ref(0)
+
+// 时间更新事件
+const onTimeUpdate = () => {
+  if (audioRef.value) {
+    currentTime.value = audioRef.value.currentTime
+    emit('time-update', currentTime.value)
+  }
+}
+
+// 元数据加载完成事件
+const onLoadedMetadata = () => {
+  if (audioRef.value) {
+    duration.value = audioRef.value.duration
+    emit('duration-change', duration.value)
+  }
+}
 
 // 检查并修复 seekable 问题
 const checkAndFixSeekable = () => {
@@ -57,13 +78,15 @@ watch(() => props.audioUrl, (newUrl) => {
   }
 })
 
-// 暴露跳转方法
+// 暴露跳转方法和状态
 defineExpose({
   seekTo: (time: number) => {
     if (audioRef.value) {
       audioRef.value.currentTime = time
     }
-  }
+  },
+  currentTime,
+  duration
 })
 </script>
 
