@@ -82,7 +82,7 @@ onMounted(async () => {
   <el-container v-else style="height: 100vh">
     <!-- 顶部导航栏 -->
     <el-header style="background-color: #001529; color: white; padding: 0 20px; border-bottom: 1px solid #f0f0f0;">
-      <div style="display: flex; align-items: center; justify-content: space-between; height: 100%;">
+      <div style="display: flex; align-items: center; height: 100%;">
         <!-- 左侧标题 -->
         <div style="display: flex; align-items: center;">
           <el-icon style="font-size: 24px; margin-right: 12px; color: #1890ff;">
