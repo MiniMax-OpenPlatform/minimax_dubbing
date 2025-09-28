@@ -6,7 +6,7 @@ import ProjectDetailContainer from './components/project/ProjectDetailContainer.
 import UserSettings from './components/UserSettings.vue'
 import VoiceManagement from './components/voice/VoiceManagement.vue'
 import VoiceCloning from './components/voice/VoiceCloning.vue'
-import { Document, Setting, SwitchButton, User, ArrowDown, Microphone, MagicStick, VideoPlay } from '@element-plus/icons-vue'
+import { Document, Setting, User, ArrowDown, Microphone, MagicStick, VideoPlay } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/auth'
 import { logger } from './utils/logger'
 
@@ -157,11 +157,6 @@ onMounted(async () => {
               </el-dropdown-menu>
             </template>
           </el-dropdown>
-
-          <el-button type="danger" @click="logout">
-            <el-icon><SwitchButton /></el-icon>
-            退出登录
-          </el-button>
         </div>
       </div>
     </el-header>
