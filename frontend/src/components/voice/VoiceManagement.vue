@@ -14,37 +14,59 @@
       </div>
     </div>
 
-    <div class="stats" v-if="stats">
+    <div class="stats-and-preview" v-if="stats">
       <el-row :gutter="20">
-        <el-col :span="6">
-          <el-card class="stat-card">
-            <div class="stat-item">
-              <div class="stat-value">{{ stats.total_count || 0 }}</div>
-              <div class="stat-label">总音色数</div>
-            </div>
-          </el-card>
+        <el-col :span="18">
+          <div class="stats">
+            <el-row :gutter="20">
+              <el-col :span="6">
+                <el-card class="stat-card">
+                  <div class="stat-item">
+                    <div class="stat-value">{{ stats.total_count || 0 }}</div>
+                    <div class="stat-label">总音色数</div>
+                  </div>
+                </el-card>
+              </el-col>
+              <el-col :span="6">
+                <el-card class="stat-card">
+                  <div class="stat-item">
+                    <div class="stat-value">{{ stats.system_voice_count || 0 }}</div>
+                    <div class="stat-label">系统音色</div>
+                  </div>
+                </el-card>
+              </el-col>
+              <el-col :span="6">
+                <el-card class="stat-card">
+                  <div class="stat-item">
+                    <div class="stat-value">{{ stats.voice_cloning_count || 0 }}</div>
+                    <div class="stat-label">音色克隆</div>
+                  </div>
+                </el-card>
+              </el-col>
+              <el-col :span="6">
+                <el-card class="stat-card">
+                  <div class="stat-item">
+                    <div class="stat-value">{{ stats.voice_generation_count || 0 }}</div>
+                    <div class="stat-label">音色生成</div>
+                  </div>
+                </el-card>
+              </el-col>
+            </el-row>
+          </div>
         </el-col>
         <el-col :span="6">
-          <el-card class="stat-card">
-            <div class="stat-item">
-              <div class="stat-value">{{ stats.system_voice_count || 0 }}</div>
-              <div class="stat-label">系统音色</div>
-            </div>
-          </el-card>
-        </el-col>
-        <el-col :span="6">
-          <el-card class="stat-card">
-            <div class="stat-item">
-              <div class="stat-value">{{ stats.voice_cloning_count || 0 }}</div>
-              <div class="stat-label">音色克隆</div>
-            </div>
-          </el-card>
-        </el-col>
-        <el-col :span="6">
-          <el-card class="stat-card">
-            <div class="stat-item">
-              <div class="stat-value">{{ stats.voice_generation_count || 0 }}</div>
-              <div class="stat-label">音色生成</div>
+          <el-card class="preview-card">
+            <div class="preview-section">
+              <div class="preview-label">试听文本</div>
+              <el-input
+                v-model="previewText"
+                type="textarea"
+                :rows="3"
+                placeholder="输入试听文本..."
+                maxlength="200"
+                show-word-limit
+                class="preview-textarea"
+              />
             </div>
           </el-card>
         </el-col>
@@ -126,6 +148,20 @@
           <el-text size="small">{{ scope.row.created_time || '未知' }}</el-text>
         </template>
       </el-table-column>
+
+      <el-table-column label="操作" width="100" fixed="right">
+        <template #default="scope">
+          <el-button
+            type="primary"
+            size="small"
+            @click="handlePreview(scope.row)"
+            :loading="previewingVoices.has(scope.row.id)"
+            icon="VideoPlay"
+          >
+            试听
+          </el-button>
+        </template>
+      </el-table-column>
     </el-table>
 
     <div class="pagination" v-if="allVoices.length > 0">
@@ -145,6 +181,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { VideoPlay } from '@element-plus/icons-vue'
 import api from '@/utils/api'
 
 interface Voice {
@@ -177,6 +214,9 @@ const filterType = ref('')
 const currentPage = ref(1)
 const pageSize = ref(50)
 const stats = ref<Stats | null>(null)
+const previewText = ref('人工智能不是要替代人类，而是要增强人类的能力。')
+const previewingVoices = ref(new Set<number>()) // 正在试听的音色ID集合
+const currentAudio = ref<HTMLAudioElement | null>(null) // 当前播放的音频对象
 
 // 计算属性
 const filteredVoices = computed(() => {
@@ -299,6 +339,66 @@ const handleCurrentChange = (val: number) => {
   currentPage.value = val
 }
 
+// 试听功能
+const handlePreview = async (voice: Voice) => {
+  try {
+    // 停止当前播放的音频
+    if (currentAudio.value) {
+      currentAudio.value.pause()
+      currentAudio.value = null
+    }
+
+    previewingVoices.value.add(voice.id)
+
+    const response = await api.post(`/voices/${voice.id}/preview/`, {
+      text: previewText.value
+    })
+
+    if (response.data.success) {
+      const audioUrl = response.data.data.audio_url
+
+      // 创建音频对象并播放
+      const audio = new Audio(audioUrl)
+      currentAudio.value = audio
+
+      audio.addEventListener('loadstart', () => {
+        console.log('音频开始加载')
+      })
+
+      audio.addEventListener('canplay', () => {
+        console.log('音频可以播放')
+        audio.play().catch(error => {
+          console.error('音频播放失败:', error)
+          ElMessage.error('音频播放失败')
+        })
+      })
+
+      audio.addEventListener('ended', () => {
+        console.log('音频播放结束')
+        previewingVoices.value.delete(voice.id)
+        currentAudio.value = null
+      })
+
+      audio.addEventListener('error', (e) => {
+        console.error('音频加载错误:', e)
+        ElMessage.error('音频加载失败')
+        previewingVoices.value.delete(voice.id)
+        currentAudio.value = null
+      })
+
+      ElMessage.success(`开始播放 ${voice.voice_name || voice.voice_id} 的试听音频`)
+    } else {
+      ElMessage.error(response.data.message || '试听失败')
+    }
+  } catch (error: any) {
+    console.error('试听失败:', error)
+    const errorMsg = error.response?.data?.message || '试听失败'
+    ElMessage.error(errorMsg)
+  } finally {
+    previewingVoices.value.delete(voice.id)
+  }
+}
+
 // 生命周期
 onMounted(() => {
   loadVoices()
@@ -322,12 +422,37 @@ onMounted(() => {
   color: #1f2328;
 }
 
-.stats {
+.stats-and-preview {
   margin-bottom: 20px;
+}
+
+.stats {
+  width: 100%;
 }
 
 .stat-card {
   text-align: center;
+}
+
+.preview-card {
+  height: 100%;
+}
+
+.preview-section {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2328;
+  margin-bottom: 12px;
+}
+
+.preview-textarea {
+  flex: 1;
 }
 
 .stat-item {

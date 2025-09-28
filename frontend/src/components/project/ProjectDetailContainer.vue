@@ -198,23 +198,16 @@ onUnmounted(() => {
 const saveProjectSettings = async (settings: any) => {
   settingsSaving.value = true
   try {
-    console.log('保存项目设置 - 发送的数据:', { settings })
-    console.log('max_speed值:', settings.max_speed)
-
     // 这里应该调用useProjectData的updateProject方法
     // 但为了保持兼容性，先保留原有逻辑
     const api = (await import('../../utils/api')).default
-    const response = await api.patch(`/projects/${props.projectId}/`, settings)
-
-    console.log('API响应:', response.data)
+    await api.patch(`/projects/${props.projectId}/`, settings)
 
     if (project.value) {
       project.value = { ...project.value, ...settings }
-      console.log('更新后的project对象:', project.value)
     }
     showSettings.value = false
     ElMessage.success('项目设置保存成功')
-    console.log('项目设置保存成功', { settings })
   } catch (error) {
     console.error('保存项目设置失败', error)
     ElMessage.error('保存项目设置失败')

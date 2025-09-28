@@ -3,6 +3,7 @@
 """
 import logging
 import requests
+import json
 from django.conf import settings
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -11,6 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from .models import Voice, VoiceQueryLog
 from .serializers import VoiceSerializer
+from services.clients.minimax_client import MiniMaxClient
 
 logger = logging.getLogger(__name__)
 
@@ -214,4 +216,64 @@ class VoiceViewSet(viewsets.ModelViewSet):
             return Response({
                 'success': False,
                 'message': f'更新失败: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['post'])
+    def preview(self, request, pk=None):
+        """音色试听功能"""
+        try:
+            voice = self.get_object()
+            text = request.data.get('text', '人工智能不是要替代人类，而是要增强人类的能力。')
+
+            if not text.strip():
+                return Response({
+                    'success': False,
+                    'message': '试听文本不能为空'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # 获取用户API密钥
+            api_key = request.user.api_key
+            group_id = request.user.group_id
+
+            if not api_key or not group_id:
+                return Response({
+                    'success': False,
+                    'message': '用户API密钥或群组ID未配置'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # 使用MiniMaxClient进行TTS
+            client = MiniMaxClient(api_key=api_key, group_id=group_id)
+
+            tts_result = client.text_to_speech(
+                text=text,
+                voice_id=voice.voice_id,
+                speed=1.0,
+                model='speech-2.5-hd-preview'
+            )
+
+            if tts_result['success']:
+                logger.info(f"用户 {request.user.username} 试听音色 {voice.voice_id} 成功")
+                return Response({
+                    'success': True,
+                    'message': '试听音频生成成功',
+                    'data': {
+                        'audio_url': tts_result['audio_url'],
+                        'trace_id': tts_result['trace_id'],
+                        'text': text,
+                        'voice_id': voice.voice_id,
+                        'voice_name': voice.voice_name
+                    }
+                })
+            else:
+                logger.error(f"音色试听失败: {tts_result.get('error', '未知错误')}")
+                return Response({
+                    'success': False,
+                    'message': f'试听失败: {tts_result.get("error", "未知错误")}'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        except Exception as e:
+            logger.error(f"音色试听异常: {str(e)}")
+            return Response({
+                'success': False,
+                'message': f'试听失败: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

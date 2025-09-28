@@ -194,7 +194,6 @@ class SegmentService(BaseService):
         try:
             # 初始化客户端和对齐器
             self.logger.info(f"[批量TTS] 开始处理项目 {project.name} (ID: {project.id})")
-            self.logger.info(f"[批量TTS] 项目max_speed配置: {project.max_speed}")
             self.logger.info(f"[批量TTS] 初始化 MiniMax 客户端和时间戳对齐器")
 
             client = MiniMaxClient(api_key=api_key, group_id=group_id)
