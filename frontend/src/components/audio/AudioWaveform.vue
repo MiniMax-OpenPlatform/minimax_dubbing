@@ -1,5 +1,5 @@
 <template>
-  <div class="audio-waveform" ref="containerRef">
+  <div class="audio-waveform" :class="{ loaded: isLoaded }" ref="containerRef">
     <canvas
       ref="canvasRef"
       :width="canvasWidth"
@@ -220,15 +220,7 @@ onUnmounted(() => {
 }
 
 /* 加载状态 */
-.audio-waveform:not(.loaded) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #909399;
-  font-size: 14px;
-}
-
-.audio-waveform:not(.loaded)::before {
-  content: '正在加载波形数据...';
+.audio-waveform:not(.loaded) .waveform-canvas {
+  opacity: 0.5;
 }
 </style>
