@@ -131,6 +131,16 @@ onMounted(async () => {
 
         <!-- 右侧操作按钮 -->
         <div style="display: flex; align-items: center; gap: 12px;">
+          <!-- 用户设置按钮 -->
+          <div
+            class="nav-item"
+            :class="{ active: currentView === 'user-settings' }"
+            @click="navigateTo('user-settings')"
+          >
+            <el-icon><Setting /></el-icon>
+            <span>用户设置</span>
+          </div>
+
           <!-- 用户信息下拉菜单 -->
           <el-dropdown trigger="hover">
             <div style="display: flex; align-items: center; cursor: pointer; color: white; padding: 8px 12px; border-radius: 6px; transition: background-color 0.3s;"
@@ -149,10 +159,6 @@ onMounted(async () => {
                     <div style="font-size: 12px; color: #909399; margin-bottom: 2px;">Group ID: {{ authStore.group_id }}</div>
                     <div style="font-size: 12px; color: #909399;">API Key: {{ authStore.api_key.slice(0, 8) }}...</div>
                   </div>
-                </el-dropdown-item>
-                <el-dropdown-item divided @click="navigateTo('user-settings')">
-                  <el-icon><Setting /></el-icon>
-                  <span>账户设置</span>
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>
