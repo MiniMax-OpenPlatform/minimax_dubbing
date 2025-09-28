@@ -242,11 +242,7 @@ watchEffect(() => {
 
 // 监听concatenatedAudioUrl和audioKey变化，强制更新音频
 watch([() => props.concatenatedAudioUrl, () => props.audioKey], ([newUrl, newKey]) => {
-  console.log('[MediaPreview] 音频URL或Key变化:', { newUrl, newKey, currentSelected: selectedMedia.value })
   if (selectedMedia.value === 'translated_audio' && newUrl) {
-    // 强制重新加载音频组件
-    const finalUrl = currentMediaUrl.value
-    console.log('[MediaPreview] 强制更新翻译音频，最终URL:', finalUrl)
     // audioKey变化会触发组件重新创建，清除缓存的跳转请求
     pendingSeekTime.value = null
   }
@@ -346,7 +342,6 @@ const handleSimplePlayerSeek = (time: number) => {
 // 监听simplePlayerRef的变化，执行缓存的跳转
 watch(() => simplePlayerRef.value, (newRef) => {
   if (newRef && pendingSeekTime.value !== null) {
-    console.log(`[MediaPreview] 播放器就绪，执行缓存的跳转: ${pendingSeekTime.value}秒`)
     nextTick(() => {
       if (simplePlayerRef.value && pendingSeekTime.value !== null) {
         simplePlayerRef.value.seekTo(pendingSeekTime.value)
@@ -363,31 +358,19 @@ const pendingSeekTime = ref<number | null>(null)
 // 段落跳转函数
 const seekToSegmentStart = (segment: Segment) => {
   const startTimeInSeconds = parseTimeToSeconds(segment.start_time)
-  console.log(`[MediaPreview] 跳转到段落 ${segment.index} 开始时间: ${startTimeInSeconds}秒`)
-  console.log(`[MediaPreview] 是否为视频类型: ${isVideoType.value}`)
-  console.log(`[MediaPreview] simplePlayerRef存在: ${!!simplePlayerRef.value}`)
-  console.log(`[MediaPreview] currentMediaUrl存在: ${!!currentMediaUrl.value}`)
 
   // 如果是视频类型，更新视频位置
   if (isVideoType.value && videoPlayerRef.value?.seekTo) {
-    console.log(`[MediaPreview] 调用视频播放器跳转`)
     videoPlayerRef.value.seekTo(startTimeInSeconds)
   }
   // 如果是音频类型，使用独立播放器跳转
   else if (!isVideoType.value) {
     if (simplePlayerRef.value) {
-      console.log(`[MediaPreview] 调用独立音频播放器跳转`)
-      console.log(`[MediaPreview] simplePlayerRef.seekTo方法存在: ${typeof simplePlayerRef.value.seekTo}`)
       simplePlayerRef.value.seekTo(startTimeInSeconds)
       pendingSeekTime.value = null // 清除缓存
     } else if (currentMediaUrl.value) {
-      console.log(`[MediaPreview] 播放器未就绪，缓存跳转请求: ${startTimeInSeconds}秒`)
       pendingSeekTime.value = startTimeInSeconds
-    } else {
-      console.warn(`[MediaPreview] 音频文件未加载，无法跳转`)
     }
-  } else {
-    console.warn(`[MediaPreview] 无法跳转: isVideoType=${isVideoType.value}, simplePlayerRef=${!!simplePlayerRef.value}`)
   }
 
   // 触发时间更新事件
