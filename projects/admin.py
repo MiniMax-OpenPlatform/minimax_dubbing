@@ -98,3 +98,14 @@ class ProjectAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         """项目应通过前端页面创建，不允许在管理后台添加"""
         return False
+
+    def get_urls(self):
+        """移除添加URL"""
+        urls = super().get_urls()
+        # 过滤掉添加相关的URL
+        filtered_urls = []
+        for url in urls:
+            if hasattr(url, 'name') and url.name and 'add' in url.name:
+                continue
+            filtered_urls.append(url)
+        return filtered_urls
