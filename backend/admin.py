@@ -38,7 +38,7 @@ class CustomAdminSite(admin.AdminSite):
             'failed_projects': Project.objects.filter(status='failed').count(),
         }
 
-        # 段落统计
+        # 段落统计（仅用于首页展示，具体管理在前端进行）
         segment_stats = {
             'total_segments': Segment.objects.count(),
             'pending_segments': Segment.objects.filter(status='pending').count(),
@@ -78,22 +78,15 @@ class CustomAdminSite(admin.AdminSite):
 # 创建自定义管理站点实例
 admin_site = CustomAdminSite(name='custom_admin')
 
-# 注册所有模型到自定义站点
+# 注册核心管理模型到自定义站点
 from authentication.admin import UserAdmin
 from projects.admin import ProjectAdmin
-from segments.admin import SegmentAdmin
 from system_monitor.admin import SystemConfigAdmin, TaskMonitorAdmin
 from system_monitor.models import SystemConfig, TaskMonitor
-from voices.admin import VoiceAdmin, VoiceQueryLogAdmin
-from voices.models import Voice, VoiceQueryLog
-from voice_cloning.admin import VoiceCloneRecordAdmin
-from voice_cloning.models import VoiceCloneRecord
 
 admin_site.register(User, UserAdmin)
 admin_site.register(Project, ProjectAdmin)
-admin_site.register(Segment, SegmentAdmin)
 admin_site.register(SystemConfig, SystemConfigAdmin)
 admin_site.register(TaskMonitor, TaskMonitorAdmin)
-admin_site.register(Voice, VoiceAdmin)
-admin_site.register(VoiceQueryLog, VoiceQueryLogAdmin)
-admin_site.register(VoiceCloneRecord, VoiceCloneRecordAdmin)
+
+# 注意：音色管理、音色克隆、段落管理已移除，通过前端页面管理

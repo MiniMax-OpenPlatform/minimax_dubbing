@@ -13,7 +13,7 @@ class SystemConfigAdmin(admin.ModelAdmin):
 
     list_display = [
         'id', 'batch_translate_request_interval', 'max_concurrent_translate_tasks',
-        'task_timeout_minutes', 'enable_detailed_logging', 'updated_at'
+        'task_timeout_minutes', 'enable_detailed_logging', 'updated_at', 'edit_button'
     ]
 
     fieldsets = (
@@ -48,6 +48,14 @@ class SystemConfigAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         # 不允许删除配置
         return False
+
+    def edit_button(self, obj):
+        """添加修改按钮"""
+        return format_html(
+            '<a class="button" href="/admin/system_monitor/systemconfig/{}/change/">修改配置</a>',
+            obj.pk
+        )
+    edit_button.short_description = "操作"
 
 
 @admin.register(TaskMonitor)
