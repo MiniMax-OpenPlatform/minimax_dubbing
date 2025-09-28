@@ -32,7 +32,6 @@
       @batch-tts="handleBatchTts"
       @concatenate-audio="handleConcatenateAudio"
       @export="handleExport"
-      @upload-srt="handleUploadSrt"
       @upload-video="handleUploadVideo"
       @auto-assign-speaker="handleAutoAssignSpeaker"
       @batch-speaker="handleBatchSpeaker"
@@ -835,30 +834,6 @@ const handleDuplicateSegment = async (segment: Segment) => {
 }
 
 
-// SRT上传处理
-const handleUploadSrt = async (file: File) => {
-  try {
-    const formData = new FormData()
-    formData.append('srt_file', file)
-    formData.append('project_name', `${project.value?.name || 'project'}_imported_${Date.now()}`)
-
-    const api = (await import('../../utils/api')).default
-    await api.post(`/projects/upload_srt/`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-
-    ElMessage.success('SRT文件上传成功，将创建新项目')
-
-    // 不需要刷新当前项目，因为这会创建一个新项目
-    ElMessage.info('SRT文件已作为新项目导入，请在项目列表中查看')
-
-  } catch (error) {
-    console.error('SRT上传失败', error)
-    ElMessage.error('SRT文件上传失败')
-  }
-}
 
 // 视频上传处理
 const handleUploadVideo = async (file: File) => {

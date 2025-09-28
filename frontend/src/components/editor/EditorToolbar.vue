@@ -34,18 +34,6 @@
 
     <div class="toolbar-right">
 
-      <!-- 上传SRT -->
-      <el-upload
-        ref="uploadRef"
-        :show-file-list="false"
-        :before-upload="handleUploadSrt"
-        accept=".srt"
-        style="margin-left: 8px"
-      >
-        <el-button :icon="Upload" type="success">
-          上传SRT
-        </el-button>
-      </el-upload>
 
       <!-- 上传视频 -->
       <el-upload
@@ -120,7 +108,6 @@ const emit = defineEmits<{
   'batch-tts': []
   'concatenate-audio': []
   'export': [type: string]
-  'upload-srt': [file: File]
   'upload-video': [file: File]
   'auto-assign-speaker': []
   'batch-speaker': []
@@ -131,22 +118,6 @@ const handleExport = (type: string) => {
   emit('export', type)
 }
 
-const handleUploadSrt = (file: File) => {
-  // 验证文件类型
-  if (!file.name.toLowerCase().endsWith('.srt')) {
-    ElMessage.error('请选择SRT格式的字幕文件')
-    return false
-  }
-
-  // 验证文件大小 (10MB)
-  if (file.size > 10 * 1024 * 1024) {
-    ElMessage.error('文件大小不能超过10MB')
-    return false
-  }
-
-  emit('upload-srt', file)
-  return false // 阻止自动上传
-}
 
 const handleUploadVideo = (file: File) => {
   // 验证文件类型
