@@ -87,9 +87,6 @@ onMounted(async () => {
       <div style="display: flex; align-items: center; height: 100%; width: 100%;">
         <!-- 左侧标题 -->
         <div style="display: flex; align-items: center; flex-shrink: 0;">
-          <el-icon style="font-size: 24px; margin-right: 12px; color: #1890ff;">
-            <Document />
-          </el-icon>
           <h1 style="margin: 0; font-size: 20px;">MiniMax 翻译工具</h1>
         </div>
 
