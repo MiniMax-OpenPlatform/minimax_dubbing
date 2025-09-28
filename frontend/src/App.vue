@@ -129,11 +129,11 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- 右侧操作按钮 -->
-        <div style="display: flex; align-items: center; gap: 12px;">
+        <!-- 右侧用户区域 -->
+        <div class="user-area" style="display: flex; align-items: center; gap: 12px;">
           <!-- 用户设置按钮 -->
           <div
-            class="nav-item"
+            class="user-action-item"
             :class="{ active: currentView === 'user-settings' }"
             @click="navigateTo('user-settings')"
           >
@@ -143,8 +143,7 @@ onMounted(async () => {
 
           <!-- 用户信息下拉菜单 -->
           <el-dropdown trigger="hover">
-            <div style="display: flex; align-items: center; cursor: pointer; color: white; padding: 8px 12px; border-radius: 6px; transition: background-color 0.3s;"
-                 class="user-info-trigger">
+            <div class="user-info-trigger">
               <el-icon style="margin-right: 8px;"><User /></el-icon>
               <span>{{ authStore.username }}</span>
               <el-icon style="margin-left: 8px; transform: rotate(0deg); transition: transform 0.3s;">
@@ -293,7 +292,55 @@ onMounted(async () => {
   }
 }
 
-/* 用户信息触发器hover效果 */
+/* 用户区域样式 */
+.user-area {
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  padding-left: 20px;
+}
+
+/* 用户操作按钮样式 */
+.user-action-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.user-action-item:hover {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.user-action-item.active {
+  color: #1890ff;
+  background-color: rgba(24, 144, 255, 0.1);
+}
+
+.user-action-item .el-icon {
+  font-size: 16px;
+}
+
+.user-action-item span {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* 用户信息触发器样式 */
+.user-info-trigger {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: background-color 0.3s;
+}
+
 .user-info-trigger:hover {
   background-color: rgba(255, 255, 255, 0.1) !important;
 }
