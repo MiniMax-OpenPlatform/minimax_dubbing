@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Upload, Refresh, UploadFilled } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Upload, Refresh, UploadFilled, Delete } from '@element-plus/icons-vue'
 import api from '../utils/api'
 import { logger } from '../utils/logger'
 
@@ -83,6 +83,39 @@ const handleUpload = async () => {
   }
 }
 
+const handleDeleteProject = async (project: Project) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除项目 "${project.name}" 吗？删除后无法恢复，项目中的所有段落和音频文件将一并删除。`,
+      '删除项目确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      }
+    )
+
+    logger.addLog('info', `开始删除项目: ${project.name} (ID: ${project.id})`, 'ProjectList')
+
+    await api.delete(`/projects/${project.id}/`)
+    ElMessage.success('项目删除成功')
+    logger.addLog('success', `项目 "${project.name}" 删除成功`, 'ProjectList')
+
+    // 重新加载项目列表
+    loadProjects()
+  } catch (error: any) {
+    if (error === 'cancel') {
+      logger.addLog('info', `取消删除项目: ${project.name}`, 'ProjectList')
+      return
+    }
+
+    ElMessage.error('删除项目失败')
+    logger.addLog('error', `删除项目失败: ${error}`, 'ProjectList')
+    console.error('Delete project error:', error)
+  }
+}
+
 
 onMounted(() => {
   loadProjects()
@@ -135,10 +168,19 @@ onMounted(() => {
         </template>
       </el-table-column>
 
-      <el-table-column label="操作" width="120">
+      <el-table-column label="操作" width="180">
         <template #default="{ row }">
           <el-button size="small" @click="$emit('showDetail', row.id)">
             查看详情
+          </el-button>
+          <el-button
+            size="small"
+            type="danger"
+            :icon="Delete"
+            @click="handleDeleteProject(row)"
+            style="margin-left: 8px;"
+          >
+            删除
           </el-button>
         </template>
       </el-table-column>
