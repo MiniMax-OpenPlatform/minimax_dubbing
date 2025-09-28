@@ -6,7 +6,8 @@ import ProjectDetailContainer from './components/project/ProjectDetailContainer.
 import UserSettings from './components/UserSettings.vue'
 import VoiceManagement from './components/voice/VoiceManagement.vue'
 import VoiceCloning from './components/voice/VoiceCloning.vue'
-import { Document, Setting, User, ArrowDown, Microphone, MagicStick, VideoPlay } from '@element-plus/icons-vue'
+import About from './components/About.vue'
+import { Document, Setting, User, ArrowDown, Microphone, MagicStick } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/auth'
 import { logger } from './utils/logger'
 
@@ -45,7 +46,8 @@ const navigateTo = (view: string) => {
     'projects': '项目管理',
     'voices': '音色管理',
     'voice-cloning': '音色克隆',
-    'user-settings': '账户设置'
+    'user-settings': '账户设置',
+    'about': '关于'
   }
   logger.addLog('info', `导航到: ${viewNames[view] || view}`, 'Navigation')
 }
@@ -150,6 +152,10 @@ onMounted(async () => {
                   <el-icon><Setting /></el-icon>
                   <span>后台管理</span>
                 </el-dropdown-item>
+                <el-dropdown-item divided @click="navigateTo('about')">
+                  <el-icon><Document /></el-icon>
+                  <span>关于</span>
+                </el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -182,6 +188,9 @@ onMounted(async () => {
 
         <!-- 账户设置页面 -->
         <UserSettings v-if="currentView === 'user-settings'" @logout="logout" />
+
+        <!-- 关于页面 -->
+        <About v-if="currentView === 'about'" />
 
       </div>
     </el-main>
