@@ -75,6 +75,7 @@ class Project(models.Model):
         default=2.0,
         help_text="TTS时间戳对齐允许的最大speed参数，范围1.2-2.0"
     )
+    background_info = models.TextField(blank=True, default='', help_text="对话背景信息，用于辅助LLM分配说话人")
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     created_at = models.DateTimeField(auto_now_add=True)

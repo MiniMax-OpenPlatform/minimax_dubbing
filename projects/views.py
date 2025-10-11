@@ -783,15 +783,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
                     'error': '项目中没有可用的段落文本'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            # 构建SRT格式文本用于LLM分析
-            srt_blocks = []
+            # 构建对话内容列表（只包含序号和文本）
+            dialogue_lines = []
             for segment in segments:
-                start_time_str = self._seconds_to_srt_time(float(segment.start_time))
-                end_time_str = self._seconds_to_srt_time(float(segment.end_time))
-                srt_block = f"{segment.index}\n{start_time_str} --> {end_time_str}\n{segment.original_text}\n"
-                srt_blocks.append(srt_block)
+                dialogue_lines.append(f"[{segment.index}] {segment.original_text}")
 
-            srt_content = '\n'.join(srt_blocks)
+            dialogue_content = '\n'.join(dialogue_lines)
+            num_speakers = len(speakers)
 
             # 调用LLM API进行说话人分配
             import requests
@@ -814,71 +812,41 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 "Content-Type": "application/json"
             }
 
-            # 构建prompt，参考api_example/prompt_speakers
-            speakers_str = "，".join(speakers)
-            prompt_template = f"""请根据对话内容推断说话人，
-1）说话人请用提供的人名，
-2）严格按照示例格式输出推理过程和标注结果。
-以下是示例：
-----举例开始----
-输入：
-以下是小张，小王，小明之间的对话，请补充说话人
-----
-1
-00:00:27,100 --> 00:00:28,833
-你是谁啊
+            # 获取背景信息
+            background_info = project.background_info or ''
 
-2
-00:00:33,866 --> 00:00:36,900
-我是小明啊
+            # 构建新的prompt格式
+            background_section = f"\n\n背景信息：{background_info}\n" if background_info else "\n"
 
-3
-00:01:00,466 --> 00:01:02,333
-那他呢？
+            prompt_template = f"""你是一个专业的对话分析专家。请分析以下对话，识别出每句话是谁说的。
 
-4
-00:01:02,533 --> 00:01:03,866
-我是小王
-----
-输出：
+对话内容（共{len(segments)}句）：
+{dialogue_content}
 
-推理过程：
+任务：
+1. 分析对话结构，尤其要关注当前内容与上一句内容的逻辑关系，进而逐句递推人物关系
+2. 这段对话中预计有{num_speakers}个说话人
+3. 为每句话分配说话人ID（从1到{num_speakers}）
+{background_section}
+分析要点：
+- 问答对通常是不同人
+- 反问、质疑通常是对话转换
+- 连续的陈述、补充通常是同一人
+
+请输出JSON格式的结果：
 {{
-1. 首先，我注意到有3个不同的说话人：
-   - 一个是打招呼问话的人
-   - 一个是小明
-   - 还有一个是小王
-
-2. 根据对话内容：
-   - 第1句是SPEAKER_00打招呼
-   - 第2句是是小明回答
-   - 第3句是SPEAKER_00向另一个人打招呼
-   - 第4句是小王回答
+  "segments": [
+    {{
+      "index": 片段编号,
+      "text": "片段内容",
+      "analysis": "1）与上一句的对话逻辑关系（回答响应，连续陈述，无关联的新话题），2）综合其他背景信息推断说话人身份",
+      "speaker_name": "给说话人命名",
+      "speaker_id": 说话人ID（1到{num_speakers}之间的数字）
+    }}
+  ]
 }}
-标注结果：
-{{
-1
-00:00:27,100 --> 00:00:28,833 小张
-你是谁啊
 
-2
-00:00:33,866 --> 00:00:36,900 小明
-我是小明啊
-
-3
-00:01:00,466 --> 00:01:02,333 小张
-那他呢？
-
-4
-00:01:02,533 --> 00:01:03,866 小王
-我是小王
-}}
-----举例结束----
-
-以下是{speakers_str}之间的对话，请补充说话人
-{srt_content}
-
-请输出推理过程和标注结果："""
+只输出JSON，不要其他说明："""
 
             payload = {
                 "model": "MiniMax-Text-01",
@@ -896,13 +864,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 ]
             }
 
-            # 最多重试2次
-            for attempt in range(2):
+            # 最多重试5次
+            for attempt in range(5):
                 try:
                     logger.info(f"[自动分配说话人] 第{attempt + 1}次尝试调用LLM API")
 
-                    # 增加超时时间，因为文本较长
-                    response = requests.post(url, headers=headers, json=payload, timeout=60)
+                    # 增加超时时间到180秒（3分钟），因为文本较长
+                    response = requests.post(url, headers=headers, json=payload, timeout=180)
 
                     if response.status_code != 200:
                         logger.error(f"[自动分配说话人] API请求失败: {response.status_code}, {response.text}")
@@ -927,9 +895,14 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
                     llm_result = response_data['choices'][0]['message']['content']
                     logger.info(f"[自动分配说话人] LLM返回结果长度: {len(llm_result)}")
+                    logger.info(f"[自动分配说话人] LLM完整返回内容:\n{llm_result}")
+                    print(f"=" * 80)
+                    print(f"LLM返回内容 (trace_id: {trace_id}):")
+                    print(llm_result)
+                    print(f"=" * 80)
 
                     # 解析LLM返回的结果
-                    speaker_assignments = self._parse_speaker_assignment(llm_result, segments, speakers)
+                    speaker_assignments = self._parse_speaker_assignment(llm_result, segments, speakers, trace_id)
 
                     if speaker_assignments:
                         # 批量更新段落的说话人信息
@@ -952,7 +925,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                         })
                     else:
                         logger.warning(f"[自动分配说话人] 第{attempt + 1}次尝试解析失败，LLM返回格式无法识别")
-                        if attempt == 1:  # 最后一次尝试
+                        if attempt == 4:  # 最后一次尝试（第5次）
                             return Response({
                                 'success': False,
                                 'error': 'LLM返回格式无法解析，请检查项目角色配置是否正确',
@@ -962,17 +935,17 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
                 except requests.exceptions.Timeout:
                     logger.error(f"[自动分配说话人] 第{attempt + 1}次API调用超时")
-                    if attempt == 1:
+                    if attempt == 4:  # 最后一次尝试（第5次）
                         return Response({
                             'success': False,
-                            'error': 'API调用超时，请稍后重试'
+                            'error': 'API调用超时（已重试5次），请稍后重试'
                         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 except Exception as e:
                     logger.error(f"[自动分配说话人] 第{attempt + 1}次API调用异常: {str(e)}")
-                    if attempt == 1:
+                    if attempt == 4:  # 最后一次尝试（第5次）
                         return Response({
                             'success': False,
-                            'error': f'API调用失败: {str(e)}'
+                            'error': f'API调用失败（已重试5次）: {str(e)}'
                         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         except Exception as e:
@@ -990,60 +963,90 @@ class ProjectViewSet(viewsets.ModelViewSet):
         milliseconds = int((seconds % 1) * 1000)
         return f"{hours:02d}:{minutes:02d}:{secs:02d},{milliseconds:03d}"
 
-    def _parse_speaker_assignment(self, llm_result, segments, speakers):
-        """解析LLM返回的说话人分配结果"""
+    def _parse_speaker_assignment(self, llm_result, segments, speakers, trace_id='unknown'):
+        """解析LLM返回的说话人分配结果（JSON格式）"""
         try:
             import re
+            import json
 
-            # 提取"标注结果"部分
-            result_pattern = r'标注结果：\s*\{(.*?)\}'
-            result_match = re.search(result_pattern, llm_result, re.DOTALL)
+            logger.info(f"[解析说话人][{trace_id}] 开始解析，配置的说话人数量: {len(speakers)}")
 
-            if not result_match:
-                logger.error("[解析说话人] 未找到标注结果部分")
+            # 提取JSON内容 - 尝试从各种markdown格式中提取
+            json_content = llm_result.strip()
+
+            # 尝试提取```json```代码块
+            json_pattern = r'```json\s*\n(.*?)\n```'
+            json_match = re.search(json_pattern, llm_result, re.DOTALL)
+            if json_match:
+                json_content = json_match.group(1)
+                logger.info(f"[解析说话人][{trace_id}] 从```json```代码块中提取到JSON")
+            else:
+                # 尝试提取普通```代码块
+                code_block_pattern = r'```\s*\n(.*?)\n```'
+                code_match = re.search(code_block_pattern, llm_result, re.DOTALL)
+                if code_match:
+                    json_content = code_match.group(1)
+                    logger.info(f"[解析说话人][{trace_id}] 从代码块中提取到内容")
+
+            # 尝试解析JSON
+            try:
+                data = json.loads(json_content)
+                logger.info(f"[解析说话人][{trace_id}] 成功解析JSON，包含{len(data.get('segments', []))}个段落")
+            except json.JSONDecodeError as e:
+                logger.error(f"[解析说话人][{trace_id}] JSON解析失败: {str(e)}")
+                logger.error(f"[解析说话人][{trace_id}] 内容前500字符:\n{json_content[:500]}")
                 return None
 
-            result_content = result_match.group(1)
-
-            # 解析每个段落的说话人分配
-            # 格式示例：1\n00:00:27,100 --> 00:00:28,833 小张\n你是谁啊
-            segment_pattern = r'(\d+)\s*\n[\d:,]+ --> [\d:,]+ ([^\n]+)\n'
-            matches = re.findall(segment_pattern, result_content)
-
-            if not matches:
-                logger.error("[解析说话人] 未找到有效的段落-说话人匹配")
+            # 验证JSON结构
+            if 'segments' not in data or not isinstance(data['segments'], list):
+                logger.error(f"[解析说话人][{trace_id}] JSON格式错误: 缺少segments字段或不是列表")
                 return None
 
-            # 构建段落ID到说话人的映射
-            speaker_assignments = {}
+            # 构建speaker_id到SPEAKER_XX的映射
+            # speaker_id从1开始，对应SPEAKER_00, SPEAKER_01, ...
             segments_by_index = {segment.index: segment for segment in segments}
+            speaker_assignments = {}
 
-            for index_str, speaker_name in matches:
+            for i, seg_data in enumerate(data['segments']):
                 try:
-                    index = int(index_str)
-                    speaker_name = speaker_name.strip()
+                    index = seg_data.get('index')
+                    speaker_id = seg_data.get('speaker_id')
+                    speaker_name = seg_data.get('speaker_name', '')
 
-                    # 验证说话人名称是否在允许的列表中
-                    if speaker_name not in speakers:
-                        logger.warning(f"[解析说话人] 说话人'{speaker_name}'不在配置列表中: {speakers}")
+                    if index is None or speaker_id is None:
+                        logger.warning(f"[解析说话人][{trace_id}] 段落数据缺少index或speaker_id: {seg_data}")
                         continue
+
+                    # speaker_id是1-based，转换为0-based的SPEAKER_XX
+                    speaker_index = int(speaker_id) - 1
+                    if speaker_index < 0 or speaker_index >= len(speakers):
+                        logger.warning(f"[解析说话人][{trace_id}] speaker_id {speaker_id} 超出范围(1-{len(speakers)})")
+                        continue
+
+                    assigned_speaker = speakers[speaker_index]
+
+                    # 打印前3个和后3个的调试信息
+                    if i < 3 or i >= len(data['segments']) - 3:
+                        logger.info(f"[解析说话人][{trace_id}] 段落{index}: speaker_id={speaker_id}, speaker_name='{speaker_name}' -> {assigned_speaker}")
 
                     # 找到对应的段落
                     if index in segments_by_index:
                         segment = segments_by_index[index]
-                        speaker_assignments[segment.id] = speaker_name
+                        speaker_assignments[segment.id] = assigned_speaker
                     else:
-                        logger.warning(f"[解析说话人] 段落索引{index}不存在")
+                        logger.warning(f"[解析说话人][{trace_id}] 段落索引{index}不存在")
 
-                except (ValueError, AttributeError) as e:
-                    logger.error(f"[解析说话人] 解析段落{index_str}失败: {str(e)}")
+                except (ValueError, KeyError, AttributeError) as e:
+                    logger.error(f"[解析说话人][{trace_id}] 解析段落数据失败: {seg_data}, 错误: {str(e)}")
                     continue
 
-            logger.info(f"[解析说话人] 成功解析{len(speaker_assignments)}个段落的说话人分配")
+            logger.info(f"[解析说话人][{trace_id}] 成功解析{len(speaker_assignments)}个段落的说话人分配")
             return speaker_assignments
 
         except Exception as e:
-            logger.error(f"[解析说话人] 解析异常: {str(e)}")
+            logger.error(f"[解析说话人][{trace_id}] 解析异常: {str(e)}")
+            import traceback
+            logger.error(f"[解析说话人][{trace_id}] 异常堆栈:\n{traceback.format_exc()}")
             return None
 
     @action(detail=True, methods=['get'])

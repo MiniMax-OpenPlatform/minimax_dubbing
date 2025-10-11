@@ -194,6 +194,18 @@
           <small>格式说明：每行一个词汇，使用"|"分隔原词和译词。这些词汇在翻译时会被优先使用。</small>
         </div>
       </el-form-item>
+
+      <el-form-item label="背景信息" prop="background_info">
+        <el-input
+          v-model="formData.background_info"
+          type="textarea"
+          :rows="3"
+          placeholder="请输入对话背景信息，例如：有6个人，3个工人，1个保安，1个助理，一个总裁"
+        />
+        <div class="background-info-hint">
+          <small>背景信息将辅助LLM进行说话人自动分配，建议简要描述角色数量、身份等关键信息。</small>
+        </div>
+      </el-form-item>
     </el-form>
 
     <template #footer>
@@ -225,6 +237,7 @@ interface ProjectSettings {
   max_speed: number
   voice_mappings: SpeakerVoiceMapping[]
   custom_vocabulary: string
+  background_info: string
 }
 
 const props = defineProps<{
@@ -254,7 +267,8 @@ const formData = reactive<ProjectSettings>({
     { speaker: '说话人2', voice_id: '' },
     { speaker: '旁白', voice_id: '' }
   ],
-  custom_vocabulary: ''
+  custom_vocabulary: '',
+  background_info: ''
 })
 
 // 表单验证规则
@@ -329,6 +343,9 @@ watch(() => props.project, (newProject) => {
     } else {
       formData.custom_vocabulary = ''
     }
+
+    // 设置背景信息
+    formData.background_info = newProject.background_info || ''
   }
 }, { immediate: true })
 
