@@ -115,6 +115,19 @@
         </el-select>
       </el-form-item>
 
+      <el-form-item label="角色数量" prop="num_speakers">
+        <el-input-number
+          v-model="formData.num_speakers"
+          :min="2"
+          :max="10"
+          :step="1"
+          controls-position="right"
+        />
+        <div class="num-speakers-hint">
+          <small>设置对话中的角色数量（2-10个），用于LLM自动分配说话人。设置后点击"自动分配说话人"按钮，LLM将根据对话内容自动识别并命名角色。</small>
+        </div>
+      </el-form-item>
+
       <el-form-item label="角色音色配置">
         <div class="voice-config-section">
           <div v-for="(mapping, index) in formData.voice_mappings" :key="index" class="voice-mapping-row">
@@ -235,6 +248,7 @@ interface ProjectSettings {
   target_lang: string
   tts_model: string
   max_speed: number
+  num_speakers: number
   voice_mappings: SpeakerVoiceMapping[]
   custom_vocabulary: string
   background_info: string
@@ -261,6 +275,7 @@ const formData = reactive<ProjectSettings>({
   target_lang: '',
   tts_model: 'speech-2.5-hd-preview',
   max_speed: 2.0,
+  num_speakers: 2,
   voice_mappings: [
     { speaker: 'SPEAKER_00', voice_id: 'female-tianmei' },
     { speaker: '说话人1', voice_id: '' },
@@ -301,6 +316,7 @@ watch(() => props.project, (newProject) => {
     formData.target_lang = newProject.target_lang || ''
     formData.tts_model = newProject.tts_model || 'speech-2.5-hd-preview'
     formData.max_speed = newProject.max_speed != null ? newProject.max_speed : 2.0
+    formData.num_speakers = newProject.num_speakers != null ? newProject.num_speakers : 2
 
     // 解析角色音色映射
     if (newProject.voice_mappings && Array.isArray(newProject.voice_mappings)) {
@@ -448,6 +464,24 @@ const handleSave = async () => {
 }
 
 .model-hint {
+  margin-top: 8px;
+  color: #909399;
+  line-height: 1.4;
+}
+
+.num-speakers-hint {
+  margin-top: 8px;
+  color: #909399;
+  line-height: 1.4;
+}
+
+.max-speed-hint {
+  margin-top: 8px;
+  color: #909399;
+  line-height: 1.4;
+}
+
+.background-info-hint {
   margin-top: 8px;
   color: #909399;
   line-height: 1.4;

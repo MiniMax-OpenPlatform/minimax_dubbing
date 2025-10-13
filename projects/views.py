@@ -756,20 +756,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
         try:
             project = self.get_object()
 
-            # 获取项目的voice_mappings（角色配置）
-            voice_mappings = project.voice_mappings or []
-            if not voice_mappings:
+            # 获取项目配置的角色数量
+            num_speakers = project.num_speakers
+            if num_speakers < 2:
                 return Response({
                     'success': False,
-                    'error': '项目未配置角色，请先在项目设置中配置角色分配'
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-            # 提取说话人名称
-            speakers = [mapping.get('speaker', '') for mapping in voice_mappings if mapping.get('speaker')]
-            if len(speakers) < 2:
-                return Response({
-                    'success': False,
-                    'error': '至少需要配置2个说话人才能进行自动分配'
+                    'error': '角色数量至少需要2个才能进行自动分配，请在项目设置中修改'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             # 获取项目的所有段落，生成SRT格式文本
@@ -789,7 +781,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 dialogue_lines.append(f"[{segment.index}] {segment.original_text}")
 
             dialogue_content = '\n'.join(dialogue_lines)
-            num_speakers = len(speakers)
 
             # 调用LLM API进行说话人分配
             import requests
@@ -850,7 +841,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
             payload = {
                 "model": "MiniMax-Text-01",
-                "max_tokens": 8192,  # 增大token限制
+                "max_tokens": 20480,  # 增大token限制以支持更长对话
                 "temperature": 0.01,  # 降低随机性，提高输出稳定性
                 "messages": [
                     {
@@ -902,7 +893,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                     print(f"=" * 80)
 
                     # 解析LLM返回的结果
-                    speaker_assignments = self._parse_speaker_assignment(llm_result, segments, speakers, trace_id)
+                    speaker_assignments = self._parse_speaker_assignment(llm_result, segments, project, trace_id)
 
                     if speaker_assignments:
                         # 批量更新段落的说话人信息
@@ -963,13 +954,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
         milliseconds = int((seconds % 1) * 1000)
         return f"{hours:02d}:{minutes:02d}:{secs:02d},{milliseconds:03d}"
 
-    def _parse_speaker_assignment(self, llm_result, segments, speakers, trace_id='unknown'):
-        """解析LLM返回的说话人分配结果（JSON格式）"""
+    def _parse_speaker_assignment(self, llm_result, segments, project, trace_id='unknown'):
+        """解析LLM返回的说话人分配结果（JSON格式），并更新项目的voice_mappings"""
         try:
             import re
             import json
 
-            logger.info(f"[解析说话人][{trace_id}] 开始解析，配置的说话人数量: {len(speakers)}")
+            logger.info(f"[解析说话人][{trace_id}] 开始解析，项目配置的角色数量: {project.num_speakers}")
 
             # 提取JSON内容 - 尝试从各种markdown格式中提取
             json_content = llm_result.strip()
@@ -1002,8 +993,32 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 logger.error(f"[解析说话人][{trace_id}] JSON格式错误: 缺少segments字段或不是列表")
                 return None
 
-            # 构建speaker_id到SPEAKER_XX的映射
-            # speaker_id从1开始，对应SPEAKER_00, SPEAKER_01, ...
+            # 收集所有LLM返回的speaker_name，按speaker_id分组
+            speaker_names_by_id = {}  # {speaker_id: speaker_name}
+            for seg_data in data['segments']:
+                speaker_id = seg_data.get('speaker_id')
+                speaker_name = seg_data.get('speaker_name', '')
+                if speaker_id and speaker_name and speaker_id not in speaker_names_by_id:
+                    speaker_names_by_id[speaker_id] = speaker_name
+
+            logger.info(f"[解析说话人][{trace_id}] LLM识别出的角色: {speaker_names_by_id}")
+
+            # 更新项目的voice_mappings
+            # 使用默认音色ID "female-tianmei"
+            default_voice_id = "female-tianmei"
+            new_voice_mappings = []
+            for speaker_id in range(1, project.num_speakers + 1):
+                speaker_name = speaker_names_by_id.get(speaker_id, f"角色{speaker_id}")
+                new_voice_mappings.append({
+                    "speaker": speaker_name,
+                    "voice_id": default_voice_id
+                })
+
+            project.voice_mappings = new_voice_mappings
+            project.save(update_fields=['voice_mappings'])
+            logger.info(f"[解析说话人][{trace_id}] 已更新项目voice_mappings: {new_voice_mappings}")
+
+            # 构建段落分配结果
             segments_by_index = {segment.index: segment for segment in segments}
             speaker_assignments = {}
 
@@ -1017,13 +1032,14 @@ class ProjectViewSet(viewsets.ModelViewSet):
                         logger.warning(f"[解析说话人][{trace_id}] 段落数据缺少index或speaker_id: {seg_data}")
                         continue
 
-                    # speaker_id是1-based，转换为0-based的SPEAKER_XX
+                    # speaker_id是1-based
                     speaker_index = int(speaker_id) - 1
-                    if speaker_index < 0 or speaker_index >= len(speakers):
-                        logger.warning(f"[解析说话人][{trace_id}] speaker_id {speaker_id} 超出范围(1-{len(speakers)})")
+                    if speaker_index < 0 or speaker_index >= len(new_voice_mappings):
+                        logger.warning(f"[解析说话人][{trace_id}] speaker_id {speaker_id} 超出范围(1-{len(new_voice_mappings)})")
                         continue
 
-                    assigned_speaker = speakers[speaker_index]
+                    # 使用新的voice_mappings中的speaker名称
+                    assigned_speaker = new_voice_mappings[speaker_index]['speaker']
 
                     # 打印前3个和后3个的调试信息
                     if i < 3 or i >= len(data['segments']) - 3:

@@ -886,16 +886,10 @@ const handleAutoAssignSpeaker = async () => {
       return
     }
 
-    // 检查项目是否配置了角色
-    const voiceMappings = project.value.voice_mappings || []
-    if (voiceMappings.length < 2) {
-      ElMessage.warning('请先在项目设置中配置至少2个说话人角色才能进行自动分配')
-      return
-    }
-
     // 显示确认对话框
+    const numSpeakers = project.value.num_speakers || 2
     await ElMessageBox.confirm(
-      `将使用LLM分析对话内容自动分配说话人，当前配置的角色：${voiceMappings.map(v => v.speaker).join('、')}。此操作会覆盖现有的说话人设置，是否继续？`,
+      `将使用LLM分析对话内容自动分配说话人（共${numSpeakers}个角色）。LLM会根据对话内容自动识别并命名角色，此操作会覆盖现有的说话人设置，是否继续？`,
       '自动分配说话人',
       {
         confirmButtonText: '开始分配',
