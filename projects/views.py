@@ -751,7 +751,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def auto_assign_speakers(self, request, pk=None):
         """
-        自动分配说话人（使用LLM分析对话内容）
+        自动分配说话人（异步模式）- 立即返回task_id，后台执行
         """
         try:
             project = self.get_object()
@@ -764,7 +764,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                     'error': '角色数量至少需要2个才能进行自动分配，请在项目设置中修改'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            # 获取项目的所有段落，生成SRT格式文本
+            # 获取项目的所有段落
             segments = project.segments.filter(
                 original_text__isnull=False
             ).exclude(original_text__exact='').order_by('index')
@@ -775,43 +775,65 @@ class ProjectViewSet(viewsets.ModelViewSet):
                     'error': '项目中没有可用的段落文本'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            # 构建对话内容列表（只包含序号和文本）
-            dialogue_lines = []
-            for segment in segments:
-                dialogue_lines.append(f"[{segment.index}] {segment.original_text}")
-
-            dialogue_content = '\n'.join(dialogue_lines)
-
-            # 调用LLM API进行说话人分配
-            import requests
-            import json
+            # 创建任务ID
             import time
-            import re
+            import threading
+            from django.utils import timezone
 
-            # 使用用户的API Key而不是settings中的默认Key
-            api_key = request.user.api_key
-            if not api_key:
-                return Response({
-                    'success': False,
-                    'error': 'User API key not configured'
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            task_id = f"auto_assign_speakers_{project.id}_{int(time.time())}"
 
-            from django.conf import settings
-            url = getattr(settings, 'MINIMAX_API_URL', "https://api.minimaxi.com/v1/text/chatcompletion_v2")
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
+            logger.info(f"自动分配说话人任务启动: {task_id}, 项目{project.id}, {segments.count()}个段落")
 
-            # 获取背景信息
-            background_info = project.background_info or ''
+            # 保存用户API Key
+            user_api_key = request.user.api_key
 
-            # 构建新的prompt格式
-            background_section = f"\n\n背景信息：{background_info}\n" if background_info else "\n"
+            # 异步执行任务
+            def async_auto_assign_task():
+                import requests
+                import json
+                import re
+                from system_monitor.models import TaskMonitor
+                from django.conf import settings
 
-            prompt_template = f"""你是一个专业的对话分析专家。请分析以下对话，识别出每句话是谁说的。
+                try:
+                    logger.info(f"[{task_id}] 开始异步自动分配说话人任务")
 
-对话内容（共{len(segments)}句）：
+                    # 创建任务监控记录
+                    monitor, created = TaskMonitor.objects.get_or_create(
+                        task_id=task_id,
+                        defaults={
+                            'task_type': 'auto_assign_speakers',
+                            'project_id': project.id,
+                            'project_name': project.name,
+                            'total_segments': segments.count(),
+                            'start_time': timezone.now(),
+                            'status': 'running',
+                            'current_step': '准备调用LLM API...'
+                        }
+                    )
+
+                    # 重新获取segments（因为在新线程中）
+                    from segments.models import Segment
+                    segments_list = list(Segment.objects.filter(
+                        project_id=project.id,
+                        original_text__isnull=False
+                    ).exclude(original_text__exact='').order_by('index'))
+
+                    # 构建对话内容
+                    dialogue_lines = []
+                    for segment in segments_list:
+                        dialogue_lines.append(f"[{segment.index}] {segment.original_text}")
+
+                    dialogue_content = '\n'.join(dialogue_lines)
+
+                    # 获取背景信息
+                    background_info = project.background_info or ''
+                    background_section = f"\n\n背景信息：{background_info}\n" if background_info else "\n"
+
+                    # 构建prompt
+                    prompt_template = f"""你是一个专业的对话分析专家。请分析以下对话，识别出每句话是谁说的。
+
+对话内容（共{len(segments_list)}句）：
 {dialogue_content}
 
 任务：
@@ -839,111 +861,265 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
 只输出JSON，不要其他说明："""
 
-            payload = {
-                "model": "MiniMax-Text-01",
-                "max_tokens": 20480,  # 增大token限制以支持更长对话
-                "temperature": 0.01,  # 降低随机性，提高输出稳定性
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "你的任务是分析对话内容分配说话人"
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt_template
+                    url = getattr(settings, 'MINIMAX_API_URL', "https://api.minimaxi.com/v1/text/chatcompletion_v2")
+                    headers = {
+                        "Authorization": f"Bearer {user_api_key}",
+                        "Content-Type": "application/json",
+                        "Accept-Encoding": "identity"
                     }
-                ]
-            }
 
-            # 最多重试5次
-            for attempt in range(5):
-                try:
-                    logger.info(f"[自动分配说话人] 第{attempt + 1}次尝试调用LLM API")
+                    payload = {
+                        "model": "MiniMax-Text-01",
+                        "stream": True,
+                        "max_tokens": 20480,
+                        "temperature": 0.01,
+                        "messages": [
+                            {"role": "system", "content": "你的任务是分析对话内容分配说话人"},
+                            {"role": "user", "content": prompt_template}
+                        ]
+                    }
 
-                    # 增加超时时间到180秒（3分钟），因为文本较长
-                    response = requests.post(url, headers=headers, json=payload, timeout=180)
+                    # 更新状态：调用LLM API
+                    monitor.current_step = f'正在调用LLM API分析{len(segments_list)}个段落...'
+                    monitor.save()
+
+                    logger.info(f"[{task_id}] 开始调用LLM API (流式)")
+
+                    # 流式请求
+                    response = requests.post(url, headers=headers, json=payload, stream=True, timeout=60)
+
+                    # 获取trace_id
+                    trace_id = (response.headers.get('Trace-Id') or
+                               response.headers.get('X-Trace-Id') or
+                               response.headers.get('trace-id') or
+                               'unknown')
+
+                    logger.info(f"[{task_id}] 收到流式响应, trace_id: {trace_id}, status: {response.status_code}")
 
                     if response.status_code != 200:
-                        logger.error(f"[自动分配说话人] API请求失败: {response.status_code}, {response.text}")
-                        continue
+                        monitor.status = 'failed'
+                        monitor.error_message = f'LLM API返回错误: {response.status_code}'
+                        monitor.end_time = timezone.now()
+                        monitor.save()
+                        return
 
-                    response_data = response.json()
+                    # 更新状态：接收数据
+                    monitor.current_step = f'正在接收LLM分析结果... (trace_id: {trace_id})'
+                    monitor.save()
 
-                    # 获取trace_id，尝试多种可能的头部名称
-                    trace_id = (response.headers.get('X-Trace-Id') or
-                              response.headers.get('Trace-ID') or
-                              response.headers.get('trace-id') or
-                              response.headers.get('X-Request-Id') or
-                              'unknown')
+                    # 流式接收内容
+                    full_content = ""
+                    chunk_count = 0
 
-                    logger.info(f"[自动分配说话人] API调用成功, trace_id: {trace_id}")
-                    print(f"Trace-ID: {trace_id}")
-                    print(f"响应头信息: {dict(response.headers)}")
+                    for line in response.iter_lines():
+                        if not line:
+                            continue
 
-                    if 'choices' not in response_data or not response_data['choices']:
-                        logger.error(f"[自动分配说话人] API响应格式错误: {response_data}")
-                        continue
+                        line_str = line.decode('utf-8').strip()
 
-                    llm_result = response_data['choices'][0]['message']['content']
-                    logger.info(f"[自动分配说话人] LLM返回结果长度: {len(llm_result)}")
-                    logger.info(f"[自动分配说话人] LLM完整返回内容:\n{llm_result}")
-                    print(f"=" * 80)
-                    print(f"LLM返回内容 (trace_id: {trace_id}):")
-                    print(llm_result)
-                    print(f"=" * 80)
+                        if line_str.startswith('data: '):
+                            data_str = line_str[6:]
 
-                    # 解析LLM返回的结果
-                    speaker_assignments = self._parse_speaker_assignment(llm_result, segments, project, trace_id)
+                            if data_str == '[DONE]':
+                                break
 
-                    if speaker_assignments:
-                        # 批量更新段落的说话人信息
-                        updated_count = 0
-                        for segment_id, speaker in speaker_assignments.items():
                             try:
-                                segment = segments.get(id=segment_id)
-                                segment.speaker = speaker
-                                segment.save(update_fields=['speaker'])
-                                updated_count += 1
-                            except Exception as e:
-                                logger.error(f"[自动分配说话人] 更新段落{segment_id}失败: {str(e)}")
+                                data = json.loads(data_str)
+                                chunk_count += 1
 
-                        logger.info(f"[自动分配说话人] 成功更新{updated_count}个段落的说话人信息")
-                        return Response({
-                            'success': True,
-                            'message': f'自动分配说话人完成，成功更新{updated_count}个段落',
-                            'updated_count': updated_count,
-                            'trace_id': trace_id
+                                if 'choices' in data and len(data['choices']) > 0:
+                                    delta = data['choices'][0].get('delta', {})
+                                    content = delta.get('content', '')
+
+                                    if content:
+                                        full_content += content
+
+                                        # 每100个chunk更新一次进度
+                                        if chunk_count % 100 == 0:
+                                            monitor.current_step = f'正在接收数据... (已收到{chunk_count}个数据块)'
+                                            monitor.save()
+
+                            except json.JSONDecodeError:
+                                pass
+
+                    logger.info(f"[{task_id}] 流式传输完成，收到 {chunk_count} 个数据块，长度 {len(full_content)} 字符")
+
+                    # 更新状态：解析JSON
+                    monitor.current_step = f'正在解析LLM返回的JSON数据...'
+                    monitor.save()
+
+                    # 解析JSON
+                    try:
+                        json_content = full_content.strip()
+
+                        # 尝试提取代码块
+                        json_pattern = r'```json\s*\n(.*?)\n```'
+                        json_match = re.search(json_pattern, full_content, re.DOTALL)
+                        if json_match:
+                            json_content = json_match.group(1)
+                        else:
+                            code_block_pattern = r'```\s*\n(.*?)\n```'
+                            code_match = re.search(code_block_pattern, full_content, re.DOTALL)
+                            if code_match:
+                                json_content = code_match.group(1)
+
+                        data = json.loads(json_content)
+
+                        if 'segments' not in data or not isinstance(data['segments'], list):
+                            raise ValueError("JSON格式错误: 缺少segments字段")
+
+                        logger.info(f"[{task_id}] 成功解析JSON，包含{len(data['segments'])}个段落")
+
+                    except (json.JSONDecodeError, ValueError) as e:
+                        logger.error(f"[{task_id}] JSON解析失败: {e}")
+                        monitor.status = 'failed'
+                        monitor.error_message = f'JSON解析失败: {str(e)}'
+                        monitor.end_time = timezone.now()
+                        monitor.save()
+                        return
+
+                    # 更新状态：更新voice_mappings
+                    monitor.current_step = '正在更新项目角色配置...'
+                    monitor.save()
+
+                    # 收集speaker_name
+                    speaker_names_by_id = {}
+                    for seg_data in data['segments']:
+                        speaker_id = seg_data.get('speaker_id')
+                        speaker_name = seg_data.get('speaker_name', '')
+                        if speaker_id and speaker_name and speaker_id not in speaker_names_by_id:
+                            speaker_names_by_id[speaker_id] = speaker_name
+
+                    # 更新voice_mappings
+                    default_voice_id = "female-tianmei"
+                    new_voice_mappings = []
+                    for speaker_id in range(1, num_speakers + 1):
+                        speaker_name = speaker_names_by_id.get(speaker_id, f"角色{speaker_id}")
+                        new_voice_mappings.append({
+                            "speaker": speaker_name,
+                            "voice_id": default_voice_id
                         })
-                    else:
-                        logger.warning(f"[自动分配说话人] 第{attempt + 1}次尝试解析失败，LLM返回格式无法识别")
-                        if attempt == 4:  # 最后一次尝试（第5次）
-                            return Response({
-                                'success': False,
-                                'error': 'LLM返回格式无法解析，请检查项目角色配置是否正确',
-                                'trace_id': trace_id
-                            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                        continue
 
-                except requests.exceptions.Timeout:
-                    logger.error(f"[自动分配说话人] 第{attempt + 1}次API调用超时")
-                    if attempt == 4:  # 最后一次尝试（第5次）
-                        return Response({
-                            'success': False,
-                            'error': 'API调用超时（已重试5次），请稍后重试'
-                        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    project.voice_mappings = new_voice_mappings
+                    project.save(update_fields=['voice_mappings'])
+
+                    logger.info(f"[{task_id}] 已更新voice_mappings: {new_voice_mappings}")
+
+                    # 更新状态：更新段落
+                    monitor.current_step = f'正在更新{len(segments_list)}个段落的说话人信息...'
+                    monitor.save()
+
+                    # 构建segment映射
+                    segments_by_index = {seg.index: seg for seg in segments_list}
+
+                    updated_count = 0
+                    for seg_data in data['segments']:
+                        index = seg_data.get('index')
+                        speaker_id = seg_data.get('speaker_id')
+
+                        if index is None or speaker_id is None:
+                            continue
+
+                        speaker_index = int(speaker_id) - 1
+                        if speaker_index < 0 or speaker_index >= len(new_voice_mappings):
+                            continue
+
+                        assigned_speaker = new_voice_mappings[speaker_index]['speaker']
+
+                        if index in segments_by_index:
+                            segment = segments_by_index[index]
+                            segment.speaker = assigned_speaker
+                            segment.save(update_fields=['speaker'])
+                            updated_count += 1
+
+                            # 每10个段落更新一次进度
+                            if updated_count % 10 == 0:
+                                monitor.completed_segments = updated_count
+                                monitor.current_step = f'已更新 {updated_count}/{len(segments_list)} 个段落...'
+                                monitor.save()
+
+                    # 任务完成
+                    monitor.status = 'completed'
+                    monitor.completed_segments = updated_count
+                    monitor.end_time = timezone.now()
+                    monitor.current_step = f'完成！成功更新{updated_count}个段落'
+                    monitor.save()
+
+                    logger.info(f"[{task_id}] 自动分配说话人完成，成功更新{updated_count}个段落")
+
                 except Exception as e:
-                    logger.error(f"[自动分配说话人] 第{attempt + 1}次API调用异常: {str(e)}")
-                    if attempt == 4:  # 最后一次尝试（第5次）
-                        return Response({
-                            'success': False,
-                            'error': f'API调用失败（已重试5次）: {str(e)}'
-                        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    logger.error(f"[{task_id}] 自动分配说话人任务失败: {str(e)}")
+                    try:
+                        monitor = TaskMonitor.objects.get(task_id=task_id)
+                        monitor.status = 'failed'
+                        monitor.error_message = str(e)
+                        monitor.end_time = timezone.now()
+                        monitor.save()
+                    except:
+                        pass
+
+            # 启动后台线程
+            threading.Thread(target=async_auto_assign_task, daemon=True).start()
+
+            # 立即返回
+            return Response({
+                'success': True,
+                'task_id': task_id,
+                'total_segments': segments.count(),
+                'message': f'自动分配说话人任务已启动，共{segments.count()}个段落'
+            })
 
         except Exception as e:
-            logger.error(f"[自动分配说话人] 处理失败: {str(e)}")
+            logger.error(f"启动自动分配说话人任务失败: {str(e)}")
             return Response({
                 'success': False,
-                'error': f'自动分配说话人失败: {str(e)}'
+                'error': f'启动任务失败: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['get'])
+    def auto_assign_speakers_progress(self, request, pk=None):
+        """
+        获取自动分配说话人任务的进度
+        """
+        try:
+            from system_monitor.models import TaskMonitor
+
+            project = self.get_object()
+            task_id = request.query_params.get('task_id')
+
+            if not task_id:
+                return Response({
+                    'success': False,
+                    'error': '缺少task_id参数'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            try:
+                monitor = TaskMonitor.objects.get(task_id=task_id)
+
+                progress = {
+                    'status': monitor.status,
+                    'total': monitor.total_segments,
+                    'completed': monitor.completed_segments,
+                    'current_step': monitor.current_step or '',
+                    'error_message': monitor.error_message or ''
+                }
+
+                return Response({
+                    'success': True,
+                    'progress': progress
+                })
+
+            except TaskMonitor.DoesNotExist:
+                return Response({
+                    'success': False,
+                    'error': '任务不存在或已过期'
+                }, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            logger.error(f"获取进度失败: {str(e)}")
+            return Response({
+                'success': False,
+                'error': f'获取进度失败: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def _seconds_to_srt_time(self, seconds):

@@ -898,38 +898,74 @@ const handleAutoAssignSpeaker = async () => {
       }
     )
 
-    // 显示加载状态
-    const loading = ElLoading.service({
-      lock: true,
-      text: '正在调用LLM分析对话内容...',
-      background: 'rgba(0, 0, 0, 0.7)'
-    })
-
     try {
       // 动态导入API模块
       const api = (await import('../../utils/api')).default
 
-      // 调用后端自动分配说话人API
+      // 调用后端自动分配说话人API（异步模式）
       const response = await api.post(`/projects/${props.projectId}/auto_assign_speakers/`)
 
-      loading.close()
+      if (response.data.success && response.data.task_id) {
+        const { task_id, total_segments } = response.data
 
-      if (response.data.success) {
-        ElMessage.success(response.data.message || '自动分配说话人完成')
+        ElMessage.success(response.data.message || `自动分配说话人任务已启动，共 ${total_segments} 个段落`)
 
-        // 显示详细信息
-        if (response.data.trace_id) {
-          console.log('LLM API trace_id:', response.data.trace_id)
+        // 显示加载提示
+        const loading = ElLoading.service({
+          lock: true,
+          text: '正在调用LLM分析对话内容...',
+          background: 'rgba(0, 0, 0, 0.7)'
+        })
+
+        // 开始轮询进度
+        const pollProgress = async () => {
+          try {
+            const progressResponse = await api.get(`/projects/${props.projectId}/auto_assign_speakers_progress/`, {
+              params: { task_id }
+            })
+
+            if (progressResponse.data.success) {
+              const progress = progressResponse.data.progress
+
+              // 更新加载提示文本
+              if (progress.current_step) {
+                loading.setText(progress.current_step)
+              }
+
+              // 检查任务状态
+              if (progress.status === 'completed') {
+                loading.close()
+                clearInterval(pollingInterval)
+
+                ElMessage.success(`自动分配说话人完成！成功更新${progress.completed}个段落`)
+
+                // 刷新数据以显示更新后的说话人信息
+                refreshData()
+              } else if (progress.status === 'failed') {
+                loading.close()
+                clearInterval(pollingInterval)
+
+                ElMessage.error(progress.error_message || '自动分配说话人失败')
+              }
+            } else {
+              // 任务不存在或已过期
+              loading.close()
+              clearInterval(pollingInterval)
+              ElMessage.error('任务不存在或已过期')
+            }
+          } catch (error) {
+            console.error('获取进度失败', error)
+            // 继续轮询，不因为单次失败就停止
+          }
         }
 
-        // 刷新数据以显示更新后的说话人信息
-        refreshData()
+        // 立即获取一次进度，然后每2秒轮询一次
+        await pollProgress()
+        const pollingInterval = setInterval(pollProgress, 2000)
       } else {
         ElMessage.error(response.data.error || '自动分配说话人失败')
       }
     } catch (apiError: any) {
-      loading.close()
-
       if (apiError.response?.data?.error) {
         ElMessage.error(apiError.response.data.error)
       } else {

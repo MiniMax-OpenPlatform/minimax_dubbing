@@ -21,7 +21,7 @@ const getApiBaseUrl = () => {
 // 创建axios实例
 const api = axios.create({
   baseURL: getApiBaseUrl(),
-  timeout: 180000, // 3分钟超时，适配LLM长时间调用
+  timeout: 300000, // 5分钟超时，适配LLM长时间调用（尤其是大量段落的说话人分配）
   headers: {
     'Content-Type': 'application/json'
   }
