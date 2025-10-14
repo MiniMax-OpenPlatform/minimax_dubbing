@@ -937,7 +937,8 @@ const handleAutoAssignSpeaker = async () => {
                 loading.close()
                 clearInterval(pollingInterval)
 
-                ElMessageBox.alert(
+                // 等待用户确认后再刷新数据
+                await ElMessageBox.alert(
                   `成功更新${progress.completed}个段落的说话人信息`,
                   '自动分配说话人完成',
                   {
