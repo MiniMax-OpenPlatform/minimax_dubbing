@@ -937,7 +937,14 @@ const handleAutoAssignSpeaker = async () => {
                 loading.close()
                 clearInterval(pollingInterval)
 
-                ElMessage.success(`自动分配说话人完成！成功更新${progress.completed}个段落`)
+                ElMessageBox.alert(
+                  `成功更新${progress.completed}个段落的说话人信息`,
+                  '自动分配说话人完成',
+                  {
+                    confirmButtonText: '确定',
+                    type: 'success'
+                  }
+                )
 
                 // 刷新数据以显示更新后的说话人信息
                 refreshData()
@@ -945,13 +952,28 @@ const handleAutoAssignSpeaker = async () => {
                 loading.close()
                 clearInterval(pollingInterval)
 
-                ElMessage.error(progress.error_message || '自动分配说话人失败')
+                ElMessageBox.alert(
+                  `任务失败：${progress.error_message || '未知错误'}`,
+                  '自动分配说话人失败',
+                  {
+                    confirmButtonText: '确定',
+                    type: 'error'
+                  }
+                )
               }
             } else {
               // 任务不存在或已过期
               loading.close()
               clearInterval(pollingInterval)
-              ElMessage.error('任务不存在或已过期')
+
+              ElMessageBox.alert(
+                '任务不存在或已过期，请稍后重试',
+                '查询任务失败',
+                {
+                  confirmButtonText: '确定',
+                  type: 'warning'
+                }
+              )
             }
           } catch (error) {
             console.error('获取进度失败', error)

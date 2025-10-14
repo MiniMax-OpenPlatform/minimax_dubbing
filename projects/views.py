@@ -943,6 +943,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
                                 pass
 
                     logger.info(f"[{task_id}] 流式传输完成，收到 {chunk_count} 个数据块，长度 {len(full_content)} 字符")
+                    logger.info(f"[{task_id}] 内容前100字符: {repr(full_content[:100])}")
+                    logger.info(f"[{task_id}] 内容后100字符: {repr(full_content[-100:])}")
 
                     # 更新状态：解析JSON
                     monitor.current_step = f'正在解析LLM返回的JSON数据...'
