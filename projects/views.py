@@ -965,6 +965,11 @@ class ProjectViewSet(viewsets.ModelViewSet):
                             if code_match:
                                 json_content = code_match.group(1)
 
+                        # 清理可能的省略符号（LLM有时会输出 . . . 来表示省略）
+                        # 这些省略符号会导致JSON解析失败
+                        json_content = re.sub(r',\s*"\.\s*\.\s*\."', '', json_content)  # 移除 ". . ." 字段
+                        json_content = re.sub(r'\.\s*\.\s*\.', '', json_content)  # 移除 . . .
+
                         data = json.loads(json_content)
 
                         if 'segments' not in data or not isinstance(data['segments'], list):
@@ -973,9 +978,17 @@ class ProjectViewSet(viewsets.ModelViewSet):
                         logger.info(f"[{task_id}] 成功解析JSON，包含{len(data['segments'])}个段落")
 
                     except (json.JSONDecodeError, ValueError) as e:
+                        # 保存失败的JSON内容到文件
+                        debug_file = f'/tmp/llm_response_{task_id}.txt'
+                        with open(debug_file, 'w', encoding='utf-8') as f:
+                            f.write(json_content)
+
                         logger.error(f"[{task_id}] JSON解析失败: {e}")
+                        logger.error(f"[{task_id}] 完整内容已保存到: {debug_file}")
+                        logger.error(f"[{task_id}] 错误位置附近内容: {json_content[max(0, 21877-50):min(len(json_content), 21877+50)]}...")
+
                         monitor.status = 'failed'
-                        monitor.error_message = f'JSON解析失败: {str(e)}'
+                        monitor.error_message = f'JSON解析失败: {str(e)} (内容已保存到{debug_file})'
                         monitor.end_time = timezone.now()
                         monitor.save()
                         return
