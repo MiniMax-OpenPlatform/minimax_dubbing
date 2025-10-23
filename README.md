@@ -1,8 +1,8 @@
-# MiniMax Translation
+# MiniMax Dubbing
 
-> 🚀 基于Vue 3 + Django的AI视频翻译管理系统
+> 🎙️ 基于Vue 3 + Django的AI智能配音系统
 
-一个专业的视频翻译管理平台，集成MiniMax AI API，支持批量翻译、TTS语音合成、在线编辑等功能。
+一个专业的视频配音与翻译平台，集成MiniMax AI API，支持批量翻译、AI语音合成、智能配音等功能。
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![Vue](https://img.shields.io/badge/Vue-3.0+-green)
