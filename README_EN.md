@@ -213,11 +213,21 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - **Django REST Framework** for the robust backend API
 - **FFmpeg** for audio processing capabilities
 
-## 📞 Support
+## 📞 Support & Community
 
-For support and questions:
+### 💬 Join WeChat Technical Discussion Group
+
+Scan the QR code to join our WeChat technical discussion group and connect with developers and users:
+
+<div align="center">
+  <img src="./20251023-162139.jpg" alt="WeChat Technical Group" width="300"/>
+  <p><i>Scan to join WeChat group for AI dubbing technology discussions</i></p>
+</div>
+
+### Other Support Channels
+
 - Create an issue in the GitHub repository
-- Check the documentation
+- Check the project documentation
 - Review API examples in `/api_example`
 
 ---

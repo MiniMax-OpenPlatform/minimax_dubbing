@@ -432,12 +432,22 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - **Django REST Framework** for the robust backend API
 - **FFmpeg** for audio processing capabilities
 
-## 📞 Support
+## 📞 技术支持与交流
 
-For support and questions:
-- Create an issue in the GitHub repository
-- Check the documentation in the `/docs` folder
-- Review API examples in `/api_example`
+### 💬 加入微信技术交流群
+
+欢迎扫码加入我们的微信技术交流群，与开发者和用户一起讨论：
+
+<div align="center">
+  <img src="./20251023-162139.jpg" alt="微信技术交流群" width="300"/>
+  <p><i>扫码加入微信群，交流AI配音技术</i></p>
+</div>
+
+### 其他支持方式
+
+- 在 GitHub 仓库创建 Issue 反馈问题
+- 查看项目文档
+- 参考 `/api_example` 中的API使用示例
 
 ---
 
