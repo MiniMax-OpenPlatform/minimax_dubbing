@@ -1,4 +1,6 @@
-# MiniMax Dubbing
+# MiniMax Dubbing - AI智能配音系统
+
+[English](./README_EN.md) | 简体中文
 
 > 🎙️ 基于Vue 3 + Django的AI智能配音系统
 
@@ -37,77 +39,78 @@
 
 ---
 
-## ✨ Features
+## ✨ 功能特性
 
-### Core Translation System
-- **📹 Video & Audio Support**: Upload and process video/audio files for translation
-- **📝 SRT Import/Export**: Import SRT subtitle files and export translated versions
-- **🔄 Inline Editing**: Direct table editing with auto-save and validation
-- **🎯 Smart Segmentation**: Automatic text segmentation with time alignment
+### 核心翻译系统
+- **📹 视频音频支持**：上传和处理视频/音频文件进行翻译配音
+- **📝 SRT导入导出**：导入SRT字幕文件并导出翻译后的版本
+- **🔄 内联编辑**：表格直接编辑，支持自动保存和实时验证
+- **🎯 智能分段**：自动文本分段，精确时间轴对齐
 
-### AI-Powered Features
-- **🤖 Batch Translation**: AI-powered bulk translation with progress tracking
-- **🎙️ Text-to-Speech (TTS)**: Generate natural speech from translated text
-- **👥 Auto Speaker Assignment**: LLM-based automatic speaker detection and assignment
-- **⚡ Real-time Progress**: Live progress monitoring for batch operations
+### AI驱动功能
+- **🤖 批量翻译**：AI批量翻译，实时进度追踪
+- **🎙️ 语音合成(TTS)**：将翻译文本转换为自然流畅的语音
+- **👥 自动说话人分配**：基于LLM的智能角色识别与分配
+- **⚡ 实时进度**：批量操作的实时进度监控
 
-### Advanced Audio Processing
-- **🎵 Audio Concatenation**: Merge individual segment audio into complete tracks
-- **⏱️ Timestamp Alignment**: Smart timestamp optimization for natural speech
-- **🎛️ Audio Preview**: Integrated media player with waveform visualization
-- **🔊 Voice Mapping**: Configure different voices for different speakers
+### 高级音频处理
+- **🎵 音频拼接**：将分段音频合并为完整音轨
+- **⏱️ 时间戳对齐**：智能优化配音时间戳，确保自然流畅
+- **🎛️ 音频预览**：集成媒体播放器和波形可视化
+- **🔊 音色映射**：为不同说话人配置不同的音色
 
-### System Management
-- **📊 Task Monitoring**: Real-time monitoring of background tasks
-- **⚙️ Configurable Settings**: Admin interface for system configuration
-- **🔒 API Authentication**: Secure API key-based authentication
-- **📱 Responsive Design**: Modern Vue 3 interface with Element Plus
+### 系统管理
+- **📊 任务监控**：后台任务实时监控
+- **⚙️ 可配置设置**：管理后台界面进行系统配置
+- **🔒 API认证**：安全的API密钥认证机制
+- **📱 响应式设计**：基于Vue 3和Element Plus的现代化界面
 
-## 🏗️ Architecture
+## 🏗️ 技术架构
 
-### Technology Stack
-- **Frontend**: Vue 3 + TypeScript + Element Plus + Vite
-- **Backend**: Django 5.2.6 + Django REST Framework
-- **Database**: SQLite (development) / PostgreSQL (production)
-- **AI Integration**: MiniMax API for translation and TTS
+### 技术栈
+- **前端**: Vue 3 + TypeScript + Element Plus + Vite
+- **后端**: Django 5.2.6 + Django REST Framework
+- **数据库**: SQLite (开发环境) / PostgreSQL (生产环境)
+- **AI集成**: MiniMax API 用于翻译和TTS
 
-### Project Structure
+### 项目结构
 ```
 minimax_translation/
-├── backend/                    # Django settings and configuration
-├── projects/                   # Project management app
-├── segments/                   # Segment management app
-├── authentication/             # Auth system
-├── system_monitor/             # Task monitoring and system config
-├── services/                   # Business logic and AI integrations
-│   ├── algorithms/             # Timestamp alignment algorithms
-│   ├── business/               # Business logic services
-│   ├── clients/                # External API clients
-│   └── parsers/                # File format parsers
-├── frontend/                   # Vue 3 application
+├── backend/                    # Django配置和核心设置
+├── projects/                   # 项目管理应用
+├── segments/                   # 片段管理应用
+├── authentication/             # 认证系统
+├── system_monitor/             # 任务监控和系统配置
+├── services/                   # 业务逻辑和AI集成
+│   ├── algorithms/             # 时间戳对齐算法
+│   ├── business/               # 业务逻辑服务
+│   ├── clients/                # 外部API客户端
+│   └── parsers/                # 文件格式解析器
+├── frontend/                   # Vue 3应用
 │   ├── src/
-│   │   ├── components/         # Vue components
-│   │   ├── composables/        # Vue 3 composition functions
-│   │   ├── utils/              # Utility functions
-│   │   └── stores/             # Pinia state management
-└── api_example/                # API usage examples
+│   │   ├── components/         # Vue组件
+│   │   ├── composables/        # Vue 3组合式函数
+│   │   ├── utils/              # 工具函数
+│   │   └── stores/             # Pinia状态管理
+└── api_example/                # API使用示例
 ```
 
-## 🚀 Quick Start
+## 🚀 快速开始
 
-### ⚡ Super Quick Setup (2 minutes)
+### ⚡ 超快速安装（2分钟）
 
 ```bash
-# 1. Clone and setup
-git clone https://github.com/backearth1/minimax_translation.git
-cd minimax_translation
+# 1. 克隆仓库
+git clone https://github.com/MiniMax-OpenPlatform/minimax_dubbing.git
+cd minimax_dubbing
 
-# 2. Install dependencies
+# 2. 安装依赖
 pip install -r requirements.txt
 cd frontend && npm install && cd ..
 
-# 3. Setup database
+# 3. 初始化数据库和管理员账号
 python3 manage.py migrate
+python3 manage.py init_system
 ```
 
 ### 🚀 启动服务
