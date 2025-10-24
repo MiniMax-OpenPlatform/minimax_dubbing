@@ -70,6 +70,65 @@
       </el-form>
     </el-card>
 
+    <el-card class="setting-card">
+      <template #header>
+        <div class="card-header">
+          <span>阿里云 ASR 配置</span>
+          <el-tag size="small" type="info">用于语音识别生成SRT</el-tag>
+        </div>
+      </template>
+
+      <el-form :model="aliyunForm" :rules="aliyunRules" ref="aliyunFormRef" label-width="160px">
+        <el-form-item label="AccessKey ID" prop="accessKeyId">
+          <el-input
+            v-model="aliyunForm.accessKeyId"
+            placeholder="输入阿里云 AccessKey ID"
+            clearable
+          />
+        </el-form-item>
+
+        <el-form-item label="AccessKey Secret" prop="accessKeySecret">
+          <el-input
+            v-model="aliyunForm.accessKeySecret"
+            type="password"
+            show-password
+            placeholder="输入阿里云 AccessKey Secret"
+            clearable
+          />
+        </el-form-item>
+
+        <el-form-item label="ASR AppKey" prop="appKey">
+          <el-input
+            v-model="aliyunForm.appKey"
+            placeholder="输入阿里云 ASR AppKey"
+            clearable
+          />
+          <template #extra>
+            <el-link
+              href="https://nls-portal.console.aliyun.com/applist"
+              target="_blank"
+              type="primary"
+              :underline="false"
+              style="font-size: 12px;"
+            >
+              前往阿里云控制台获取 AppKey
+            </el-link>
+          </template>
+        </el-form-item>
+
+        <el-form-item>
+          <el-button
+            type="primary"
+            @click="updateAliyunConfig"
+            :loading="updatingAliyun"
+          >
+            保存阿里云配置
+          </el-button>
+          <el-button @click="resetAliyunForm">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
+
     <el-card class="setting-card danger-zone">
       <template #header>
         <div class="card-header">
@@ -93,10 +152,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, type FormInstance } from 'element-plus'
 import { SwitchButton } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
+import api from '../utils/api'
 
 const authStore = useAuthStore()
 
@@ -105,15 +165,35 @@ const emit = defineEmits<{
 }>()
 
 const apiFormRef = ref<FormInstance>()
+const aliyunFormRef = ref<FormInstance>()
 const updating = ref(false)
+const updatingAliyun = ref(false)
 
 const apiForm = reactive({
   newApiKey: ''
 })
 
+const aliyunForm = reactive({
+  accessKeyId: '',
+  accessKeySecret: '',
+  appKey: ''
+})
+
 const apiRules = {
   newApiKey: [
     { min: 10, message: 'API Key长度至少10个字符', trigger: 'blur' }
+  ]
+}
+
+const aliyunRules = {
+  accessKeyId: [
+    { required: true, message: '请输入AccessKey ID', trigger: 'blur' }
+  ],
+  accessKeySecret: [
+    { required: true, message: '请输入AccessKey Secret', trigger: 'blur' }
+  ],
+  appKey: [
+    { required: true, message: '请输入ASR AppKey', trigger: 'blur' }
   ]
 }
 
@@ -167,6 +247,60 @@ const resetForm = () => {
 const handleLogout = () => {
   emit('logout')
 }
+
+// 加载阿里云配置
+const loadAliyunConfig = async () => {
+  try {
+    const response = await api.get('/auth/config/')
+    if (response.data) {
+      const config = response.data
+      aliyunForm.accessKeyId = config.aliyun_access_key_id || ''
+      aliyunForm.appKey = config.aliyun_app_key || ''
+      // Secret不从服务器读取，保持为空
+    }
+  } catch (error: any) {
+    console.error('加载阿里云配置失败', error)
+  }
+}
+
+// 更新阿里云配置
+const updateAliyunConfig = async () => {
+  if (!aliyunFormRef.value) return
+
+  try {
+    await aliyunFormRef.value.validate()
+    updatingAliyun.value = true
+
+    await api.patch('/auth/config/', {
+      aliyun_access_key_id: aliyunForm.accessKeyId,
+      aliyun_access_key_secret: aliyunForm.accessKeySecret,
+      aliyun_app_key: aliyunForm.appKey
+    })
+
+    ElMessage.success('阿里云配置保存成功')
+    // 清空密钥字段
+    aliyunForm.accessKeySecret = ''
+  } catch (error: any) {
+    if (error?.response?.data?.message) {
+      ElMessage.error(error.response.data.message)
+    } else {
+      ElMessage.error('配置保存失败：' + (error.message || '未知错误'))
+    }
+  } finally {
+    updatingAliyun.value = false
+  }
+}
+
+// 重置阿里云表单
+const resetAliyunForm = () => {
+  aliyunFormRef.value?.resetFields()
+  loadAliyunConfig()
+}
+
+// 页面加载时获取配置
+onMounted(() => {
+  loadAliyunConfig()
+})
 </script>
 
 <style scoped>

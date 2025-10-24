@@ -22,8 +22,18 @@ class UserConfigSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserConfig
-        fields = ['api_endpoint', 'created_at', 'updated_at']
+        fields = [
+            'api_endpoint',
+            'aliyun_access_key_id',
+            'aliyun_access_key_secret',
+            'aliyun_app_key',
+            'created_at',
+            'updated_at'
+        ]
         read_only_fields = ['created_at', 'updated_at']
+        extra_kwargs = {
+            'aliyun_access_key_secret': {'write_only': True}  # 安全起见，secret只写不读
+        }
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):

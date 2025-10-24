@@ -44,6 +44,27 @@ class UserConfig(models.Model):
         default="https://api.minimaxi.com",
         help_text="MiniMax API端点"
     )
+
+    # 阿里云ASR配置
+    aliyun_access_key_id = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="阿里云AccessKey ID"
+    )
+    aliyun_access_key_secret = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="阿里云AccessKey Secret"
+    )
+    aliyun_app_key = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="阿里云ASR AppKey"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
