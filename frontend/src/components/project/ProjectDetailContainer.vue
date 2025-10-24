@@ -33,6 +33,7 @@
       @concatenate-audio="handleConcatenateAudio"
       @export="handleExport"
       @upload-video="handleUploadVideo"
+      @upload-srt="handleUploadSRT"
       @auto-assign-speaker="handleAutoAssignSpeaker"
       @batch-speaker="handleBatchSpeaker"
     />
@@ -836,6 +837,47 @@ const handleDuplicateSegment = async (segment: Segment) => {
 
 
 // 视频上传处理
+const handleUploadSRT = async (file: File) => {
+  try {
+    const formData = new FormData()
+    formData.append('srt_file', file)
+    formData.append('project_id', String(props.projectId))
+
+    const api = (await import('../../utils/api')).default
+    const loadingInstance = ElLoading.service({
+      lock: true,
+      text: '正在上传SRT文件...',
+      background: 'rgba(0, 0, 0, 0.7)'
+    })
+
+    try {
+      const response = await api.post(`/projects/${props.projectId}/import_srt/`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+
+      loadingInstance.close()
+      const segmentCount = response.data?.segment_count || 0
+      ElMessage.success(`SRT文件导入成功，新增${segmentCount}个段落`)
+
+      // 刷新项目数据以获取新的段落列表
+      refreshData()
+    } catch (error: any) {
+      loadingInstance.close()
+      console.error('SRT上传失败', error)
+      if (error.response?.data?.message) {
+        ElMessage.error(error.response.data.message)
+      } else {
+        ElMessage.error('SRT文件上传失败')
+      }
+    }
+  } catch (error) {
+    console.error('SRT上传失败', error)
+    ElMessage.error('SRT文件上传失败')
+  }
+}
+
 const handleUploadVideo = async (file: File) => {
   try {
     const formData = new FormData()

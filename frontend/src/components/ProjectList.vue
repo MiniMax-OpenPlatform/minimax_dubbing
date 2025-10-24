@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Upload, Refresh, UploadFilled, Delete } from '@element-plus/icons-vue'
+import { Plus, Refresh, Delete } from '@element-plus/icons-vue'
 import api from '../utils/api'
 import { logger } from '../utils/logger'
 
@@ -22,10 +22,12 @@ const emit = defineEmits<{
 
 const projects = ref<Project[]>([])
 const loading = ref(false)
-const uploadDialogVisible = ref(false)
-const uploadForm = ref({
-  srt_file: null as File | null,
-  project_name: ''
+const createDialogVisible = ref(false)
+const createForm = ref({
+  name: '',
+  description: '',
+  source_lang: 'Chinese',
+  target_lang: 'English'
 })
 
 const loadProjects = async () => {
@@ -44,42 +46,38 @@ const loadProjects = async () => {
   }
 }
 
-const handleFileChange = (file: any) => {
-  // Element Plus返回的是包装对象，需要获取原始File
-  const rawFile = file.raw || file
-  uploadForm.value.srt_file = rawFile
-  if (!uploadForm.value.project_name) {
-    uploadForm.value.project_name = rawFile.name.replace('.srt', '')
-  }
-  logger.addLog('info', `选择文件: ${rawFile.name} (${(rawFile.size / 1024).toFixed(2)}KB)`, 'ProjectList')
-}
-
-const handleUpload = async () => {
-  if (!uploadForm.value.srt_file) {
-    ElMessage.error('请选择SRT文件')
-    logger.addLog('warning', '未选择SRT文件，上传取消', 'ProjectList')
+const handleCreateProject = async () => {
+  if (!createForm.value.name) {
+    ElMessage.error('请输入项目名称')
+    logger.addLog('warning', '未输入项目名称，创建取消', 'ProjectList')
     return
   }
 
-  const formData = new FormData()
-  formData.append('srt_file', uploadForm.value.srt_file)
-  if (uploadForm.value.project_name) {
-    formData.append('project_name', uploadForm.value.project_name)
-  }
-
-  logger.addLog('info', `开始上传项目: ${uploadForm.value.project_name}`, 'ProjectList')
+  logger.addLog('info', `开始创建项目: ${createForm.value.name}`, 'ProjectList')
 
   try {
-    await api.post('/projects/upload_srt/', formData)
-    ElMessage.success('SRT文件上传成功')
-    logger.addLog('success', `项目 "${uploadForm.value.project_name}" 上传成功`, 'ProjectList')
-    uploadDialogVisible.value = false
-    uploadForm.value = { srt_file: null, project_name: '' }
+    const response = await api.post('/projects/', createForm.value)
+    ElMessage.success('项目创建成功')
+    logger.addLog('success', `项目 "${createForm.value.name}" 创建成功`, 'ProjectList')
+
+    createDialogVisible.value = false
+    createForm.value = {
+      name: '',
+      description: '',
+      source_lang: 'Chinese',
+      target_lang: 'English'
+    }
+
     loadProjects()
+
+    // 自动跳转到项目详情页
+    if (response.data && response.data.id) {
+      emit('showDetail', response.data.id)
+    }
   } catch (error) {
-    ElMessage.error('上传失败')
-    logger.addLog('error', `项目上传失败: ${error}`, 'ProjectList')
-    console.error('Upload error:', error)
+    ElMessage.error('创建项目失败')
+    logger.addLog('error', `项目创建失败: ${error}`, 'ProjectList')
+    console.error('Create project error:', error)
   }
 }
 
@@ -126,9 +124,9 @@ onMounted(() => {
   <div>
     <!-- 操作栏 -->
     <div style="margin-bottom: 20px;">
-      <el-button type="primary" @click="uploadDialogVisible = true">
-        <el-icon><Upload /></el-icon>
-        上传SRT文件
+      <el-button type="primary" @click="createDialogVisible = true">
+        <el-icon><Plus /></el-icon>
+        新建项目
       </el-button>
       <el-button @click="loadProjects">
         <el-icon><Refresh /></el-icon>
@@ -186,38 +184,58 @@ onMounted(() => {
       </el-table-column>
     </el-table>
 
-    <!-- 上传对话框 -->
-    <el-dialog v-model="uploadDialogVisible" title="上传SRT文件" width="500px">
-      <el-form>
-        <el-form-item label="项目名称">
-          <el-input v-model="uploadForm.project_name" placeholder="自动从文件名生成" />
+    <!-- 新建项目对话框 -->
+    <el-dialog v-model="createDialogVisible" title="新建项目" width="500px">
+      <el-form label-width="100px">
+        <el-form-item label="项目名称" required>
+          <el-input
+            v-model="createForm.name"
+            placeholder="请输入项目名称"
+            maxlength="100"
+            show-word-limit
+          />
         </el-form-item>
-        <el-form-item label="SRT文件">
-          <el-upload
-            class="upload-demo"
-            drag
-            accept=".srt"
-            :auto-upload="false"
-            :on-change="handleFileChange"
-            :limit="1"
-          >
-            <el-icon class="el-icon--upload"><upload-filled /></el-icon>
-            <div class="el-upload__text">
-              将SRT文件拖到此处，或<em>点击上传</em>
-            </div>
-            <template #tip>
-              <div class="el-upload__tip">
-                只支持.srt格式的文件，且不超过1MB
-              </div>
-            </template>
-          </el-upload>
+
+        <el-form-item label="项目描述">
+          <el-input
+            v-model="createForm.description"
+            type="textarea"
+            placeholder="请输入项目描述（可选）"
+            :rows="3"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+
+        <el-form-item label="源语言">
+          <el-select v-model="createForm.source_lang" placeholder="请选择源语言">
+            <el-option label="中文" value="Chinese" />
+            <el-option label="英文" value="English" />
+            <el-option label="日文" value="Japanese" />
+            <el-option label="韩文" value="Korean" />
+            <el-option label="法文" value="French" />
+            <el-option label="德文" value="German" />
+            <el-option label="西班牙文" value="Spanish" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="目标语言">
+          <el-select v-model="createForm.target_lang" placeholder="请选择目标语言">
+            <el-option label="英文" value="English" />
+            <el-option label="中文" value="Chinese" />
+            <el-option label="日文" value="Japanese" />
+            <el-option label="韩文" value="Korean" />
+            <el-option label="法文" value="French" />
+            <el-option label="德文" value="German" />
+            <el-option label="西班牙文" value="Spanish" />
+          </el-select>
         </el-form-item>
       </el-form>
 
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="uploadDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleUpload">确认上传</el-button>
+          <el-button @click="createDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleCreateProject">创建项目</el-button>
         </span>
       </template>
     </el-dialog>

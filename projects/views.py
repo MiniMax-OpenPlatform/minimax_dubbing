@@ -3,7 +3,7 @@
 """
 import logging
 import os
-from django.db import transaction
+from django.db import transaction, models
 from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -149,6 +149,70 @@ class ProjectViewSet(viewsets.ModelViewSet):
         except Exception as e:
             logger.error(f"视频上传失败: {str(e)}")
             raise ValidationError(f"视频上传失败: {str(e)}")
+
+    @handle_business_logic_error
+    @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser])
+    def import_srt(self, request, pk=None):
+        """
+        为现有项目导入SRT文件，追加段落
+        """
+        project = self.get_object()
+
+        if 'srt_file' not in request.FILES:
+            raise ValidationError("请提供SRT文件")
+
+        srt_file = request.FILES['srt_file']
+
+        # 验证文件类型
+        if not srt_file.name.lower().endswith('.srt'):
+            raise ValidationError("只支持.srt格式的文件")
+
+        # 验证文件大小 (10MB)
+        if srt_file.size > 10 * 1024 * 1024:
+            raise ValidationError("SRT文件大小不能超过10MB")
+
+        try:
+            # 解析SRT文件内容
+            srt_content = srt_file.read().decode('utf-8')
+        except UnicodeDecodeError:
+            raise ValidationError("SRT文件编码不正确，请使用UTF-8编码")
+
+        # 解析SRT内容
+        try:
+            segments_data = SRTParser.parse_srt_content(srt_content)
+        except Exception as e:
+            raise ValidationError(f"SRT文件格式错误: {str(e)}")
+
+        if not segments_data:
+            raise ValidationError("SRT文件中没有找到有效的段落数据")
+
+        # 获取当前项目的最大index
+        max_index = Segment.objects.filter(project=project).aggregate(
+            max_idx=models.Max('index')
+        )['max_idx'] or 0
+
+        # 创建段落
+        with transaction.atomic():
+            for i, segment_data in enumerate(segments_data):
+                Segment.objects.create(
+                    project=project,
+                    index=max_index + i + 1,
+                    start_time=segment_data['start_time'],
+                    end_time=segment_data['end_time'],
+                    original_text=segment_data['text'],
+                    target_duration=segment_data['duration'],
+                    status='pending'
+                )
+
+            logger.info(f"SRT导入成功: 项目{project.name}, 新增{len(segments_data)}个段落")
+
+            return Response({
+                'success': True,
+                'project_id': project.id,
+                'project_name': project.name,
+                'segment_count': len(segments_data),
+                'message': f'SRT文件导入成功，新增{len(segments_data)}个段落'
+            }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])
     def batch_translate(self, request, pk=None):

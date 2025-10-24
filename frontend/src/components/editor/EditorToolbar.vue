@@ -33,14 +33,17 @@
           ASR识别
         </el-button>
 
-        <!-- 4. 上传SRT (预留功能) -->
-        <el-button
-          :icon="Upload"
-          @click="handlePlaceholderClick('上传SRT')"
-          disabled
+        <!-- 4. 上传SRT -->
+        <el-upload
+          ref="srtUploadRef"
+          :show-file-list="false"
+          :before-upload="handleUploadSRT"
+          accept=".srt"
         >
-          上传SRT
-        </el-button>
+          <el-button :icon="Upload">
+            上传SRT
+          </el-button>
+        </el-upload>
 
         <!-- 5. 分配说话人 -->
         <el-dropdown @command="handleSpeakerCommand">
@@ -151,6 +154,7 @@ const emit = defineEmits<{
   'concatenate-audio': []
   'export': [type: string]
   'upload-video': [file: File]
+  'upload-srt': [file: File]
   'auto-assign-speaker': []
   'batch-speaker': []
 }>()
@@ -194,6 +198,25 @@ const handleSpeakerCommand = (command: string) => {
 
 const handlePlaceholderClick = (featureName: string) => {
   ElMessage.info(`${featureName}功能即将上线，敬请期待！`)
+}
+
+const handleUploadSRT = (file: File) => {
+  // 验证文件类型
+  const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
+
+  if (fileExtension !== '.srt') {
+    ElMessage.error('请选择SRT格式的字幕文件')
+    return false
+  }
+
+  // 验证文件大小 (10MB)
+  if (file.size > 10 * 1024 * 1024) {
+    ElMessage.error('SRT文件大小不能超过10MB')
+    return false
+  }
+
+  emit('upload-srt', file)
+  return false // 阻止自动上传
 }
 </script>
 
