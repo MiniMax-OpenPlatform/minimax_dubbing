@@ -17,18 +17,18 @@ logger = logging.getLogger(__name__)
 class DemucsSeparator(BaseSeparator):
     """使用Demucs模型的音频分离器"""
 
-    def __init__(self, device: str = 'cpu', model: str = 'htdemucs_ft'):
+    def __init__(self, device: str = 'cpu', model: str = 'htdemucs'):
         """
         初始化Demucs分离器
 
         Args:
             device: 设备类型 'cpu' 或 'cuda'
-            model: 模型名称，htdemucs_ft为快速版本（CPU友好）
+            model: 模型名称，htdemucs为标准高质量模型
         """
         super().__init__(device)
         self.model = model
         self.shifts = 1  # CPU优化：减少shifts（默认10）
-        self.segment = None  # 使用默认值，避免超限（htdemucs_ft最大7.8秒）
+        self.segment = None  # 使用默认值
         self.jobs = 4  # 多进程数量
 
     def is_available(self) -> bool:
@@ -63,24 +63,15 @@ class DemucsSeparator(BaseSeparator):
             logger.info(f"开始Demucs分离: {audio_path}")
             logger.info(f"模型: {self.model}, 设备: {self.device}")
 
-            # 构建Demucs命令
+            # 构建Demucs命令（参考minimax-video-translation的实现）
             command = [
-                'python', '-m', 'demucs',
+                'python', '-m', 'demucs.separate',
+                '-n', self.model,
                 '--two-stems', 'vocals',  # 只分离人声和伴奏
-                '--name', self.model,
-                '--device', self.device,
-                '--shifts', str(self.shifts),
-            ]
-
-            # 只在指定segment时添加参数
-            if self.segment is not None:
-                command.extend(['--segment', str(self.segment)])
-
-            command.extend([
-                '--jobs', str(self.jobs),
-                '--out', output_dir,
+                '-d', self.device,
+                '-o', output_dir,
                 audio_path
-            ])
+            ]
 
             # 执行分离
             logger.info(f"执行命令: {' '.join(command)}")
