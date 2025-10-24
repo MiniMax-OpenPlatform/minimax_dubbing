@@ -886,6 +886,12 @@ const handleSeparateVocals = async () => {
     return
   }
 
+  // 检查是否已有分离任务在运行
+  if (batchProgress.progressState.vocal_separation.status === 'running') {
+    ElMessage.warning('已有人声分离任务在进行中')
+    return
+  }
+
   try {
     await ElMessageBox.confirm(
       '人声分离需要较长时间（约视频时长的5-10倍），处理将在后台进行。完成后会自动更新媒体预览。是否继续？',
@@ -898,33 +904,30 @@ const handleSeparateVocals = async () => {
     )
 
     const api = (await import('../../utils/api')).default
-    const loadingInstance = ElLoading.service({
-      lock: true,
-      text: '正在启动人声分离任务...',
-      background: 'rgba(0, 0, 0, 0.7)'
+
+    // 开始进度跟踪（100表示百分比进度）
+    batchProgress.startBatchOperation('vocal_separation', 100, {
+      canCancel: false,
+      canPause: false
     })
 
     try {
       const response = await api.post(`/projects/${props.projectId}/separate_vocals/`)
 
-      loadingInstance.close()
-
       if (response.data.success) {
-        ElMessage.success(response.data.message || '人声分离任务已启动，请稍后查看结果')
+        ElMessage.success(response.data.message || '人声分离任务已启动')
 
         // 开始轮询状态
         startPollingSeparation()
       } else {
+        batchProgress.setErrorState('vocal_separation', response.data.message || '无法启动人声分离')
         ElMessage.warning(response.data.message || '无法启动人声分离')
       }
     } catch (error: any) {
-      loadingInstance.close()
       console.error('人声分离启动失败', error)
-      if (error.response?.data?.message) {
-        ElMessage.error(error.response.data.message)
-      } else {
-        ElMessage.error('启动人声分离失败')
-      }
+      const errorMsg = error.response?.data?.message || '启动人声分离失败'
+      batchProgress.setErrorState('vocal_separation', errorMsg)
+      ElMessage.error(errorMsg)
     }
   } catch {
     // 用户取消
@@ -942,8 +945,19 @@ const startPollingSeparation = () => {
   let pollCount = 0
   const maxPolls = 360 // 30分钟（每5秒一次）
 
+  // 模拟进度更新（因为后端没有实时进度）
+  const simulateProgress = () => {
+    const elapsed = pollCount * 5 // 秒
+    // 假设30分钟完成，线性增长到95%，留5%给最后确认
+    const estimatedProgress = Math.min(95, Math.round((elapsed / 1800) * 95))
+    batchProgress.updateProgress('vocal_separation', estimatedProgress, {
+      currentItem: '正在分离人声和背景音...'
+    })
+  }
+
   separationPollInterval = window.setInterval(async () => {
     pollCount++
+    simulateProgress()
 
     try {
       const api = (await import('../../utils/api')).default
@@ -956,13 +970,17 @@ const startPollingSeparation = () => {
           clearInterval(separationPollInterval)
           separationPollInterval = null
         }
-        ElMessage.success('人声分离完成！可在媒体预览区查看"原始音频"和"背景音"')
+        batchProgress.updateProgress('vocal_separation', 100, {
+          currentItem: '人声分离完成'
+        })
+        ElMessage.success('人声分离完成！可在媒体预览区查看"原始音频（人声）"和"背景音"')
         refreshData() // 刷新项目数据
       } else if (status === 'failed') {
         if (separationPollInterval) {
           clearInterval(separationPollInterval)
           separationPollInterval = null
         }
+        batchProgress.setErrorState('vocal_separation', '人声分离失败，请检查视频文件或重试')
         ElMessage.error('人声分离失败，请检查视频文件或重试')
       } else if (pollCount >= maxPolls) {
         // 超时停止轮询
@@ -970,6 +988,7 @@ const startPollingSeparation = () => {
           clearInterval(separationPollInterval)
           separationPollInterval = null
         }
+        batchProgress.setErrorState('vocal_separation', '人声分离超时')
         ElMessage.warning('人声分离超时，请刷新页面查看状态')
       }
       // status === 'processing' 继续等待
