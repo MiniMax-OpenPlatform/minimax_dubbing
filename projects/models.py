@@ -67,6 +67,24 @@ class Project(models.Model):
     video_file_path = models.FileField(upload_to='videos/', blank=True, null=True, help_text="视频文件路径")
     concatenated_audio_url = models.CharField(max_length=500, blank=True, help_text="拼接后的完整音频URL")
 
+    # 人声分离相关字段
+    original_audio_path = models.FileField(upload_to='audio/original/', blank=True, null=True, help_text="从视频提取的原始音频")
+    vocal_audio_path = models.FileField(upload_to='audio/vocals/', blank=True, null=True, help_text="分离后的人声音频")
+    background_audio_path = models.FileField(upload_to='audio/background/', blank=True, null=True, help_text="分离后的背景音")
+    separation_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('pending', '待处理'),
+            ('processing', '分离中'),
+            ('completed', '已完成'),
+            ('failed', '失败'),
+        ],
+        default='pending',
+        help_text="人声分离状态"
+    )
+    separation_started_at = models.DateTimeField(blank=True, null=True, help_text="分离开始时间")
+    separation_completed_at = models.DateTimeField(blank=True, null=True, help_text="分离完成时间")
+
     # 项目级配置
     tts_model = models.CharField(max_length=50, default="speech-2.5-hd-preview", help_text="TTS模型")
     voice_mappings = models.JSONField(default=list, help_text="角色音色映射表")
@@ -146,10 +164,20 @@ class Project(models.Model):
 
     @property
     def audio_url(self):
-        """返回音频文件URL - 从视频中提取的音频或单独的音频文件"""
-        # 如果项目有单独的音频文件，优先返回音频文件
-        # 否则可以从视频文件中提取音频，但这里暂时返回None
-        # 因为我们不应该直接把视频URL当作音频URL使用
+        """返回音频文件URL - 优先返回人声音频，其次原始音频"""
+        # 优先返回分离后的人声音频
+        if self.vocal_audio_path:
+            return self.vocal_audio_path.url
+        # 其次返回原始音频
+        if self.original_audio_path:
+            return self.original_audio_path.url
+        return None
+
+    @property
+    def background_audio_url(self):
+        """返回背景音URL"""
+        if self.background_audio_path:
+            return self.background_audio_path.url
         return None
 
     @property

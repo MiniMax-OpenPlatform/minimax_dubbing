@@ -333,3 +333,158 @@ class BatchTranslateTaskManager:
 
 # 全局任务管理器实例
 task_manager = BatchTranslateTaskManager()
+
+# ==================== 人声分离任务 ====================
+
+def separate_vocals_sync(project_id: int):
+    """
+    人声分离同步函数（使用线程异步执行）
+
+    Args:
+        project_id: 项目ID
+
+    Returns:
+        dict: 任务结果
+    """
+    import os
+    from django.utils import timezone
+    from django.core.files import File
+    from services.audio_separator import DemucsSeparator
+    from services.audio_separator.utils import extract_audio_from_video
+
+    try:
+        # 获取项目
+        from .models import Project
+        project = Project.objects.get(id=project_id)
+
+        logger.info(f"[任务开始] 项目ID: {project_id}, 项目名: {project.name}")
+
+        # 更新状态为处理中
+        project.separation_status = 'processing'
+        project.separation_started_at = timezone.now()
+        project.save(update_fields=['separation_status', 'separation_started_at'])
+
+        # 1. 检查视频文件是否存在
+        if not project.video_file_path:
+            raise ValueError("项目没有上传视频文件")
+
+        video_path = project.video_file_path.path
+        if not os.path.exists(video_path):
+            raise ValueError(f"视频文件不存在: {video_path}")
+
+        logger.info(f"[步骤1] 视频文件: {video_path}")
+
+        # 2. 从视频提取音频
+        from django.conf import settings
+        audio_dir = os.path.join(settings.MEDIA_ROOT, 'audio', 'temp', str(project_id))
+        os.makedirs(audio_dir, exist_ok=True)
+
+        original_audio_path = os.path.join(audio_dir, 'original.wav')
+
+        logger.info(f"[步骤2] 开始提取音频...")
+        extract_audio_from_video(video_path, original_audio_path)
+        logger.info(f"[步骤2] 音频提取完成: {original_audio_path}")
+
+        # 3. 初始化Demucs分离器
+        logger.info(f"[步骤3] 初始化Demucs分离器...")
+        separator = DemucsSeparator(device='cpu', model='htdemucs_ft')
+
+        if not separator.is_available():
+            raise RuntimeError("Demucs未正确安装，请检查依赖")
+
+        # 4. 执行人声分离
+        logger.info(f"[步骤4] 开始人声分离（这可能需要几分钟）...")
+        output_dir = os.path.join(audio_dir, 'separated')
+        os.makedirs(output_dir, exist_ok=True)
+
+        result = separator.separate(original_audio_path, output_dir)
+
+        logger.info(f"[步骤4] 人声分离完成")
+        logger.info(f"  人声: {result['vocals']}")
+        logger.info(f"  背景音: {result['background']}")
+
+        # 5. 保存文件到Django FileField
+        logger.info(f"[步骤5] 保存文件到数据库...")
+
+        # 保存原始音频
+        with open(original_audio_path, 'rb') as f:
+            project.original_audio_path.save(
+                f'project_{project_id}_original.wav',
+                File(f),
+                save=False
+            )
+
+        # 保存人声音频
+        with open(result['vocals'], 'rb') as f:
+            project.vocal_audio_path.save(
+                f'project_{project_id}_vocals.wav',
+                File(f),
+                save=False
+            )
+
+        # 保存背景音
+        with open(result['background'], 'rb') as f:
+            project.background_audio_path.save(
+                f'project_{project_id}_background.wav',
+                File(f),
+                save=False
+            )
+
+        # 6. 更新项目状态为完成
+        project.separation_status = 'completed'
+        project.separation_completed_at = timezone.now()
+        project.save()
+
+        logger.info(f"[任务完成] 项目ID: {project_id}")
+
+        # 清理临时文件
+        import shutil
+        shutil.rmtree(audio_dir, ignore_errors=True)
+
+        return {
+            'status': 'success',
+            'project_id': project_id,
+            'message': '人声分离完成',
+            'vocal_url': project.vocal_audio_path.url if project.vocal_audio_path else None,
+            'background_url': project.background_audio_path.url if project.background_audio_path else None,
+        }
+
+    except Exception as e:
+        logger.error(f"[任务异常] 项目ID: {project_id}, 错误: {str(e)}", exc_info=True)
+
+        # 更新项目状态为失败
+        try:
+            from .models import Project
+            project = Project.objects.get(id=project_id)
+            project.separation_status = 'failed'
+            project.save(update_fields=['separation_status'])
+        except:
+            pass
+
+        return {
+            'status': 'error',
+            'project_id': project_id,
+            'message': f'人声分离失败: {str(e)}'
+        }
+
+
+def start_vocal_separation_task(project_id: int):
+    """
+    启动人声分离后台任务
+
+    Args:
+        project_id: 项目ID
+
+    Returns:
+        str: 任务ID或状态
+    """
+    # 使用线程异步执行，避免阻塞主进程
+    thread = threading.Thread(
+        target=separate_vocals_sync,
+        args=(project_id,),
+        daemon=True
+    )
+    thread.start()
+
+    logger.info(f"人声分离任务已启动（后台线程）: 项目ID={project_id}")
+    return f"vocal_separation_{project_id}"

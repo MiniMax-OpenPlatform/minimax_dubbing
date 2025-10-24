@@ -29,6 +29,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     progress_percentage = serializers.ReadOnlyField()
     audio_url = serializers.ReadOnlyField()
     video_url = serializers.ReadOnlyField()
+    background_audio_url = serializers.ReadOnlyField()
 
     class Meta:
         model = Project
@@ -38,7 +39,9 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             'voice_mappings', 'custom_vocabulary', 'max_speed', 'num_speakers', 'background_info', 'status',
             'created_at', 'updated_at', 'segment_count',
             'completed_segment_count', 'progress_percentage',
-            'audio_url', 'video_url'
+            'audio_url', 'video_url', 'background_audio_url',
+            # 人声分离相关
+            'separation_status', 'separation_started_at', 'separation_completed_at'
         ]
 
 

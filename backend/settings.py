@@ -266,3 +266,13 @@ AUTH_USER_MODEL = 'authentication.User'
 # 批量翻译配置
 # 批量翻译请求间隔（秒），控制API调用频率以避免过载
 BATCH_TRANSLATE_REQUEST_INTERVAL = 1.0  # 默认每秒1个请求
+
+# Celery配置
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30分钟超时

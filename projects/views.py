@@ -214,6 +214,48 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 'message': f'SRT文件导入成功，新增{len(segments_data)}个段落'
             }, status=status.HTTP_200_OK)
 
+    @handle_business_logic_error
+    @action(detail=True, methods=['post'])
+    def separate_vocals(self, request, pk=None):
+        """
+        人声分离：从视频提取音频并分离人声和背景音
+        """
+        project = self.get_object()
+
+        # 检查视频是否已上传
+        if not project.video_file_path:
+            raise ValidationError("请先上传视频文件")
+
+        # 检查是否已在处理中
+        if project.separation_status == 'processing':
+            return Response({
+                'success': False,
+                'message': '人声分离正在进行中，请稍后查看结果'
+            }, status=status.HTTP_200_OK)
+
+        # 检查是否已完成
+        if project.separation_status == 'completed':
+            # 询问是否重新分离
+            force = request.data.get('force', False)
+            if not force:
+                return Response({
+                    'success': False,
+                    'message': '已完成人声分离，如需重新分离请设置force=true'
+                }, status=status.HTTP_200_OK)
+
+        # 启动后台任务
+        from .tasks import start_vocal_separation_task
+        task_id = start_vocal_separation_task(project.id)
+
+        logger.info(f"人声分离任务已启动: 项目{project.name}, 任务ID={task_id}")
+
+        return Response({
+            'success': True,
+            'task_id': task_id,
+            'project_id': project.id,
+            'message': '人声分离任务已启动，处理中...（预计需要5-10分钟）'
+        }, status=status.HTTP_200_OK)
+
     @action(detail=True, methods=['post'])
     def batch_translate(self, request, pk=None):
         """
