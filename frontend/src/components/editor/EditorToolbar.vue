@@ -1,7 +1,66 @@
 <template>
   <div class="editor-toolbar">
-    <div class="toolbar-left">
+    <!-- 工作流按钮组 - 按顺序排列 -->
+    <div class="workflow-buttons">
       <el-button-group>
+        <!-- 1. 上传视频 -->
+        <el-upload
+          ref="videoUploadRef"
+          :show-file-list="false"
+          :before-upload="handleUploadVideo"
+          accept=".mp4,.avi,.mov,.wmv,.flv,.mkv"
+        >
+          <el-button :icon="VideoCamera" type="primary">
+            上传视频
+          </el-button>
+        </el-upload>
+
+        <!-- 2. 人声分离 (预留功能) -->
+        <el-button
+          :icon="Headset"
+          @click="handlePlaceholderClick('人声分离')"
+          disabled
+        >
+          人声分离
+        </el-button>
+
+        <!-- 3. ASR识别 (预留功能) -->
+        <el-button
+          :icon="Microphone"
+          @click="handlePlaceholderClick('ASR识别')"
+          disabled
+        >
+          ASR识别
+        </el-button>
+
+        <!-- 4. 上传SRT (预留功能) -->
+        <el-button
+          :icon="Upload"
+          @click="handlePlaceholderClick('上传SRT')"
+          disabled
+        >
+          上传SRT
+        </el-button>
+
+        <!-- 5. 分配说话人 -->
+        <el-dropdown @command="handleSpeakerCommand">
+          <el-button :icon="User">
+            分配说话人
+            <el-icon class="el-icon--right"><arrow-down /></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="auto-assign">
+                自动分配说话人
+              </el-dropdown-item>
+              <el-dropdown-item command="batch-speaker" divided>
+                批量修改说话人
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+
+        <!-- 6. 批量翻译 -->
         <el-button
           type="primary"
           @click="$emit('batch-translate')"
@@ -10,6 +69,7 @@
           批量翻译
         </el-button>
 
+        <!-- 7. 批量TTS -->
         <el-button
           type="success"
           @click="$emit('batch-tts')"
@@ -18,6 +78,7 @@
           批量TTS
         </el-button>
 
+        <!-- 8. 拼接音频 -->
         <el-button
           type="warning"
           @click="$emit('concatenate-audio')"
@@ -25,48 +86,21 @@
         >
           拼接音频
         </el-button>
+
+        <!-- 9. 合成视频 (预留功能) -->
+        <el-button
+          :icon="Film"
+          @click="handlePlaceholderClick('合成视频')"
+          disabled
+        >
+          合成视频
+        </el-button>
       </el-button-group>
     </div>
 
-    <div class="toolbar-center">
-      <!-- 空白区域 -->
-    </div>
-
+    <!-- 右侧工具按钮 -->
     <div class="toolbar-right">
-
-
-      <!-- 上传视频 -->
-      <el-upload
-        ref="videoUploadRef"
-        :show-file-list="false"
-        :before-upload="handleUploadVideo"
-        accept=".mp4,.avi,.mov,.wmv,.flv,.mkv"
-        style="margin-left: 8px"
-      >
-        <el-button :icon="VideoCamera" type="primary">
-          上传视频
-        </el-button>
-      </el-upload>
-
-      <!-- 说话人管理 -->
-      <el-dropdown @command="handleSpeakerCommand" style="margin-left: 8px">
-        <el-button :icon="User">
-          说话人管理
-          <el-icon class="el-icon--right"><arrow-down /></el-icon>
-        </el-button>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item command="auto-assign">
-              自动分配说话人
-            </el-dropdown-item>
-            <el-dropdown-item command="batch-speaker" divided>
-              批量修改说话人
-            </el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
-
-      <el-dropdown trigger="click" style="margin-left: 8px">
+      <el-dropdown trigger="click">
         <el-button>
           导出
           <el-icon><ArrowDown /></el-icon>
@@ -85,7 +119,6 @@
           </el-dropdown-menu>
         </template>
       </el-dropdown>
-
     </div>
   </div>
 </template>
@@ -93,7 +126,16 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, ArrowDown, Upload, User, VideoCamera } from '@element-plus/icons-vue'
+import {
+  Search,
+  ArrowDown,
+  Upload,
+  User,
+  VideoCamera,
+  Headset,
+  Microphone,
+  Film
+} from '@element-plus/icons-vue'
 
 interface Props {
   selectedCount: number
@@ -149,6 +191,10 @@ const handleSpeakerCommand = (command: string) => {
       break
   }
 }
+
+const handlePlaceholderClick = (featureName: string) => {
+  ElMessage.info(`${featureName}功能即将上线，敬请期待！`)
+}
 </script>
 
 <style scoped>
@@ -164,48 +210,57 @@ const handleSpeakerCommand = (command: string) => {
   gap: 12px;
 }
 
-.toolbar-left {
+.workflow-buttons {
   display: flex;
   align-items: center;
-  gap: 16px;
   flex: 1;
+  overflow-x: auto;
 }
 
-.toolbar-center {
+.workflow-buttons .el-button-group {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.workflow-buttons .el-upload {
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .toolbar-right {
   display: flex;
   align-items: center;
+  gap: 8px;
 }
 
-
 /* 响应式设计 */
+@media (max-width: 1600px) {
+  .workflow-buttons .el-button-group {
+    flex-wrap: wrap;
+  }
+}
+
 @media (max-width: 1200px) {
   .editor-toolbar {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .toolbar-left,
-  .toolbar-center,
+  .workflow-buttons,
   .toolbar-right {
     justify-content: center;
   }
 }
 
 @media (max-width: 768px) {
-  .toolbar-center {
-    flex-direction: column;
-    width: 100%;
+  .workflow-buttons {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
-  .toolbar-center .el-select,
-  .toolbar-center .el-input {
-    width: 100% !important;
+  .workflow-buttons .el-button-group {
+    flex-wrap: nowrap;
   }
 }
 </style>
