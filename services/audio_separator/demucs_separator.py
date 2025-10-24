@@ -28,7 +28,7 @@ class DemucsSeparator(BaseSeparator):
         super().__init__(device)
         self.model = model
         self.shifts = 1  # CPU优化：减少shifts（默认10）
-        self.segment = 7.8  # 分段处理，htdemucs_ft模型最大支持7.8秒
+        self.segment = None  # 使用默认值，避免超限（htdemucs_ft最大7.8秒）
         self.jobs = 4  # 多进程数量
 
     def is_available(self) -> bool:
@@ -70,11 +70,17 @@ class DemucsSeparator(BaseSeparator):
                 '--name', self.model,
                 '--device', self.device,
                 '--shifts', str(self.shifts),
-                '--segment', str(self.segment),
+            ]
+
+            # 只在指定segment时添加参数
+            if self.segment is not None:
+                command.extend(['--segment', str(self.segment)])
+
+            command.extend([
                 '--jobs', str(self.jobs),
                 '--out', output_dir,
                 audio_path
-            ]
+            ])
 
             # 执行分离
             logger.info(f"执行命令: {' '.join(command)}")
