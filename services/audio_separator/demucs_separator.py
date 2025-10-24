@@ -28,7 +28,7 @@ class DemucsSeparator(BaseSeparator):
         super().__init__(device)
         self.model = model
         self.shifts = 1  # CPU优化：减少shifts（默认10）
-        self.segment = 10  # 分段处理，降低内存
+        self.segment = 7.8  # 分段处理，htdemucs_ft模型最大支持7.8秒
         self.jobs = 4  # 多进程数量
 
     def is_available(self) -> bool:
