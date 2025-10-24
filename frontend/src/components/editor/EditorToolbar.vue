@@ -24,28 +24,37 @@
           人声分离
         </el-button>
 
-        <!-- 3. ASR识别 (预留功能) -->
-        <el-button
-          :icon="Microphone"
-          @click="handlePlaceholderClick('ASR识别')"
-          disabled
-        >
-          ASR识别
-        </el-button>
+        <!-- 3. SRT（上传SRT/ASR识别） -->
+        <el-dropdown @command="handleSRTCommand">
+          <el-button :icon="Document">
+            SRT
+            <el-icon class="el-icon--right"><arrow-down /></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="upload-srt">
+                <el-icon><Upload /></el-icon>
+                上传SRT文件
+              </el-dropdown-item>
+              <el-dropdown-item command="asr" divided disabled>
+                <el-icon><Microphone /></el-icon>
+                ASR自动识别
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
 
-        <!-- 4. 上传SRT -->
+        <!-- 隐藏的上传组件 -->
         <el-upload
           ref="srtUploadRef"
           :show-file-list="false"
           :before-upload="handleUploadSRT"
           accept=".srt"
+          style="display: none;"
         >
-          <el-button :icon="Upload">
-            上传SRT
-          </el-button>
         </el-upload>
 
-        <!-- 5. 分配说话人 -->
+        <!-- 4. 分配说话人 -->
         <el-dropdown @command="handleSpeakerCommand">
           <el-button :icon="User">
             分配说话人
@@ -63,7 +72,7 @@
           </template>
         </el-dropdown>
 
-        <!-- 6. 批量翻译 -->
+        <!-- 5. 批量翻译 -->
         <el-button
           type="primary"
           @click="$emit('batch-translate')"
@@ -72,7 +81,7 @@
           批量翻译
         </el-button>
 
-        <!-- 7. 批量TTS -->
+        <!-- 6. 批量TTS -->
         <el-button
           type="success"
           @click="$emit('batch-tts')"
@@ -81,7 +90,7 @@
           批量TTS
         </el-button>
 
-        <!-- 8. 拼接音频 -->
+        <!-- 7. 拼接音频 -->
         <el-button
           type="warning"
           @click="$emit('concatenate-audio')"
@@ -90,7 +99,7 @@
           拼接音频
         </el-button>
 
-        <!-- 9. 合成视频 (预留功能) -->
+        <!-- 8. 合成视频 (预留功能) -->
         <el-button
           :icon="Film"
           @click="handlePlaceholderClick('合成视频')"
@@ -137,7 +146,8 @@ import {
   VideoCamera,
   Headset,
   Microphone,
-  Film
+  Film,
+  Document
 } from '@element-plus/icons-vue'
 
 interface Props {
@@ -192,6 +202,21 @@ const handleSpeakerCommand = (command: string) => {
       break
     case 'batch-speaker':
       emit('batch-speaker')
+      break
+  }
+}
+
+const handleSRTCommand = (command: string) => {
+  switch (command) {
+    case 'upload-srt':
+      // 触发隐藏的上传组件
+      const uploadInput = document.querySelector('input[type="file"][accept=".srt"]') as HTMLInputElement
+      if (uploadInput) {
+        uploadInput.click()
+      }
+      break
+    case 'asr':
+      handlePlaceholderClick('ASR自动识别')
       break
   }
 }
