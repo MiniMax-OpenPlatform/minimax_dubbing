@@ -50,9 +50,14 @@ class RegisterView(generics.CreateAPIView):
             logger.info(f"API Key验证成功: {username}@{group_id}")
 
         except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
             logger.error(f"API Key验证失败: {str(e)}")
+            logger.error(f"详细错误堆栈:\n{error_trace}")
+            print(f"[注册验证错误] {str(e)}")
+            print(f"[详细堆栈]\n{error_trace}")
             return Response({
-                'detail': 'API Key验证失败，请检查Group ID和API Key是否正确'
+                'detail': f'API Key验证失败: {str(e)}'
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # API验证通过，调用父类创建用户
