@@ -6,3 +6,4 @@ psycopg2-binary==2.9.*
 requests==2.32.*
 pydub==0.25.*
 python-dotenv==1.0.*
+django-ranged-response==0.2.0
