@@ -15,11 +15,11 @@
           </el-button>
         </el-upload>
 
-        <!-- 2. 人声分离 (预留功能) -->
+        <!-- 2. 人声分离 -->
         <el-button
           :icon="Headset"
-          @click="handlePlaceholderClick('人声分离')"
-          disabled
+          @click="$emit('separate-vocals')"
+          :loading="batchLoading"
         >
           人声分离
         </el-button>
@@ -165,6 +165,7 @@ const emit = defineEmits<{
   'export': [type: string]
   'upload-video': [file: File]
   'upload-srt': [file: File]
+  'separate-vocals': []
   'auto-assign-speaker': []
   'batch-speaker': []
 }>()

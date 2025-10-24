@@ -193,7 +193,7 @@ const mediaOptions = computed<MediaOption[]>(() => {
     },
     {
       key: 'original_audio',
-      label: '原始音频',
+      label: '原始音频（人声）',
       url: props.project?.audio_url ? `${BACKEND_BASE_URL}${props.project.audio_url}` : null,
       available: !!props.project?.audio_url,
       priority: 3,
@@ -210,8 +210,8 @@ const mediaOptions = computed<MediaOption[]>(() => {
     {
       key: 'background_audio',
       label: '背景音',
-      url: null, // 暂时没有背景音
-      available: false,
+      url: props.project?.background_audio_url ? `${BACKEND_BASE_URL}${props.project.background_audio_url}` : null,
+      available: !!props.project?.background_audio_url,
       priority: 5,
       type: 'audio'
     },

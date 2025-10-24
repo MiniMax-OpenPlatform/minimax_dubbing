@@ -34,6 +34,7 @@
       @export="handleExport"
       @upload-video="handleUploadVideo"
       @upload-srt="handleUploadSRT"
+      @separate-vocals="handleSeparateVocals"
       @auto-assign-speaker="handleAutoAssignSpeaker"
       @batch-speaker="handleBatchSpeaker"
     />
@@ -876,6 +877,106 @@ const handleUploadSRT = async (file: File) => {
     console.error('SRT上传失败', error)
     ElMessage.error('SRT文件上传失败')
   }
+}
+
+// 人声分离处理
+const handleSeparateVocals = async () => {
+  if (!project.value?.video_url) {
+    ElMessage.warning('请先上传视频文件')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      '人声分离需要较长时间（约视频时长的5-10倍），处理将在后台进行。完成后会自动更新媒体预览。是否继续？',
+      '确认人声分离',
+      {
+        confirmButtonText: '开始分离',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    const api = (await import('../../utils/api')).default
+    const loadingInstance = ElLoading.service({
+      lock: true,
+      text: '正在启动人声分离任务...',
+      background: 'rgba(0, 0, 0, 0.7)'
+    })
+
+    try {
+      const response = await api.post(`/projects/${props.projectId}/separate_vocals/`)
+
+      loadingInstance.close()
+
+      if (response.data.success) {
+        ElMessage.success(response.data.message || '人声分离任务已启动，请稍后查看结果')
+
+        // 开始轮询状态
+        startPollingSeparation()
+      } else {
+        ElMessage.warning(response.data.message || '无法启动人声分离')
+      }
+    } catch (error: any) {
+      loadingInstance.close()
+      console.error('人声分离启动失败', error)
+      if (error.response?.data?.message) {
+        ElMessage.error(error.response.data.message)
+      } else {
+        ElMessage.error('启动人声分离失败')
+      }
+    }
+  } catch {
+    // 用户取消
+  }
+}
+
+// 轮询人声分离状态
+let separationPollInterval: number | null = null
+const startPollingSeparation = () => {
+  // 清除之前的轮询
+  if (separationPollInterval) {
+    clearInterval(separationPollInterval)
+  }
+
+  let pollCount = 0
+  const maxPolls = 360 // 30分钟（每5秒一次）
+
+  separationPollInterval = window.setInterval(async () => {
+    pollCount++
+
+    try {
+      const api = (await import('../../utils/api')).default
+      const response = await api.get(`/projects/${props.projectId}/`)
+
+      const status = response.data.separation_status
+
+      if (status === 'completed') {
+        if (separationPollInterval) {
+          clearInterval(separationPollInterval)
+          separationPollInterval = null
+        }
+        ElMessage.success('人声分离完成！可在媒体预览区查看"原始音频"和"背景音"')
+        refreshData() // 刷新项目数据
+      } else if (status === 'failed') {
+        if (separationPollInterval) {
+          clearInterval(separationPollInterval)
+          separationPollInterval = null
+        }
+        ElMessage.error('人声分离失败，请检查视频文件或重试')
+      } else if (pollCount >= maxPolls) {
+        // 超时停止轮询
+        if (separationPollInterval) {
+          clearInterval(separationPollInterval)
+          separationPollInterval = null
+        }
+        ElMessage.warning('人声分离超时，请刷新页面查看状态')
+      }
+      // status === 'processing' 继续等待
+    } catch (error) {
+      console.error('轮询分离状态失败', error)
+    }
+  }, 5000) // 每5秒轮询一次
 }
 
 const handleUploadVideo = async (file: File) => {
