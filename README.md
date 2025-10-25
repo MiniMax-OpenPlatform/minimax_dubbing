@@ -485,6 +485,17 @@ python3 manage.py showmigrations authentication
 # [X] 0005_userconfig_aliyun_access_key_id_and_more
 ```
 
+**如果之前注册失败但能登录（用户已创建但缺少配置）**:
+```bash
+# 运行修复脚本，为已存在的用户创建配置
+python3 fix_incomplete_users.py
+```
+
+这个脚本会：
+- 检查所有用户，找出没有配置的用户
+- 自动为这些用户创建配置
+- 验证修复结果
+
 **可能原因2**: 旧版本代码中 MiniMax API Key 配置问题（已修复）
 
 如果使用的是旧版本代码，请拉取最新代码：
