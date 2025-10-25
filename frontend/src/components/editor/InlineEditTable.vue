@@ -168,7 +168,6 @@
             <div class="button-row">
               <el-button
                 size="small"
-                type="primary"
                 @click="translateSingle(row)"
                 :disabled="!row.original_text"
                 :loading="row._translating"
@@ -179,7 +178,6 @@
               </el-button>
               <el-button
                 size="small"
-                type="primary"
                 @click="generateTTS(row)"
                 :disabled="!row.translated_text"
                 :loading="row._ttsLoading"
@@ -199,7 +197,6 @@
             <div class="button-row">
               <el-button
                 size="small"
-                type="warning"
                 @click="shortenTranslation(row)"
                 :disabled="!row.translated_text"
                 :loading="row._shortenLoading"
@@ -209,7 +206,6 @@
               </el-button>
               <el-button
                 size="small"
-                type="success"
                 @click="lengthenTranslation(row)"
                 :disabled="!row.translated_text"
                 :loading="row._lengthenLoading"
@@ -221,7 +217,6 @@
             <div class="button-row">
               <el-button
                 size="small"
-                type="info"
                 @click="duplicateRow(row)"
                 class="action-btn-small"
               >
@@ -229,7 +224,6 @@
               </el-button>
               <el-button
                 size="small"
-                type="danger"
                 @click="deleteRow(row)"
                 class="action-btn-small"
               >

@@ -10,7 +10,7 @@
           :before-upload="handleUploadVideo"
           accept=".mp4,.avi,.mov,.wmv,.flv,.mkv"
         >
-          <el-button :icon="VideoCamera" type="primary">
+          <el-button :icon="VideoCamera">
             上传视频
           </el-button>
         </el-upload>
@@ -74,7 +74,6 @@
 
         <!-- 5. 批量翻译 -->
         <el-button
-          type="primary"
           @click="$emit('batch-translate')"
           :loading="batchLoading"
         >
@@ -83,7 +82,6 @@
 
         <!-- 6. 批量TTS -->
         <el-button
-          type="success"
           @click="$emit('batch-tts')"
           :loading="batchLoading"
         >
@@ -92,7 +90,6 @@
 
         <!-- 7. 拼接音频 -->
         <el-button
-          type="warning"
           @click="$emit('concatenate-audio')"
           :loading="batchLoading"
         >
@@ -102,7 +99,6 @@
         <!-- 8. 合成视频 -->
         <el-button
           :icon="Film"
-          type="success"
           @click="$emit('synthesize-video')"
           :loading="batchLoading"
         >
