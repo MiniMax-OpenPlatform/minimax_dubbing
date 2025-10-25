@@ -1527,7 +1527,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         Request Body:
         {
-            "source_language": "Chinese",      // 可选（预留，当前未使用）
+            "source_language": "Chinese",      // 可选，源语言，默认使用项目设置
             "merge_short_segments": true,      // 是否合并短字幕，默认 true
             "min_duration": 0.5,               // 最小字幕时长（秒），默认 0.5
             "max_gap": 0.5                     // 最大间隔时间（秒），默认 0.5
@@ -1607,12 +1607,17 @@ class ProjectViewSet(viewsets.ModelViewSet):
             }
             audio_format = format_map.get(file_ext, 'wav')
 
+            # 获取源语言并转换为阿里云语言代码
+            source_language = request.data.get('source_language') or project.source_lang
+            language_hint = FlashRecognizerService.get_language_hint(source_language)
+            language_hints = [language_hint] if language_hint else None
+
             # 获取合并参数
             merge_short_segments = request.data.get('merge_short_segments', True)
             min_duration = float(request.data.get('min_duration', 0.5))
             max_gap = float(request.data.get('max_gap', 0.5))
 
-            logger.info(f"[{trace_id}] 合并参数: merge={merge_short_segments}, min_duration={min_duration}s, max_gap={max_gap}s")
+            logger.info(f"[{trace_id}] 识别参数: language={source_language} ({language_hint}), merge={merge_short_segments}, min_duration={min_duration}s, max_gap={max_gap}s")
 
             # 执行识别并获取段落数据
             success, segments, error_msg = recognizer.recognize_and_create_segments(
@@ -1620,7 +1625,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 audio_format=audio_format,
                 merge_short_segments=merge_short_segments,
                 min_duration=min_duration,
-                max_gap=max_gap
+                max_gap=max_gap,
+                language_hints=language_hints
             )
 
             if not success:
@@ -1653,7 +1659,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
                     end_time=seg_data['end_time'],
                     original_text=seg_data['original_text'],
                     translated_text=seg_data.get('translated_text', ''),
-                    speaker=seg_data.get('speaker', 'SPEAKER_00')
+                    speaker=seg_data.get('speaker', 'SPEAKER_00'),
+                    target_duration=seg_data.get('duration', seg_data['end_time'] - seg_data['start_time']),
+                    status='pending'
                 ))
 
             Segment.objects.bulk_create(segment_objects)
@@ -1674,3 +1682,194 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 'error': f'识别失败: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+    @handle_business_logic_error
+    @action(detail=True, methods=['post'])
+    def synthesize_video(self, request, pk=None):
+        """
+        合成最终视频：混合翻译音频和背景音，然后与原始视频合并
+
+        工作流程:
+        1. 混合翻译音频（拼接后的完整TTS音频）和背景音
+        2. 将混合音频替换原始视频的音轨
+        3. 生成最终翻译视频
+
+        Request Body:
+        {
+            "translated_volume": 1.0,    // 翻译音频音量（0.0-1.0），默认 1.0
+            "background_volume": 0.3     // 背景音音量（0.0-1.0），默认 0.3
+        }
+
+        Returns:
+        {
+            "success": true,
+            "message": "视频合成成功",
+            "mixed_audio_url": "http://...",
+            "final_video_url": "http://..."
+        }
+        """
+        import uuid
+        from django.conf import settings
+        from services.audio_processor import AudioProcessor
+        from services.video_processor import VideoProcessor
+        from django.core.files import File
+
+        project = self.get_object()
+        trace_id = str(uuid.uuid4())[:8]
+
+        try:
+            logger.info(f"[{trace_id}] 开始视频合成: {project.name} (ID: {project.id})")
+
+            # 1. 检查必需的文件
+            if not project.concatenated_audio_url:
+                return Response({
+                    'success': False,
+                    'error': '请先拼接翻译音频（批量TTS后点击"拼接音频"）'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            if not project.background_audio_path:
+                return Response({
+                    'success': False,
+                    'error': '未找到背景音文件，请先进行人声分离'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            if not project.video_file_path:
+                return Response({
+                    'success': False,
+                    'error': '未找到原始视频文件'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # 获取参数
+            translated_volume = float(request.data.get('translated_volume', 1.0))
+            background_volume = float(request.data.get('background_volume', 0.3))
+
+            logger.info(f"[{trace_id}] 音量参数: 翻译={translated_volume}, 背景={background_volume}")
+
+            # 2. 准备文件路径
+            # 翻译音频URL转本地路径
+            concatenated_audio_url = project.concatenated_audio_url
+            if concatenated_audio_url.startswith('http'):
+                # 从URL中提取相对路径
+                from urllib.parse import urlparse
+                parsed = urlparse(concatenated_audio_url)
+                relative_path = parsed.path.lstrip('/')
+                if relative_path.startswith('media/'):
+                    relative_path = relative_path[6:]  # 去掉 'media/' 前缀
+                translated_audio_path = os.path.join(settings.MEDIA_ROOT, relative_path)
+            else:
+                # 已经是相对路径
+                translated_audio_path = os.path.join(settings.MEDIA_ROOT, concatenated_audio_url.lstrip('/'))
+
+            background_audio_path = project.background_audio_path.path
+            video_path = project.video_file_path.path
+
+            logger.info(f"[{trace_id}] 翻译音频: {translated_audio_path}")
+            logger.info(f"[{trace_id}] 背景音: {background_audio_path}")
+            logger.info(f"[{trace_id}] 原始视频: {video_path}")
+
+            # 检查文件存在性
+            if not os.path.exists(translated_audio_path):
+                return Response({
+                    'success': False,
+                    'error': f'翻译音频文件不存在: {translated_audio_path}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            if not os.path.exists(background_audio_path):
+                return Response({
+                    'success': False,
+                    'error': f'背景音文件不存在: {background_audio_path}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            if not os.path.exists(video_path):
+                return Response({
+                    'success': False,
+                    'error': f'视频文件不存在: {video_path}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # 3. 混合音频
+            logger.info(f"[{trace_id}] 步骤 1/2: 混合音频轨道")
+
+            audio_processor = AudioProcessor()
+            mixed_audio_filename = f"project_{project.id}_mixed_{trace_id}.mp3"
+            mixed_audio_path = os.path.join(settings.MEDIA_ROOT, 'audio', 'mixed', mixed_audio_filename)
+
+            # 确保目录存在
+            os.makedirs(os.path.dirname(mixed_audio_path), exist_ok=True)
+
+            success = audio_processor.mix_audio_tracks(
+                translated_audio_path=translated_audio_path,
+                background_audio_path=background_audio_path,
+                output_path=mixed_audio_path,
+                translated_volume=translated_volume,
+                background_volume=background_volume,
+                trace_id=trace_id
+            )
+
+            if not success:
+                return Response({
+                    'success': False,
+                    'error': '音频混合失败'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            # 保存混合音频路径
+            with open(mixed_audio_path, 'rb') as f:
+                project.mixed_audio_path.save(mixed_audio_filename, File(f), save=False)
+
+            logger.info(f"[{trace_id}] 音频混合完成")
+
+            # 4. 合成视频
+            logger.info(f"[{trace_id}] 步骤 2/2: 合成最终视频")
+
+            video_processor = VideoProcessor()
+
+            # 检查 ffmpeg
+            if not video_processor.check_ffmpeg():
+                return Response({
+                    'success': False,
+                    'error': 'ffmpeg 未安装或不可用'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            final_video_filename = f"project_{project.id}_final_{trace_id}.mp4"
+            final_video_path = os.path.join(settings.MEDIA_ROOT, 'videos', 'final', final_video_filename)
+
+            # 确保目录存在
+            os.makedirs(os.path.dirname(final_video_path), exist_ok=True)
+
+            success, error_msg = video_processor.replace_audio(
+                video_path=video_path,
+                audio_path=mixed_audio_path,
+                output_path=final_video_path,
+                trace_id=trace_id
+            )
+
+            if not success:
+                return Response({
+                    'success': False,
+                    'error': error_msg
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            # 保存最终视频路径
+            with open(final_video_path, 'rb') as f:
+                project.final_video_path.save(final_video_filename, File(f), save=False)
+
+            project.save()
+
+            logger.info(f"[{trace_id}] 视频合成成功")
+
+            # 生成访问URL
+            mixed_audio_url = request.build_absolute_uri(project.mixed_audio_path.url)
+            final_video_url = request.build_absolute_uri(project.final_video_path.url)
+
+            return Response({
+                'success': True,
+                'message': '视频合成成功',
+                'mixed_audio_url': mixed_audio_url,
+                'final_video_url': final_video_url
+            })
+
+        except Exception as e:
+            logger.error(f"[{trace_id}] 视频合成失败: {str(e)}", exc_info=True)
+            return Response({
+                'success': False,
+                'error': f'视频合成失败: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

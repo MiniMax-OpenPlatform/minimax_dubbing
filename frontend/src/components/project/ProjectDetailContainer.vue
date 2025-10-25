@@ -38,6 +38,7 @@
       @auto-assign-speaker="handleAutoAssignSpeaker"
       @batch-speaker="handleBatchSpeaker"
       @asr-recognize="handleASRRecognize"
+      @synthesize-video="handleSynthesizeVideo"
     />
 
     <!-- 批量操作进度条 -->
@@ -395,7 +396,11 @@ const handleBatchTts = async () => {
 }
 
 // 使用useAudioOperations中的concatenateAudio函数
-const handleConcatenateAudio = concatenateAudio
+const handleConcatenateAudio = async () => {
+  await concatenateAudio()
+  // 拼接音频成功后刷新项目数据，更新 concatenated_audio_url
+  await refreshData()
+}
 
 // 进度轮询
 const startProgressPolling = (taskId: string, type: 'translate' | 'tts') => {
@@ -1101,6 +1106,82 @@ const handleASRRecognize = async () => {
     // 用户取消
   }
 }
+
+// 合成视频
+const handleSynthesizeVideo = async () => {
+  try {
+    if (!project.value) {
+      ElMessage.warning('项目信息不存在')
+      return
+    }
+
+    // 检查必需文件是否存在
+    const missingFiles = []
+    if (!project.value.concatenated_audio_url) {
+      missingFiles.push('翻译音频（需先完成批量TTS和拼接音频）')
+    }
+    if (!project.value.background_audio_url) {
+      missingFiles.push('背景音（需先完成人声分离）')
+    }
+    if (!project.value.video_url) {
+      missingFiles.push('原始视频')
+    }
+
+    if (missingFiles.length > 0) {
+      ElMessage.warning(`缺少必需文件：${missingFiles.join('、')}`)
+      return
+    }
+
+    // 显示确认对话框和参数配置
+    await ElMessageBox.confirm(
+      '将翻译音频与背景音混合，并替换原始视频的音轨，生成最终翻译视频。此过程可能需要几分钟，是否继续？',
+      '合成视频',
+      {
+        confirmButtonText: '开始合成',
+        cancelButtonText: '取消',
+        type: 'info'
+      }
+    )
+
+    // 显示加载提示
+    const loadingInstance = ElMessage({
+      message: '正在合成视频，请稍候...',
+      type: 'info',
+      duration: 0  // 不自动关闭
+    })
+
+    try {
+      const api = (await import('../../utils/api')).default
+      const response = await api.post(`/projects/${props.projectId}/synthesize_video/`, {
+        translated_volume: 1.0,    // 翻译音频音量
+        background_volume: 0.3     // 背景音音量（降低）
+      })
+
+      // 关闭加载提示
+      loadingInstance.close()
+
+      if (response.data.success) {
+        ElMessage.success(response.data.message || '视频合成成功！可在预览区查看翻译视频')
+
+        // 重新加载项目数据，更新预览区
+        await refreshData()
+      } else {
+        ElMessage.error(response.data.error || '视频合成失败')
+      }
+    } catch (error: any) {
+      // 关闭加载提示
+      loadingInstance.close()
+
+      console.error('视频合成失败', error)
+      const errorMsg = error.response?.data?.error || error.response?.data?.message || '视频合成失败'
+      ElMessage.error(errorMsg)
+    }
+  } catch {
+    // 用户取消
+  }
+}
+
+
 
 // 说话人管理
 const handleAutoAssignSpeaker = async () => {

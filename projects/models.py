@@ -64,8 +64,10 @@ class Project(models.Model):
 
     # 文件路径
     srt_file_path = models.FileField(upload_to='srt/', blank=True, null=True, help_text="SRT文件路径")
-    video_file_path = models.FileField(upload_to='videos/', blank=True, null=True, help_text="视频文件路径")
-    concatenated_audio_url = models.CharField(max_length=500, blank=True, help_text="拼接后的完整音频URL")
+    video_file_path = models.FileField(upload_to='videos/', blank=True, null=True, help_text="原始视频文件路径")
+    concatenated_audio_url = models.CharField(max_length=500, blank=True, help_text="拼接后的完整翻译音频URL")
+    mixed_audio_path = models.FileField(upload_to='audio/mixed/', blank=True, null=True, help_text="混合音频路径（翻译+背景）")
+    final_video_path = models.FileField(upload_to='videos/final/', blank=True, null=True, help_text="最终合成视频路径")
 
     # 人声分离相关字段
     original_audio_path = models.FileField(upload_to='audio/original/', blank=True, null=True, help_text="从视频提取的原始音频")
@@ -185,4 +187,18 @@ class Project(models.Model):
         """返回视频文件URL"""
         if self.video_file_path:
             return self.video_file_path.url
+        return None
+
+    @property
+    def mixed_audio_url(self):
+        """返回混合音频URL"""
+        if self.mixed_audio_path:
+            return self.mixed_audio_path.url
+        return None
+
+    @property
+    def final_video_url(self):
+        """返回最终视频URL"""
+        if self.final_video_path:
+            return self.final_video_path.url
         return None

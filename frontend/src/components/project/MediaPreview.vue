@@ -202,8 +202,8 @@ const mediaOptions = computed<MediaOption[]>(() => {
     {
       key: 'translated_video',
       label: '翻译视频',
-      url: null, // 暂时没有翻译视频
-      available: false,
+      url: props.project?.final_video_url ? `${BACKEND_BASE_URL}${props.project.final_video_url}` : null,
+      available: !!props.project?.final_video_url,
       priority: 4,
       type: 'video'
     },
@@ -218,8 +218,8 @@ const mediaOptions = computed<MediaOption[]>(() => {
     {
       key: 'mixed_audio',
       label: '混合音频',
-      url: props.finalMixedAudioUrl || null,
-      available: !!props.finalMixedAudioUrl,
+      url: props.project?.mixed_audio_url ? `${BACKEND_BASE_URL}${props.project.mixed_audio_url}` : null,
+      available: !!props.project?.mixed_audio_url,
       priority: 6,
       type: 'audio'
     }

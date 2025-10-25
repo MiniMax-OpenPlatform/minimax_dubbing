@@ -70,6 +70,28 @@ class AliyunTokenManager:
 class FlashRecognizerService:
     """阿里云 FlashRecognizer 语音识别服务"""
 
+    # 语言代码映射表（项目语言 -> 阿里云语言代码）
+    LANGUAGE_MAP = {
+        'Chinese': 'zh-cn',
+        'Chinese,Yue': 'yue-cn',  # 粤语
+        'English': 'en-us',
+        'Spanish': 'es-es',
+        'French': 'fr-fr',
+        'Russian': 'ru-ru',
+        'German': 'de-de',
+        'Portuguese': 'pt-pt',
+        'Arabic': 'ar-eg',
+        'Italian': 'it-it',
+        'Japanese': 'ja-jp',
+        'Korean': 'ko-kr',
+        'Indonesian': 'id-id',
+        'Vietnamese': 'vi-vn',
+        'Turkish': 'tr-tr',
+        'Thai': 'th-th',
+        'Hindi': 'hi-in',
+        # 默认使用中文
+    }
+
     def __init__(self, app_key: str, access_key_id: str, access_key_secret: str, region: str = 'cn-shanghai'):
         """
         初始化 FlashRecognizer 服务
@@ -86,6 +108,19 @@ class FlashRecognizerService:
         self.region = region
         self.gateway_url = f"https://nls-gateway-{region}.aliyuncs.com/stream/v1/FlashRecognizer"
 
+    @classmethod
+    def get_language_hint(cls, source_lang: str) -> str:
+        """
+        将项目语言转换为阿里云语言代码
+
+        Args:
+            source_lang: 项目源语言，如 'Chinese', 'English'
+
+        Returns:
+            阿里云语言代码，如 'zh-cn', 'en-us'
+        """
+        return cls.LANGUAGE_MAP.get(source_lang, 'zh-cn')
+
     def _get_token(self) -> Optional[str]:
         """获取 AccessToken"""
         return AliyunTokenManager.get_access_token(
@@ -100,7 +135,8 @@ class FlashRecognizerService:
         audio_format: str = 'mp3',
         sample_rate: int = 16000,
         enable_punctuation: bool = True,
-        enable_itn: bool = True
+        enable_itn: bool = True,
+        language_hints: Optional[List[str]] = None
     ) -> Tuple[bool, Dict]:
         """
         使用 FlashRecognizer 识别音频文件
@@ -111,6 +147,7 @@ class FlashRecognizerService:
             sample_rate: 采样率，默认 16000
             enable_punctuation: 启用标点预测
             enable_itn: 启用逆文本正则化
+            language_hints: 语言提示列表，如 ['zh-cn', 'en-us']，默认自动检测
 
         Returns:
             (success: bool, result: dict)
@@ -164,6 +201,11 @@ class FlashRecognizerService:
             'enable_intermediate_result': 'false',
             'enable_voice_detection': 'false'
         }
+
+        # 添加语言提示（JSON数组格式）
+        if language_hints:
+            import json
+            params['language_hints'] = json.dumps(language_hints)
 
         url = f"{self.gateway_url}?{urlencode(params)}"
 
@@ -237,7 +279,8 @@ class FlashRecognizerService:
         audio_format: str = 'mp3',
         merge_short_segments: bool = True,
         min_duration: float = 0.5,
-        max_gap: float = 0.5
+        max_gap: float = 0.5,
+        language_hints: Optional[List[str]] = None
     ) -> Tuple[bool, List[Dict], str]:
         """
         识别音频并返回适合导入到 Segment 模型的数据结构
@@ -248,6 +291,7 @@ class FlashRecognizerService:
             merge_short_segments: 是否合并短字幕，默认 True
             min_duration: 最小字幕时长（秒），短于此时长的会被合并，默认 0.5 秒
             max_gap: 最大间隔时间（秒），间隔小于此值的字幕会被合并，默认 0.5 秒
+            language_hints: 语言提示列表，如 ['zh-cn', 'en-us']
 
         Returns:
             (success: bool, segments: List[Dict], error_msg: str)
@@ -259,12 +303,13 @@ class FlashRecognizerService:
                     'end_time': 结束时间(秒, 浮点数),
                     'original_text': '原始文本',
                     'translated_text': '',
-                    'speaker': ''
+                    'speaker': 'SPEAKER_00',
+                    'duration': 时长(秒, 浮点数)
                 },
                 ...
             ]
         """
-        success, result = self.recognize(audio_file_path, audio_format)
+        success, result = self.recognize(audio_file_path, audio_format, language_hints=language_hints)
 
         if not success:
             error_msg = result.get('error', '识别失败')
@@ -295,7 +340,8 @@ class FlashRecognizerService:
                 'end_time': end_time_sec,
                 'original_text': text,
                 'translated_text': '',
-                'speaker': 'SPEAKER_00'
+                'speaker': 'SPEAKER_00',
+                'duration': end_time_sec - start_time_sec
             })
 
         # 合并短字幕
@@ -353,6 +399,8 @@ class FlashRecognizerService:
                 if should_merge:
                     # 合并到当前字幕
                     current['end_time'] = seg['end_time']
+                    # 更新duration
+                    current['duration'] = current['end_time'] - current['start_time']
                     # 智能连接文本
                     current_text = current['original_text'].rstrip('。，！？,.!?')
                     new_text = seg['original_text']

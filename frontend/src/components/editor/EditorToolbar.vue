@@ -99,11 +99,12 @@
           拼接音频
         </el-button>
 
-        <!-- 8. 合成视频 (预留功能) -->
+        <!-- 8. 合成视频 -->
         <el-button
           :icon="Film"
-          @click="handlePlaceholderClick('合成视频')"
-          disabled
+          type="success"
+          @click="$emit('synthesize-video')"
+          :loading="batchLoading"
         >
           合成视频
         </el-button>
@@ -162,6 +163,7 @@ const emit = defineEmits<{
   'batch-translate': []
   'batch-tts': []
   'concatenate-audio': []
+  'synthesize-video': []
   'export': [type: string]
   'upload-video': [file: File]
   'upload-srt': [file: File]

@@ -215,6 +215,76 @@ class AudioProcessor:
             logger.error(f"创建静音音频失败: {e}")
             return False
 
+    def mix_audio_tracks(
+        self,
+        translated_audio_path: str,
+        background_audio_path: str,
+        output_path: str,
+        translated_volume: float = 1.0,
+        background_volume: float = 0.3,
+        trace_id: Optional[str] = None
+    ) -> bool:
+        """
+        混合翻译音频和背景音
+
+        Args:
+            translated_audio_path: 翻译音频路径（拼接后的完整翻译音频）
+            background_audio_path: 背景音路径（人声分离后的背景音）
+            output_path: 输出混合音频路径
+            translated_volume: 翻译音频音量（0.0-1.0），默认 1.0
+            background_volume: 背景音音量（0.0-1.0），默认 0.3
+            trace_id: 追踪ID
+
+        Returns:
+            混合是否成功
+        """
+        try:
+            logger.info(f"[{trace_id}] 开始混合音频轨道")
+            logger.info(f"[{trace_id}] 翻译音频: {translated_audio_path}")
+            logger.info(f"[{trace_id}] 背景音: {background_audio_path}")
+
+            # 加载音频文件
+            translated_audio = AudioSegment.from_file(translated_audio_path)
+            background_audio = AudioSegment.from_file(background_audio_path)
+
+            # 调整音量
+            if translated_volume != 1.0:
+                translated_audio = translated_audio + (20 * (translated_volume - 1))  # dB 调整
+            if background_volume != 1.0:
+                background_audio = background_audio + (20 * (background_volume - 1))  # dB 调整
+
+            logger.info(f"[{trace_id}] 音量调整: 翻译={translated_volume}, 背景={background_volume}")
+
+            # 确保两个音频时长一致（使用较长的作为基准）
+            translated_duration = len(translated_audio)
+            background_duration = len(background_audio)
+
+            if translated_duration > background_duration:
+                # 背景音较短，循环或静音填充
+                logger.info(f"[{trace_id}] 背景音较短 ({background_duration}ms < {translated_duration}ms)，延长背景音")
+                # 添加静音填充
+                silence_needed = translated_duration - background_duration
+                background_audio = background_audio + AudioSegment.silent(duration=silence_needed)
+            elif background_duration > translated_duration:
+                # 背景音较长，裁剪
+                logger.info(f"[{trace_id}] 背景音较长 ({background_duration}ms > {translated_duration}ms)，裁剪背景音")
+                background_audio = background_audio[:translated_duration]
+
+            # 混合音频（overlay）
+            mixed_audio = translated_audio.overlay(background_audio)
+
+            # 导出混合音频
+            mixed_audio.export(output_path, format="mp3", bitrate="192k")
+
+            logger.info(f"[{trace_id}] 音频混合完成: {output_path}")
+            logger.info(f"[{trace_id}] 混合音频时长: {len(mixed_audio)/1000.0:.2f}秒")
+
+            return True
+
+        except Exception as e:
+            logger.error(f"[{trace_id}] 音频混合失败: {e}", exc_info=True)
+            return False
+
     def cleanup_temp_files(self, file_paths: List[str], trace_id: Optional[str] = None):
         """
         清理临时文件
