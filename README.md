@@ -261,12 +261,30 @@ screen -S frontend -X quit
 - **缓存位置**: `~/.cache/torch/hub/checkpoints/`
 - **后续使用**: 自动使用本地缓存
 
+#### 手动预下载模型（推荐）
+
+为了避免首次使用时等待，可以使用提供的脚本预先下载所有模型：
+
+```bash
+# 下载所有模型
+python download_models.py
+
+# 或者只下载特定模型
+python download_models.py --demucs     # 只下载Demucs
+python download_models.py --facenet    # 只下载FaceNet
+
+# 检查已缓存的模型
+python download_models.py --check
+```
+
 #### 快速部署技巧
 如果需要在多台机器上部署，可以：
 ```bash
-# 在已有缓存的机器上打包
-tar -czf models_cache.tar.gz ~/.cache/torch/
+# 方法1: 使用下载脚本预下载（推荐）
+python download_models.py
 
+# 方法2: 在已有缓存的机器上打包分享
+tar -czf models_cache.tar.gz ~/.cache/torch/
 # 在新机器上解压
 tar -xzf models_cache.tar.gz -C ~/
 ```
