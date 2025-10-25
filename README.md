@@ -134,10 +134,12 @@ pip install -r requirements.txt
 # 4. 安装前端依赖
 cd frontend && npm install && cd ..
 
-# 5. 初始化数据库和管理员账号
-python3 manage.py migrate
-python3 manage.py init_system
+# 5. 初始化数据库和管理员账号（必须执行！）
+python3 manage.py migrate       # 创建数据库表结构
+python3 manage.py init_system   # 创建管理员账号（admin/admin123）
 ```
+
+> ⚠️ **重要提示**: `migrate` 命令必须执行，否则会导致数据库字段缺失，保存配置时出现 500 错误！
 
 ### ⚡ 或者：直接安装（2分钟）
 
@@ -152,10 +154,12 @@ cd minimax_dubbing
 pip install -r requirements.txt
 cd frontend && npm install && cd ..
 
-# 3. 初始化数据库和管理员账号
-python3 manage.py migrate
-python3 manage.py init_system
+# 3. 初始化数据库和管理员账号（必须执行！）
+python3 manage.py migrate       # 创建数据库表结构
+python3 manage.py init_system   # 创建管理员账号（admin/admin123）
 ```
+
+> ⚠️ **重要提示**: `migrate` 命令必须执行，否则会导致数据库字段缺失，保存配置时出现 500 错误！
 
 ### 🚀 启动服务
 
@@ -437,6 +441,82 @@ python3 manage.py test
 ```bash
 cd frontend
 npm run test
+```
+
+## 🔧 故障排查 (Troubleshooting)
+
+### 问题1: 保存阿里云配置时出现 500 错误
+
+**错误现象**:
+```
+Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+PATCH http://your-ip:5172/api/auth/config/ 500 (Internal Server Error)
+```
+
+**原因**: 数据库迁移未执行，缺少 `dashscope_api_key` 等字段
+
+**解决方法**:
+```bash
+# 1. 激活虚拟环境（如果使用）
+source venv/bin/activate
+
+# 2. 运行数据库迁移
+python3 manage.py migrate
+
+# 3. 重启后端服务
+pkill -f "python3 manage.py runserver"
+python3 manage.py runserver 0.0.0.0:5172
+```
+
+### 问题2: 首次使用人声分离或说话人识别时等待很久
+
+**原因**: 正在下载 AI 模型（Demucs 320MB + FaceNet 100MB）
+
+**解决方法**:
+```bash
+# 使用脚本预先下载所有模型
+python download_models.py
+
+# 或者从其他机器复制模型缓存
+tar -czf models_cache.tar.gz ~/.cache/torch/
+# 传输到新机器后解压
+tar -xzf models_cache.tar.gz -C ~/
+```
+
+### 问题3: 前端无法连接后端 API
+
+**检查清单**:
+1. 确认后端服务正在运行: `ps aux | grep "python3 manage.py runserver"`
+2. 确认端口正确: 后端 5172，前端 5173
+3. 检查防火墙规则（如果在远程服务器）
+4. 查看后端日志: `tail -f backend.log`（如果使用 nohup）
+
+### 问题4: 虚拟环境激活失败
+
+**Linux/Mac**:
+```bash
+source venv/bin/activate
+```
+
+**Windows**:
+```bash
+venv\Scripts\activate
+```
+
+如果提示权限错误，Windows 需要：
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+### 问题5: npm install 失败
+
+**解决方法**:
+```bash
+# 清除 npm 缓存
+cd frontend
+rm -rf node_modules package-lock.json
+npm cache clean --force
+npm install
 ```
 
 ## 📦 Production Deployment
