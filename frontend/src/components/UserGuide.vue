@@ -782,6 +782,7 @@ import { VideoCamera, Tools, Monitor, Microphone, QuestionFilled, Setting, Point
   margin-top: 12px;
   font-size: 14px;
   color: #000;
+  font-weight: bold;
 }
 
 .notice-content p {
