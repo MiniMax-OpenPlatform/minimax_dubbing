@@ -102,9 +102,12 @@
         <el-form-item label="AccessKey ID" prop="accessKeyId">
           <el-input
             v-model="aliyunForm.accessKeyId"
-            placeholder="输入阿里云 AccessKey ID（需授权 AliyunNLSFullAccess）"
+            placeholder="输入阿里云 AccessKey ID"
             clearable
           />
+          <template #extra>
+            <span style="font-size: 12px; color: #909399;">需授权 AliyunNLSFullAccess</span>
+          </template>
         </el-form-item>
 
         <el-form-item label="AccessKey Secret" prop="accessKeySecret">
