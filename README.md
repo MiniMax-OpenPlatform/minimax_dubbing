@@ -453,19 +453,36 @@ POST http://your-ip:5172/api/auth/register/ 400 (Bad Request)
 PATCH http://your-ip:5172/api/auth/config/ 500 (Internal Server Error)
 ```
 
-**可能原因1**: 数据库迁移未执行（已在最新代码中修复，但老版本可能存在）
+**原因**: 数据库迁移未执行，缺少必要的字段
+
+**错误日志**:
+```
+ERROR: table authentication_userconfig has no column named aliyun_access_key_id
+ERROR: no such column: authentication_userconfig.dashscope_api_key
+```
 
 **解决方法**:
 ```bash
-# 1. 激活虚拟环境（如果使用）
+# 1. 拉取最新代码（包含所有迁移文件）
+git pull origin main
+
+# 2. 激活虚拟环境（如果使用）
 source venv/bin/activate
 
-# 2. 运行数据库迁移
+# 3. 运行数据库迁移（关键步骤！）
 python3 manage.py migrate
 
-# 3. 重启后端服务
+# 4. 重启后端服务
 pkill -f "python3 manage.py runserver"
 python3 manage.py runserver 0.0.0.0:5172
+```
+
+**验证迁移是否成功**:
+```bash
+python3 manage.py showmigrations authentication
+# 应该看到所有迁移都有 [X] 标记，包括：
+# [X] 0004_userconfig_dashscope_api_key
+# [X] 0005_userconfig_aliyun_access_key_id_and_more
 ```
 
 **可能原因2**: 旧版本代码中 MiniMax API Key 配置问题（已修复）
