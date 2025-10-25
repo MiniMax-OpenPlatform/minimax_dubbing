@@ -445,15 +445,15 @@ npm run test
 
 ## 🔧 故障排查 (Troubleshooting)
 
-### 问题1: 保存阿里云配置时出现 500 错误
+### 问题1: 注册时返回 400 错误 / 保存配置时 500 错误
 
 **错误现象**:
 ```
-Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+POST http://your-ip:5172/api/auth/register/ 400 (Bad Request)
 PATCH http://your-ip:5172/api/auth/config/ 500 (Internal Server Error)
 ```
 
-**原因**: 数据库迁移未执行，缺少 `dashscope_api_key` 等字段
+**可能原因1**: 数据库迁移未执行（已在最新代码中修复，但老版本可能存在）
 
 **解决方法**:
 ```bash
@@ -467,6 +467,18 @@ python3 manage.py migrate
 pkill -f "python3 manage.py runserver"
 python3 manage.py runserver 0.0.0.0:5172
 ```
+
+**可能原因2**: 旧版本代码中 MiniMax API Key 配置问题（已修复）
+
+如果使用的是旧版本代码，请拉取最新代码：
+```bash
+git pull origin main
+# 重启后端服务
+pkill -f "python3 manage.py runserver"
+python3 manage.py runserver 0.0.0.0:5172
+```
+
+> 💡 **已修复**: 最新版本已将 MiniMax API Key 默认值内置到 settings.py，无需配置环境变量即可使用
 
 ### 问题2: 首次使用人声分离或说话人识别时等待很久
 
