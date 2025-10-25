@@ -46,13 +46,29 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        # 设置默认密码（由于Django要求，但我们不使用密码认证）
-        user = User.objects.create_user(
-            password='unused_password_123',
-            **validated_data
-        )
+        from django.db import transaction
+        import logging
 
-        # 创建用户配置
-        UserConfig.objects.create(user=user)
+        logger = logging.getLogger(__name__)
 
-        return user
+        # 使用事务确保用户和配置都创建成功，或都不创建
+        try:
+            with transaction.atomic():
+                # 设置默认密码（由于Django要求，但我们不使用密码认证）
+                user = User.objects.create_user(
+                    password='unused_password_123',
+                    **validated_data
+                )
+                logger.info(f"用户创建成功: {user.username}@{user.group_id}")
+
+                # 创建用户配置
+                UserConfig.objects.create(user=user)
+                logger.info(f"用户配置创建成功: {user.username}")
+
+                return user
+        except Exception as e:
+            logger.error(f"创建用户失败: {str(e)}")
+            logger.error(f"验证数据: {validated_data}")
+            import traceback
+            logger.error(f"详细堆栈:\n{traceback.format_exc()}")
+            raise  # 重新抛出异常，让Django REST框架处理

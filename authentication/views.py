@@ -61,13 +61,24 @@ class RegisterView(generics.CreateAPIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # API验证通过，调用父类创建用户
-        response = super().create(request, *args, **kwargs)
+        try:
+            response = super().create(request, *args, **kwargs)
 
-        if response.status_code == status.HTTP_201_CREATED:
-            response.data['message'] = '注册成功，API Key验证通过'
-            logger.info(f"新用户注册成功: {username}@{group_id}")
+            if response.status_code == status.HTTP_201_CREATED:
+                response.data['message'] = '注册成功，API Key验证通过'
+                logger.info(f"新用户注册成功: {username}@{group_id}")
 
-        return response
+            return response
+        except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            logger.error(f"创建用户异常: {str(e)}")
+            logger.error(f"详细错误堆栈:\n{error_trace}")
+            print(f"[注册创建用户错误] {str(e)}")
+            print(f"[详细堆栈]\n{error_trace}")
+            return Response({
+                'detail': f'注册失败: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
