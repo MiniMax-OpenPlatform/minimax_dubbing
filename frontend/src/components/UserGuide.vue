@@ -278,7 +278,7 @@
       </el-card>
 
       <!-- 常见问题 -->
-      <el.card class="section-card" shadow="hover">
+      <el-card class="section-card" shadow="hover">
         <template #header>
           <div class="card-header">
             <el-icon><QuestionFilled /></el-icon>
