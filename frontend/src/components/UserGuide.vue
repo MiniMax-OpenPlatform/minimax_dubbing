@@ -774,7 +774,6 @@ import { VideoCamera, Tools, Monitor, Microphone, QuestionFilled, Setting, Point
 /* 重要提醒样式 */
 .important-notice {
   margin-bottom: 24px;
-  border: 2px solid #e6a23c !important;
   background-color: #fdf6ec !important;
 }
 
@@ -785,8 +784,6 @@ import { VideoCamera, Tools, Monitor, Microphone, QuestionFilled, Setting, Point
 
 .notice-content p {
   margin: 12px 0;
-  padding-left: 8px;
-  border-left: 3px solid #e6a23c;
 }
 
 /* 强调文本 */
