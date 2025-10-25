@@ -12,7 +12,7 @@
         </template>
         <div class="notice-content">
           <p><strong>1. 当前为测试demo</strong>，不提供高并发访问，可能会排队或停服维护。商业使用建议自行部署：<el-link href="https://github.com/MiniMax-OpenPlatform/minimax_dubbing" target="_blank" type="primary">https://github.com/MiniMax-OpenPlatform/minimax_dubbing</el-link></p>
-          <p><strong>2. 建议上传2分钟以内音频</strong>测试验证</p>
+          <p><strong>2. 建议上传2分钟以内视频</strong>测试验证</p>
           <p><strong>3. ASR和自动分配说话人依赖阿里api</strong>，请在"账户设置"中配置阿里云api_key</p>
           <p><strong>4. 功能在持续迭代</strong>，请及时更新</p>
         </div>
