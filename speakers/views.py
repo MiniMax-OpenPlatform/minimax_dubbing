@@ -220,7 +220,8 @@ class SpeakerDiarizationTaskViewSet(viewsets.ModelViewSet):
             'task_id': str(task.id),
             'status': task.status,
             'progress': task.progress,
-            'message': task.message
+            'message': task.message,
+            'error_message': task.error_message if task.status == 'failed' else None
         })
 
     def _apply_task_results(self, task):

@@ -162,6 +162,7 @@ const selectedSegments = ref<Segment[]>([])
 // 任务ID存储
 const currentTranslateTaskId = ref<string | null>(null)
 const currentTtsTaskId = ref<string | null>(null)
+const currentSpeakerTaskId = ref<string | null>(null)
 
 // 轮询定时器
 const pollingIntervals = ref<Map<string, number>>(new Map())
@@ -292,13 +293,13 @@ const handleBatchTranslate = async () => {
         refreshData()
       }
     } else {
+      // 只在进度条显示错误，不弹窗
       batchProgress.setErrorState('translate', response.data.error || '批量翻译失败')
-      ElMessage.error(response.data.error || '批量翻译失败')
     }
   } catch (error) {
     console.error('批量翻译失败', error)
+    // 只在进度条显示错误，不弹窗
     batchProgress.setErrorState('translate', '批量翻译启动失败')
-    ElMessage.error('批量翻译失败')
   }
 }
 
@@ -387,13 +388,13 @@ const handleBatchTts = async () => {
       const pollingInterval = setInterval(pollProgress, 2000)
       pollingIntervals.value.set(taskId, pollingInterval)
     } else {
+      // 只在进度条显示错误，不弹窗
       batchProgress.setErrorState('tts', response.data.error || 'TTS任务启动失败')
-      ElMessage.error(response.data.error || '批量TTS失败')
     }
   } catch (error) {
     console.error('批量TTS失败', error)
+    // 只在进度条显示错误，不弹窗
     batchProgress.setErrorState('tts', '批量TTS启动失败')
-    ElMessage.error('批量TTS失败')
   }
 }
 
@@ -476,9 +477,12 @@ const handleResumeOperation = async (type: 'translate' | 'tts') => {
   ElMessage.info(`恢复功能暂未实现`)
 }
 
-const handleCancelOperation = async (type: 'translate' | 'tts') => {
+const handleCancelOperation = async (type: 'translate' | 'tts' | 'speaker_diarization') => {
   try {
-    const taskId = type === 'translate' ? currentTranslateTaskId.value : currentTtsTaskId.value
+    let taskId: string | null = null
+    if (type === 'translate') taskId = currentTranslateTaskId.value
+    else if (type === 'tts') taskId = currentTtsTaskId.value
+    else if (type === 'speaker_diarization') taskId = currentSpeakerTaskId.value
 
     if (!taskId) {
       ElMessage.warning('没有正在运行的任务')
@@ -486,15 +490,18 @@ const handleCancelOperation = async (type: 'translate' | 'tts') => {
     }
 
     const api = (await import('../../utils/api')).default
-    const stopEndpoint = type === 'translate'
-      ? `/projects/${props.projectId}/batch_translate_stop/`
-      : `/projects/${props.projectId}/batch_tts_stop/`
+    let stopEndpoint = ''
+    if (type === 'translate') {
+      stopEndpoint = `/projects/${props.projectId}/batch_translate_stop/`
+    } else if (type === 'tts') {
+      stopEndpoint = `/projects/${props.projectId}/batch_tts_stop/`
+    } else if (type === 'speaker_diarization') {
+      stopEndpoint = `/speakers/tasks/${taskId}/cancel/`
+    }
 
-    const response = await api.post(stopEndpoint, {
-      task_id: taskId
-    })
+    const response = await api.delete(stopEndpoint)
 
-    if (response.data.success) {
+    if (response.data.success || response.status === 200) {
       // 停止轮询
       const interval = pollingIntervals.value.get(taskId)
       if (interval) {
@@ -504,13 +511,16 @@ const handleCancelOperation = async (type: 'translate' | 'tts') => {
 
       // 更新UI状态
       batchProgress.cancelBatchOperation(type)
-      ElMessage.success(`已取消${type === 'translate' ? '翻译' : 'TTS'}操作`)
+      const typeName = type === 'translate' ? '翻译' : type === 'tts' ? 'TTS' : '说话人识别'
+      ElMessage.success(`已取消${typeName}操作`)
 
       // 清除任务ID
       if (type === 'translate') {
         currentTranslateTaskId.value = null
-      } else {
+      } else if (type === 'tts') {
         currentTtsTaskId.value = null
+      } else if (type === 'speaker_diarization') {
+        currentSpeakerTaskId.value = null
       }
     } else {
       ElMessage.error(response.data.error || '取消任务失败')
@@ -521,7 +531,7 @@ const handleCancelOperation = async (type: 'translate' | 'tts') => {
   }
 }
 
-const handleDismissOperation = (type: 'translate' | 'tts') => {
+const handleDismissOperation = (type: 'translate' | 'tts' | 'speaker_diarization') => {
   batchProgress.dismissProgress(type)
 }
 
@@ -928,14 +938,14 @@ const handleSeparateVocals = async () => {
         // 开始轮询状态
         startPollingSeparation()
       } else {
+        // 只在进度条显示错误，不弹窗
         batchProgress.setErrorState('vocal_separation', response.data.message || '无法启动人声分离')
-        ElMessage.warning(response.data.message || '无法启动人声分离')
       }
     } catch (error: any) {
       console.error('人声分离启动失败', error)
       const errorMsg = error.response?.data?.message || '启动人声分离失败'
+      // 只在进度条显示错误，不弹窗
       batchProgress.setErrorState('vocal_separation', errorMsg)
-      ElMessage.error(errorMsg)
     }
   } catch {
     // 用户取消
@@ -988,16 +998,16 @@ const startPollingSeparation = () => {
           clearInterval(separationPollInterval)
           separationPollInterval = null
         }
+        // 只在进度条显示错误，不弹窗
         batchProgress.setErrorState('vocal_separation', '人声分离失败，请检查视频文件或重试')
-        ElMessage.error('人声分离失败，请检查视频文件或重试')
       } else if (pollCount >= maxPolls) {
         // 超时停止轮询
         if (separationPollInterval) {
           clearInterval(separationPollInterval)
           separationPollInterval = null
         }
-        batchProgress.setErrorState('vocal_separation', '人声分离超时')
-        ElMessage.warning('人声分离超时，请刷新页面查看状态')
+        // 只在进度条显示错误，不弹窗
+        batchProgress.setErrorState('vocal_separation', '人声分离超时，请刷新页面查看状态')
       }
       // status === 'processing' 继续等待
     } catch (error) {
@@ -1197,18 +1207,80 @@ const handleAutoAssignSpeaker = async () => {
     return
   }
 
-  // 设置初始Tab为说话人档案
-  settingsInitialTab.value = 'speakers'
+  try {
+    // 启动说话人识别任务
+    const api = (await import('../../utils/api')).default
+    const response = await api.post('/speakers/tasks/', {
+      project_id: props.projectId
+    })
 
-  // 打开项目设置对话框
-  showSettings.value = true
+    const task = response.data
+    currentSpeakerTaskId.value = task.id
 
-  // 显示提示信息
-  ElMessage.info({
-    message: '已为您打开"说话人档案"页面。点击"开始说话人识别"按钮，系统将使用人脸检测+VLM命名+LLM分配技术自动识别视频中的说话人。',
-    duration: 4000,
-    showClose: true
-  })
+    // 开始进度跟踪
+    batchProgress.startBatchOperation('speaker_diarization', 100, {
+      canCancel: true,
+      canPause: false
+    })
+
+    // 启动轮询
+    startSpeakerTaskPolling(task.id)
+
+    ElMessage.success('说话人识别任务已启动')
+  } catch (error: any) {
+    console.error('启动说话人识别失败', error)
+    batchProgress.setErrorState('speaker_diarization', error.response?.data?.message || '启动失败')
+    ElMessage.error(error.response?.data?.message || '启动说话人识别失败')
+  }
+}
+
+// 说话人识别任务轮询
+const startSpeakerTaskPolling = async (taskId: string) => {
+  const api = (await import('../../utils/api')).default
+
+  const pollInterval = setInterval(async () => {
+    try {
+      const response = await api.get(`/speakers/tasks/${taskId}/progress/`)
+
+      if (response.data) {
+        const { status, progress, message } = response.data
+
+        // 更新进度
+        batchProgress.updateProgress('speaker_diarization', progress, {
+          currentItem: message
+        })
+
+        // 如果任务完成、失败或取消，停止轮询
+        if (['completed', 'failed', 'cancelled'].includes(status)) {
+          clearInterval(pollInterval)
+          pollingIntervals.value.delete(taskId)
+          currentSpeakerTaskId.value = null
+
+          if (status === 'completed') {
+            batchProgress.completeBatchOperation('speaker_diarization')
+            ElMessage.success('说话人识别完成！')
+            // 刷新项目数据以获取更新后的voice_mappings和segments
+            await refreshData()
+          } else if (status === 'failed') {
+            // 只在进度条显示错误，不弹窗
+            batchProgress.setErrorState('speaker_diarization', response.data.error_message || '识别失败')
+          } else if (status === 'cancelled') {
+            batchProgress.cancelBatchOperation('speaker_diarization')
+          }
+        }
+      } else {
+        // 任务不存在或已过期，停止轮询
+        clearInterval(pollInterval)
+        pollingIntervals.value.delete(taskId)
+        batchProgress.setErrorState('speaker_diarization', '任务不存在或已过期')
+      }
+    } catch (error) {
+      console.error('获取说话人识别进度失败', error)
+      // 继续轮询，不因为单次失败就停止
+    }
+  }, 2000) // 每2秒轮询一次
+
+  pollingIntervals.value.set(taskId, pollInterval)
 }
 
 // 获取项目中配置的说话人选项

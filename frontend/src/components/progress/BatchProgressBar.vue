@@ -64,6 +64,12 @@
             </span>
           </div>
 
+          <!-- 错误信息显示 -->
+          <div class="progress-details error-details" v-if="progress.status === 'error' && progress.errorMessages.length > 0">
+            <el-icon class="error-icon"><WarningFilled /></el-icon>
+            <span class="error-text">{{ progress.errorMessages[progress.errorMessages.length - 1] }}</span>
+          </div>
+
           <!-- 操作按钮 -->
           <div class="progress-actions">
             <el-button
@@ -177,10 +183,10 @@ interface Props {
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  pauseOperation: [type: 'translate' | 'tts']
-  resumeOperation: [type: 'translate' | 'tts']
-  cancelOperation: [type: 'translate' | 'tts']
-  dismissOperation: [type: 'translate' | 'tts']
+  pauseOperation: [type: 'translate' | 'tts' | 'vocal_separation' | 'asr' | 'speaker_diarization']
+  resumeOperation: [type: 'translate' | 'tts' | 'vocal_separation' | 'asr' | 'speaker_diarization']
+  cancelOperation: [type: 'translate' | 'tts' | 'vocal_separation' | 'asr' | 'speaker_diarization']
+  dismissOperation: [type: 'translate' | 'tts' | 'vocal_separation' | 'asr' | 'speaker_diarization']
 }>()
 
 const expanded = ref(false)
@@ -193,8 +199,15 @@ const canExpandDetails = computed(() => {
 })
 
 // 获取操作名称
-const getOperationName = (type: 'translate' | 'tts') => {
-  return type === 'translate' ? '批量翻译' : '批量TTS'
+const getOperationName = (type: 'translate' | 'tts' | 'vocal_separation' | 'asr' | 'speaker_diarization') => {
+  const nameMap: Record<string, string> = {
+    translate: '批量翻译',
+    tts: '批量TTS',
+    vocal_separation: '人声分离',
+    asr: 'ASR自动识别',
+    speaker_diarization: '自动分配说话人'
+  }
+  return nameMap[type] || '批量操作'
 }
 
 // 获取进度条状态
@@ -243,7 +256,7 @@ const getStatusIconClass = (status: string) => {
 }
 
 // 处理取消操作
-const handleCancel = async (type: 'translate' | 'tts') => {
+const handleCancel = async (type: 'translate' | 'tts' | 'vocal_separation' | 'asr' | 'speaker_diarization') => {
   try {
     await ElMessageBox.confirm(
       `确定要取消正在进行的${getOperationName(type)}操作吗？`,
@@ -261,7 +274,7 @@ const handleCancel = async (type: 'translate' | 'tts') => {
 }
 
 // 处理关闭操作
-const handleDismiss = (type: 'translate' | 'tts') => {
+const handleDismiss = (type: 'translate' | 'tts' | 'vocal_separation' | 'asr' | 'speaker_diarization') => {
   emit('dismissOperation', type)
 }
 
@@ -412,6 +425,25 @@ const getElapsedTime = (startTime: number) => {
 
 .current-item {
   color: #495057;
+  font-weight: 500;
+}
+
+.error-details {
+  color: #dc3545;
+  background: #fff5f5;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #fde2e4;
+  align-items: center;
+}
+
+.error-icon {
+  color: #dc3545;
+  margin-right: 8px;
+}
+
+.error-text {
+  flex: 1;
   font-weight: 500;
 }
 

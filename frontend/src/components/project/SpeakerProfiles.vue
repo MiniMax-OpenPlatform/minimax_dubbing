@@ -1,103 +1,5 @@
 <template>
   <div class="speaker-profiles">
-    <!-- 操作栏 -->
-    <div class="actions-bar">
-      <el-button
-        type="primary"
-        :icon="VideoCamera"
-        @click="startDiarization"
-        :loading="isRunning"
-        :disabled="isRunning || !project.video_file_path"
-      >
-        {{ isRunning ? '识别中...' : '开始说话人识别' }}
-      </el-button>
-
-      <el-button
-        v-if="isRunning"
-        type="danger"
-        @click="cancelTask"
-      >
-        取消任务
-      </el-button>
-
-      <el-button
-        @click="refreshTasks"
-        :icon="Refresh"
-      >
-        刷新
-      </el-button>
-    </div>
-
-    <!-- 当前任务进度 -->
-    <div v-if="currentTask" class="current-task">
-      <el-card>
-        <template #header>
-          <div class="card-header">
-            <span>当前任务</span>
-            <el-tag :type="getStatusTagType(currentTask.status)">
-              {{ getStatusText(currentTask.status) }}
-            </el-tag>
-          </div>
-        </template>
-
-        <div class="task-info">
-          <div class="info-row">
-            <span class="label">任务ID:</span>
-            <span class="value">{{ currentTask.id }}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">创建时间:</span>
-            <span class="value">{{ formatTime(currentTask.created_at) }}</span>
-          </div>
-          <div v-if="currentTask.completed_at" class="info-row">
-            <span class="label">完成时间:</span>
-            <span class="value">{{ formatTime(currentTask.completed_at) }}</span>
-          </div>
-        </div>
-
-        <!-- 进度条 -->
-        <div v-if="['pending', 'running'].includes(currentTask.status)" class="progress-section">
-          <el-progress
-            :percentage="currentTask.progress"
-            :status="currentTask.status === 'failed' ? 'exception' : undefined"
-          />
-          <div class="progress-message">{{ currentTask.progress_message }}</div>
-        </div>
-
-        <!-- 错误信息 -->
-        <el-alert
-          v-if="currentTask.status === 'failed' && currentTask.error_message"
-          type="error"
-          :title="currentTask.error_message"
-          :closable="false"
-          show-icon
-        />
-
-        <!-- 统计信息 -->
-        <div v-if="currentTask.status === 'completed'" class="statistics">
-          <el-divider />
-          <div class="stats-grid">
-            <div class="stat-item">
-              <div class="stat-label">检测到说话人</div>
-              <div class="stat-value">{{ currentTask.num_speakers_detected }}</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-label">总人脸数</div>
-              <div class="stat-value">{{ currentTask.total_faces }}</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-label">有效人脸数</div>
-              <div class="stat-value">{{ currentTask.valid_faces }}</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-label">总片段数</div>
-              <div class="stat-value">{{ currentTask.total_segments }}</div>
-            </div>
-          </div>
-        </div>
-      </el-card>
-    </div>
-
     <!-- 说话人档案列表 -->
     <div v-if="currentTask && currentTask.speakers && currentTask.speakers.length > 0" class="speakers-list">
       <el-divider content-position="left">
@@ -219,8 +121,6 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { VideoCamera, Refresh } from '@element-plus/icons-vue'
 import api from '../../utils/api'
 
 interface Speaker {
@@ -263,82 +163,10 @@ const props = defineProps<{
 }>()
 
 const currentTask = ref<DiarizationTask | null>(null)
-const isRunning = ref(false)
-const pollInterval = ref<number | null>(null)
 
-// 启动说话人识别
-const startDiarization = async () => {
+// 加载最新的识别结果
+const loadLatestTask = async () => {
   try {
-    const response = await api.post('/speakers/tasks/', {
-      project_id: props.project.id
-    })
-
-    currentTask.value = response.data
-    isRunning.value = true
-    startPolling()
-
-    ElMessage.success('说话人识别任务已启动')
-  } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || '启动任务失败')
-  }
-}
-
-// 轮询任务状态
-const startPolling = () => {
-  if (pollInterval.value) {
-    clearInterval(pollInterval.value)
-  }
-
-  pollInterval.value = window.setInterval(async () => {
-    if (!currentTask.value) return
-
-    try {
-      const response = await api.get(`/speakers/tasks/${currentTask.value.id}/progress/`)
-      const progressData = response.data
-
-      // 更新进度
-      if (currentTask.value) {
-        currentTask.value.status = progressData.status
-        currentTask.value.progress = progressData.progress
-        currentTask.value.progress_message = progressData.message
-      }
-
-      // 如果任务完成或失败，停止轮询并刷新完整数据
-      if (['completed', 'failed', 'cancelled'].includes(progressData.status)) {
-        stopPolling()
-        isRunning.value = false
-        await refreshCurrentTask()
-      }
-    } catch (error) {
-      console.error('轮询任务状态失败:', error)
-    }
-  }, 2000) // 每2秒轮询一次
-}
-
-// 停止轮询
-const stopPolling = () => {
-  if (pollInterval.value) {
-    clearInterval(pollInterval.value)
-    pollInterval.value = null
-  }
-}
-
-// 刷新当前任务详情
-const refreshCurrentTask = async () => {
-  if (!currentTask.value) return
-
-  try {
-    const response = await api.get(`/speakers/tasks/${currentTask.value.id}/`)
-    currentTask.value = response.data
-  } catch (error) {
-    console.error('刷新任务详情失败:', error)
-  }
-}
-
-// 刷新任务列表
-const refreshTasks = async () => {
-  try {
-    // 获取该项目的最新任务
     const response = await api.get('/speakers/tasks/', {
       params: {
         project_id: props.project.id
@@ -346,76 +174,13 @@ const refreshTasks = async () => {
     })
 
     if (response.data.results && response.data.results.length > 0) {
-      // 获取第一个任务的详情
       const latestTask = response.data.results[0]
       const detailResponse = await api.get(`/speakers/tasks/${latestTask.id}/`)
       currentTask.value = detailResponse.data
-
-      // 如果任务正在运行，开始轮询
-      if (['pending', 'running'].includes(currentTask.value.status)) {
-        isRunning.value = true
-        startPolling()
-      }
     }
-
-    ElMessage.success('刷新成功')
-  } catch (error: any) {
-    ElMessage.error('刷新失败')
+  } catch (error) {
+    console.error('加载说话人识别结果失败:', error)
   }
-}
-
-// 取消任务
-const cancelTask = async () => {
-  if (!currentTask.value) return
-
-  try {
-    await ElMessageBox.confirm('确定要取消当前任务吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-
-    await api.delete(`/speakers/tasks/${currentTask.value.id}/cancel/`)
-    stopPolling()
-    isRunning.value = false
-    await refreshCurrentTask()
-
-    ElMessage.success('任务已取消')
-  } catch (error: any) {
-    if (error !== 'cancel') {
-      ElMessage.error(error.response?.data?.message || '取消任务失败')
-    }
-  }
-}
-
-// 获取状态标签类型
-const getStatusTagType = (status: string) => {
-  const typeMap: Record<string, any> = {
-    pending: 'info',
-    running: 'warning',
-    completed: 'success',
-    failed: 'danger',
-    cancelled: 'info'
-  }
-  return typeMap[status] || 'info'
-}
-
-// 获取状态文本
-const getStatusText = (status: string) => {
-  const textMap: Record<string, string> = {
-    pending: '等待中',
-    running: '运行中',
-    completed: '已完成',
-    failed: '失败',
-    cancelled: '已取消'
-  }
-  return textMap[status] || status
-}
-
-// 格式化时间
-const formatTime = (time: string) => {
-  if (!time) return '-'
-  return new Date(time).toLocaleString('zh-CN')
 }
 
 // 获取media文件的完整URL（指向后端服务器）
@@ -426,15 +191,14 @@ const getMediaUrl = (path: string) => {
   return `${protocol}//${hostname}${port}/media/${path}`
 }
 
-// 组件挂载时加载任务
+// 组件挂载时加载结果
 onMounted(() => {
-  refreshTasks()
+  loadLatestTask()
 })
 
-// 组件卸载时停止轮询
+// 监听project变化
 watch(() => props.project, () => {
-  stopPolling()
-  refreshTasks()
+  loadLatestTask()
 })
 </script>
 
