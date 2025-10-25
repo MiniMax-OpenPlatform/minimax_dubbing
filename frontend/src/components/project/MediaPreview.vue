@@ -59,8 +59,8 @@
             @duration-change="handleAudioDurationChange"
           />
 
-          <!-- 波形图 - 仅在翻译音频模式下显示 -->
-          <div v-if="selectedMedia === 'translated_audio'" class="waveform-wrapper">
+          <!-- 波形图 - 所有音频类型都显示 -->
+          <div class="waveform-wrapper">
             <AudioWaveform
               :audio-url="currentMediaUrl"
               :current-time="audioCurrentTime"
