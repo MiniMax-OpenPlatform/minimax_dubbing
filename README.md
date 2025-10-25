@@ -246,6 +246,33 @@ screen -S frontend -X quit
 - Node.js 16+
 - npm
 
+### 💾 模型缓存说明
+
+系统使用的AI模型会自动缓存到本地，**不需要每次都重新下载**：
+
+#### Demucs 人声分离模型
+- **首次使用**: 自动下载 htdemucs 模型（约 320MB）
+- **缓存位置**: `~/.cache/torch/hub/checkpoints/`
+- **后续使用**: 直接使用缓存的模型，无需重新下载
+- **团队共享**: 可以将缓存目录打包分享给团队成员，避免重复下载
+
+#### FaceNet 人脸识别模型
+- **首次使用**: 自动下载预训练模型（约 100MB）
+- **缓存位置**: `~/.cache/torch/hub/checkpoints/`
+- **后续使用**: 自动使用本地缓存
+
+#### 快速部署技巧
+如果需要在多台机器上部署，可以：
+```bash
+# 在已有缓存的机器上打包
+tar -czf models_cache.tar.gz ~/.cache/torch/
+
+# 在新机器上解压
+tar -xzf models_cache.tar.gz -C ~/
+```
+
+这样可以避免每台机器都重新下载模型，节省时间和带宽。
+
 ### 🔧 Detailed Setup
 
 <details>
