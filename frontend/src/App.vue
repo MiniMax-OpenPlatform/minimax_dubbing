@@ -6,8 +6,9 @@ import ProjectDetailContainer from './components/project/ProjectDetailContainer.
 import UserSettings from './components/UserSettings.vue'
 import VoiceManagement from './components/voice/VoiceManagement.vue'
 import VoiceCloning from './components/voice/VoiceCloning.vue'
+import UserGuide from './components/UserGuide.vue'
 import About from './components/About.vue'
-import { Document, Setting, User, ArrowDown, Microphone, MagicStick } from '@element-plus/icons-vue'
+import { Document, Setting, User, ArrowDown, Microphone, MagicStick, Reading } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/auth'
 import { logger } from './utils/logger'
 
@@ -46,6 +47,7 @@ const navigateTo = (view: string) => {
     'projects': '项目管理',
     'voices': '音色管理',
     'voice-cloning': '音色克隆',
+    'user-guide': '使用说明',
     'user-settings': '账户设置',
     'about': '关于'
   }
@@ -119,6 +121,15 @@ onMounted(async () => {
             <span>音色克隆</span>
           </div>
 
+          <div
+            class="nav-item"
+            :class="{ active: currentView === 'user-guide' }"
+            @click="navigateTo('user-guide')"
+          >
+            <el-icon><Reading /></el-icon>
+            <span>使用说明</span>
+          </div>
+
         </div>
 
         <!-- 右侧用户区域 -->
@@ -182,6 +193,8 @@ onMounted(async () => {
         <!-- 音色克隆页面 -->
         <VoiceCloning v-if="currentView === 'voice-cloning'" />
 
+        <!-- 使用说明页面 -->
+        <UserGuide v-if="currentView === 'user-guide'" />
 
         <!-- 账户设置页面 -->
         <UserSettings v-if="currentView === 'user-settings'" @logout="logout" />
