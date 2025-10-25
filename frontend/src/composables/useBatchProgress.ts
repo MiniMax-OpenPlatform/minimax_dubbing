@@ -1,12 +1,12 @@
 /**
  * 批量操作进度管理composable
- * 支持翻译、TTS和人声分离三种批量操作的进度跟踪
+ * 支持翻译、TTS、人声分离和ASR识别四种批量操作的进度跟踪
  */
 import { ref, computed, reactive } from 'vue'
 
 export interface BatchProgress {
   id: string
-  type: 'translate' | 'tts' | 'vocal_separation'
+  type: 'translate' | 'tts' | 'vocal_separation' | 'asr' | 'asr'
   status: 'idle' | 'running' | 'paused' | 'completed' | 'error' | 'cancelled'
   total: number
   completed: number
@@ -24,6 +24,7 @@ export interface BatchProgressState {
   translate: BatchProgress
   tts: BatchProgress
   vocal_separation: BatchProgress
+  asr: BatchProgress
 }
 
 export function useBatchProgress() {
@@ -61,6 +62,17 @@ export function useBatchProgress() {
       errorMessages: [],
       canCancel: false, // 人声分离不可取消
       canPause: false    // 人声分离不可暂停
+    },
+    asr: {
+      id: 'asr-recognize',
+      type: 'asr',
+      status: 'idle',
+      total: 100, // ASR识别使用百分比进度
+      completed: 0,
+      failed: 0,
+      errorMessages: [],
+      canCancel: false, // ASR识别不可取消
+      canPause: false    // ASR识别不可暂停
     }
   })
 
@@ -80,7 +92,7 @@ export function useBatchProgress() {
 
   // 开始批量操作
   const startBatchOperation = (
-    type: 'translate' | 'tts' | 'vocal_separation',
+    type: 'translate' | 'tts' | 'vocal_separation' | 'asr' | 'asr',
     total: number,
     options?: {
       canCancel?: boolean
@@ -107,7 +119,7 @@ export function useBatchProgress() {
 
   // 更新进度
   const updateProgress = (
-    type: 'translate' | 'tts' | 'vocal_separation',
+    type: 'translate' | 'tts' | 'vocal_separation' | 'asr',
     completed: number,
     options?: {
       failed?: number
@@ -148,7 +160,7 @@ export function useBatchProgress() {
   }
 
   // 完成批量操作
-  const completeBatchOperation = (type: 'translate' | 'tts' | 'vocal_separation') => {
+  const completeBatchOperation = (type: 'translate' | 'tts' | 'vocal_separation' | 'asr') => {
     const progress = progressState[type]
     progress.status = 'completed'
     progress.currentItem = undefined
@@ -157,7 +169,7 @@ export function useBatchProgress() {
   }
 
   // 取消批量操作
-  const cancelBatchOperation = (type: 'translate' | 'tts' | 'vocal_separation') => {
+  const cancelBatchOperation = (type: 'translate' | 'tts' | 'vocal_separation' | 'asr') => {
     const progress = progressState[type]
     if (!progress.canCancel) return false
 
@@ -169,7 +181,7 @@ export function useBatchProgress() {
   }
 
   // 暂停/恢复批量操作
-  const togglePauseBatchOperation = (type: 'translate' | 'tts' | 'vocal_separation') => {
+  const togglePauseBatchOperation = (type: 'translate' | 'tts' | 'vocal_separation' | 'asr') => {
     const progress = progressState[type]
     if (!progress.canPause) return false
 
@@ -185,7 +197,7 @@ export function useBatchProgress() {
   }
 
   // 设置错误状态
-  const setErrorState = (type: 'translate' | 'tts' | 'vocal_separation', error: string) => {
+  const setErrorState = (type: 'translate' | 'tts' | 'vocal_separation' | 'asr', error: string) => {
     const progress = progressState[type]
     progress.status = 'error'
     progress.errorMessages.push(error)
@@ -195,11 +207,11 @@ export function useBatchProgress() {
   }
 
   // 关闭进度显示（手动隐藏已完成的任务）
-  const dismissProgress = (type: 'translate' | 'tts' | 'vocal_separation') => {
+  const dismissProgress = (type: 'translate' | 'tts' | 'vocal_separation' | 'asr') => {
     const progress = progressState[type]
     if (['completed', 'error', 'cancelled'].includes(progress.status)) {
       progress.status = 'idle'
-      progress.total = type === 'vocal_separation' ? 100 : 0
+      progress.total = (type === 'vocal_separation' || type === 'asr') ? 100 : 0
       progress.completed = 0
       progress.failed = 0
       progress.currentItem = undefined
@@ -213,13 +225,13 @@ export function useBatchProgress() {
   }
 
   // 重置进度
-  const resetProgress = (type?: 'translate' | 'tts' | 'vocal_separation') => {
-    const types = type ? [type] : ['translate', 'tts', 'vocal_separation'] as const
+  const resetProgress = (type?: 'translate' | 'tts' | 'vocal_separation' | 'asr') => {
+    const types = type ? [type] : ['translate', 'tts', 'vocal_separation', 'asr'] as const
 
     types.forEach(t => {
       const progress = progressState[t]
       progress.status = 'idle'
-      progress.total = t === 'vocal_separation' ? 100 : 0
+      progress.total = (t === 'vocal_separation' || t === 'asr') ? 100 : 0
       progress.completed = 0
       progress.failed = 0
       progress.currentItem = undefined
@@ -231,7 +243,7 @@ export function useBatchProgress() {
   }
 
   // 获取进度百分比
-  const getProgressPercentage = (type: 'translate' | 'tts' | 'vocal_separation') => {
+  const getProgressPercentage = (type: 'translate' | 'tts' | 'vocal_separation' | 'asr') => {
     const progress = progressState[type]
     if (progress.total === 0) return 0
     return Math.round((progress.completed / progress.total) * 100)
@@ -254,12 +266,13 @@ export function useBatchProgress() {
   }
 
   // 获取状态显示文本
-  const getStatusText = (type: 'translate' | 'tts' | 'vocal_separation') => {
+  const getStatusText = (type: 'translate' | 'tts' | 'vocal_separation' | 'asr') => {
     const progress = progressState[type]
     let typeName = '操作'
     if (type === 'translate') typeName = '翻译'
     else if (type === 'tts') typeName = 'TTS'
     else if (type === 'vocal_separation') typeName = '人声分离'
+    else if (type === 'asr') typeName = 'ASR识别'
 
     switch (progress.status) {
       case 'idle':

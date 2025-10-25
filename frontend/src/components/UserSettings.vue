@@ -73,15 +73,59 @@
     <el-card class="setting-card">
       <template #header>
         <div class="card-header">
-          <span>阿里云 ASR 配置</span>
+          <span>阿里云 DashScope ASR 配置</span>
           <el-tag size="small" type="info">用于语音识别生成SRT</el-tag>
         </div>
       </template>
 
-      <el-form :model="aliyunForm" :rules="aliyunRules" ref="aliyunFormRef" label-width="160px">
+      <el-form :model="dashscopeForm" :rules="dashscopeRules" ref="dashscopeFormRef" label-width="160px">
+        <el-form-item label="DashScope API Key" prop="apiKey">
+          <el-input
+            v-model="dashscopeForm.apiKey"
+            type="password"
+            show-password
+            placeholder="输入 DashScope API Key（格式：sk-xxx）"
+            clearable
+          />
+          <template #extra>
+            <el-link
+              href="https://dashscope.console.aliyun.com/apiKey"
+              target="_blank"
+              type="primary"
+              :underline="false"
+              style="font-size: 12px;"
+            >
+              前往阿里云百炼控制台获取 API Key
+            </el-link>
+          </template>
+        </el-form-item>
+
+        <el-form-item>
+          <el-button
+            type="primary"
+            @click="updateDashscopeConfig"
+            :loading="updatingDashscope"
+          >
+            保存 DashScope 配置
+          </el-button>
+          <el-button @click="resetDashscopeForm">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
+
+    <!-- 阿里云智能语音NLS配置 -->
+    <el-card class="setting-card">
+      <template #header>
+        <div class="card-header">
+          <span>阿里云智能语音 NLS 配置</span>
+          <el-tag size="small" type="info">用于实时语音识别</el-tag>
+        </div>
+      </template>
+
+      <el-form :model="nlsForm" :rules="nlsRules" ref="nlsFormRef" label-width="160px">
         <el-form-item label="AccessKey ID" prop="accessKeyId">
           <el-input
-            v-model="aliyunForm.accessKeyId"
+            v-model="nlsForm.accessKeyId"
             placeholder="输入阿里云 AccessKey ID"
             clearable
           />
@@ -89,7 +133,7 @@
 
         <el-form-item label="AccessKey Secret" prop="accessKeySecret">
           <el-input
-            v-model="aliyunForm.accessKeySecret"
+            v-model="nlsForm.accessKeySecret"
             type="password"
             show-password
             placeholder="输入阿里云 AccessKey Secret"
@@ -97,10 +141,10 @@
           />
         </el-form-item>
 
-        <el-form-item label="ASR AppKey" prop="appKey">
+        <el-form-item label="APP KEY" prop="appKey">
           <el-input
-            v-model="aliyunForm.appKey"
-            placeholder="输入阿里云 ASR AppKey"
+            v-model="nlsForm.appKey"
+            placeholder="输入智能语音 NLS 应用 Key"
             clearable
           />
           <template #extra>
@@ -111,7 +155,7 @@
               :underline="false"
               style="font-size: 12px;"
             >
-              前往阿里云控制台获取 AppKey
+              前往阿里云智能语音控制台获取 APP KEY
             </el-link>
           </template>
         </el-form-item>
@@ -119,12 +163,12 @@
         <el-form-item>
           <el-button
             type="primary"
-            @click="updateAliyunConfig"
-            :loading="updatingAliyun"
+            @click="updateNlsConfig"
+            :loading="updatingNls"
           >
-            保存阿里云配置
+            保存 NLS 配置
           </el-button>
-          <el-button @click="resetAliyunForm">重置</el-button>
+          <el-button @click="resetNlsForm">重置</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -165,15 +209,21 @@ const emit = defineEmits<{
 }>()
 
 const apiFormRef = ref<FormInstance>()
-const aliyunFormRef = ref<FormInstance>()
+const dashscopeFormRef = ref<FormInstance>()
+const nlsFormRef = ref<FormInstance>()
 const updating = ref(false)
-const updatingAliyun = ref(false)
+const updatingDashscope = ref(false)
+const updatingNls = ref(false)
 
 const apiForm = reactive({
   newApiKey: ''
 })
 
-const aliyunForm = reactive({
+const dashscopeForm = reactive({
+  apiKey: ''
+})
+
+const nlsForm = reactive({
   accessKeyId: '',
   accessKeySecret: '',
   appKey: ''
@@ -185,16 +235,17 @@ const apiRules = {
   ]
 }
 
-const aliyunRules = {
-  accessKeyId: [
-    { required: true, message: '请输入AccessKey ID', trigger: 'blur' }
-  ],
-  accessKeySecret: [
-    { required: true, message: '请输入AccessKey Secret', trigger: 'blur' }
-  ],
-  appKey: [
-    { required: true, message: '请输入ASR AppKey', trigger: 'blur' }
+const dashscopeRules = {
+  apiKey: [
+    { required: true, message: '请输入 DashScope API Key', trigger: 'blur' },
+    { pattern: /^sk-[a-zA-Z0-9]+$/, message: 'API Key 格式应为 sk-xxx', trigger: 'blur' }
   ]
+}
+
+const nlsRules = {
+  accessKeyId: [],
+  accessKeySecret: [],
+  appKey: []
 }
 
 const displayApiKey = computed(() => {
@@ -248,58 +299,116 @@ const handleLogout = () => {
   emit('logout')
 }
 
-// 加载阿里云配置
-const loadAliyunConfig = async () => {
+// 加载 DashScope 配置
+const loadDashscopeConfig = async () => {
   try {
     const response = await api.get('/auth/config/')
     if (response.data) {
       const config = response.data
-      aliyunForm.accessKeyId = config.aliyun_access_key_id || ''
-      aliyunForm.appKey = config.aliyun_app_key || ''
-      // Secret不从服务器读取，保持为空
+      dashscopeForm.apiKey = config.dashscope_api_key || ''
     }
   } catch (error: any) {
-    console.error('加载阿里云配置失败', error)
+    console.error('加载 DashScope 配置失败', error)
   }
 }
 
-// 更新阿里云配置
-const updateAliyunConfig = async () => {
-  if (!aliyunFormRef.value) return
+// 更新 DashScope 配置
+const updateDashscopeConfig = async () => {
+  if (!dashscopeFormRef.value) return
 
   try {
-    await aliyunFormRef.value.validate()
-    updatingAliyun.value = true
+    await dashscopeFormRef.value.validate()
+    updatingDashscope.value = true
 
     await api.patch('/auth/config/', {
-      aliyun_access_key_id: aliyunForm.accessKeyId,
-      aliyun_access_key_secret: aliyunForm.accessKeySecret,
-      aliyun_app_key: aliyunForm.appKey
+      dashscope_api_key: dashscopeForm.apiKey
     })
 
-    ElMessage.success('阿里云配置保存成功')
-    // 清空密钥字段
-    aliyunForm.accessKeySecret = ''
+    ElMessage.success('DashScope 配置保存成功')
   } catch (error: any) {
-    if (error?.response?.data?.message) {
-      ElMessage.error(error.response.data.message)
-    } else {
-      ElMessage.error('配置保存失败：' + (error.message || '未知错误'))
+    console.error('DashScope 配置保存失败:', error)
+    console.error('错误响应:', error?.response)
+
+    let errorMsg = '配置保存失败'
+
+    if (error?.response?.data) {
+      const data = error.response.data
+      // 尝试提取各种可能的错误消息格式
+      errorMsg = data.message || data.error || data.detail || JSON.stringify(data)
+    } else if (error?.message) {
+      errorMsg = error.message
     }
+
+    ElMessage.error(errorMsg)
   } finally {
-    updatingAliyun.value = false
+    updatingDashscope.value = false
   }
 }
 
-// 重置阿里云表单
-const resetAliyunForm = () => {
-  aliyunFormRef.value?.resetFields()
-  loadAliyunConfig()
+// 重置 DashScope 表单
+const resetDashscopeForm = () => {
+  dashscopeFormRef.value?.resetFields()
+  loadDashscopeConfig()
+}
+
+// 加载 NLS 配置
+const loadNlsConfig = async () => {
+  try {
+    const response = await api.get('/auth/config/')
+    if (response.data) {
+      const config = response.data
+      nlsForm.accessKeyId = config.aliyun_access_key_id || ''
+      nlsForm.accessKeySecret = config.aliyun_access_key_secret || ''
+      nlsForm.appKey = config.aliyun_app_key || ''
+    }
+  } catch (error: any) {
+    console.error('加载 NLS 配置失败', error)
+  }
+}
+
+// 更新 NLS 配置
+const updateNlsConfig = async () => {
+  if (!nlsFormRef.value) return
+
+  try {
+    await nlsFormRef.value.validate()
+    updatingNls.value = true
+
+    await api.patch('/auth/config/', {
+      aliyun_access_key_id: nlsForm.accessKeyId,
+      aliyun_access_key_secret: nlsForm.accessKeySecret,
+      aliyun_app_key: nlsForm.appKey
+    })
+
+    ElMessage.success('NLS 配置保存成功')
+  } catch (error: any) {
+    console.error('NLS 配置保存失败:', error)
+    console.error('错误响应:', error?.response)
+
+    let errorMsg = '配置保存失败'
+
+    if (error?.response?.data) {
+      const data = error.response.data
+      errorMsg = data.message || data.error || data.detail || JSON.stringify(data)
+    } else if (error?.message) {
+      errorMsg = error.message
+    }
+
+    ElMessage.error(errorMsg)
+  } finally {
+    updatingNls.value = false
+  }
+}
+
+const resetNlsForm = () => {
+  nlsFormRef.value?.resetFields()
+  loadNlsConfig()
 }
 
 // 页面加载时获取配置
 onMounted(() => {
-  loadAliyunConfig()
+  loadDashscopeConfig()
+  loadNlsConfig()
 })
 </script>
 

@@ -24,16 +24,15 @@ class UserConfigSerializer(serializers.ModelSerializer):
         model = UserConfig
         fields = [
             'api_endpoint',
+            'dashscope_api_key',
             'aliyun_access_key_id',
             'aliyun_access_key_secret',
             'aliyun_app_key',
+            'aliyun_asr_appkey',
             'created_at',
             'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
-        extra_kwargs = {
-            'aliyun_access_key_secret': {'write_only': True}  # 安全起见，secret只写不读
-        }
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):

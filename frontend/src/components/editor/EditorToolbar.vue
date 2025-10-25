@@ -36,7 +36,7 @@
                 <el-icon><Upload /></el-icon>
                 上传SRT文件
               </el-dropdown-item>
-              <el-dropdown-item command="asr" divided disabled>
+              <el-dropdown-item command="asr" divided>
                 <el-icon><Microphone /></el-icon>
                 ASR自动识别
               </el-dropdown-item>
@@ -168,6 +168,7 @@ const emit = defineEmits<{
   'separate-vocals': []
   'auto-assign-speaker': []
   'batch-speaker': []
+  'asr-recognize': []
 }>()
 
 
@@ -217,7 +218,7 @@ const handleSRTCommand = (command: string) => {
       }
       break
     case 'asr':
-      handlePlaceholderClick('ASR自动识别')
+      emit('asr-recognize')
       break
   }
 }

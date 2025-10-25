@@ -1518,3 +1518,159 @@ class ProjectViewSet(viewsets.ModelViewSet):
             return Response({
                 'error': f'音频拼接失败: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @handle_business_logic_error
+    @action(detail=True, methods=['post'])
+    def asr_recognize(self, request, pk=None):
+        """
+        使用阿里云 FlashRecognizer 识别人声分离后的音频并导入项目（同步API）
+
+        Request Body:
+        {
+            "source_language": "Chinese",      // 可选（预留，当前未使用）
+            "merge_short_segments": true,      // 是否合并短字幕，默认 true
+            "min_duration": 0.5,               // 最小字幕时长（秒），默认 0.5
+            "max_gap": 0.5                     // 最大间隔时间（秒），默认 0.5
+        }
+
+        Returns:
+        {
+            "success": true,
+            "message": "识别成功，已导入 13 个字幕段落",
+            "segments_count": 13
+        }
+        """
+        import uuid
+        trace_id = str(uuid.uuid4())[:8]
+
+        try:
+            project = self.get_object()
+            user = request.user
+
+            logger.info(f"[{trace_id}] 开始 ASR 识别: {project.name} (ID: {project.id})")
+
+            # 检查项目是否已进行人声分离
+            if project.separation_status != 'completed':
+                return Response({
+                    'success': False,
+                    'error': '请先完成人声分离操作'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # 检查vocals文件是否存在
+            if not project.vocal_audio_path:
+                return Response({
+                    'success': False,
+                    'error': '未找到人声分离后的音频文件'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # 将 FileField 转换为实际文件路径字符串
+            vocal_audio_path = project.vocal_audio_path.path
+            if not os.path.exists(vocal_audio_path):
+                return Response({
+                    'success': False,
+                    'error': f'人声音频文件不存在: {vocal_audio_path}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # 获取用户的阿里云 NLS 配置
+            user_config = user.config
+            app_key = user_config.aliyun_app_key
+            access_key_id = user_config.aliyun_access_key_id
+            access_key_secret = user_config.aliyun_access_key_secret
+
+            if not app_key or not access_key_id or not access_key_secret:
+                return Response({
+                    'success': False,
+                    'error': '请先在账户设置中配置阿里云智能语音 NLS（需要 APP KEY、AccessKey ID 和 AccessKey Secret）'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            logger.info(f"[{trace_id}] 音频文件: {vocal_audio_path}")
+
+            # 创建 FlashRecognizer 服务
+            from services.asr import FlashRecognizerService
+
+            recognizer = FlashRecognizerService(
+                app_key=app_key,
+                access_key_id=access_key_id,
+                access_key_secret=access_key_secret,
+                region='cn-shanghai'
+            )
+
+            # 确定音频格式
+            file_ext = os.path.splitext(vocal_audio_path)[1].lower()
+            format_map = {
+                '.wav': 'wav',
+                '.mp3': 'mp3',
+                '.opus': 'opus',
+                '.aac': 'aac',
+                '.amr': 'amr',
+                '.pcm': 'pcm'
+            }
+            audio_format = format_map.get(file_ext, 'wav')
+
+            # 获取合并参数
+            merge_short_segments = request.data.get('merge_short_segments', True)
+            min_duration = float(request.data.get('min_duration', 0.5))
+            max_gap = float(request.data.get('max_gap', 0.5))
+
+            logger.info(f"[{trace_id}] 合并参数: merge={merge_short_segments}, min_duration={min_duration}s, max_gap={max_gap}s")
+
+            # 执行识别并获取段落数据
+            success, segments, error_msg = recognizer.recognize_and_create_segments(
+                audio_file_path=vocal_audio_path,
+                audio_format=audio_format,
+                merge_short_segments=merge_short_segments,
+                min_duration=min_duration,
+                max_gap=max_gap
+            )
+
+            if not success:
+                logger.error(f"[{trace_id}] ASR 识别失败: {error_msg}")
+                return Response({
+                    'success': False,
+                    'error': error_msg
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            if not segments:
+                logger.warning(f"[{trace_id}] ASR 识别结果为空")
+                return Response({
+                    'success': False,
+                    'error': '识别结果为空，请检查音频文件是否包含有效语音内容'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # 导入识别结果到数据库
+            from segments.models import Segment
+
+            # 删除现有的所有段落
+            Segment.objects.filter(project=project).delete()
+
+            # 批量创建新段落
+            segment_objects = []
+            for seg_data in segments:
+                segment_objects.append(Segment(
+                    project=project,
+                    index=seg_data['index'],
+                    start_time=seg_data['start_time'],
+                    end_time=seg_data['end_time'],
+                    original_text=seg_data['original_text'],
+                    translated_text=seg_data.get('translated_text', ''),
+                    speaker=seg_data.get('speaker', 'SPEAKER_00')
+                ))
+
+            Segment.objects.bulk_create(segment_objects)
+
+            segments_count = len(segment_objects)
+            logger.info(f"[{trace_id}] ASR 识别成功，已导入 {segments_count} 个字幕段落")
+
+            return Response({
+                'success': True,
+                'message': f'识别成功，已导入 {segments_count} 个字幕段落',
+                'segments_count': segments_count
+            })
+
+        except Exception as e:
+            logger.error(f"[{trace_id}] ASR 识别失败: {str(e)}", exc_info=True)
+            return Response({
+                'success': False,
+                'error': f'识别失败: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

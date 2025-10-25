@@ -37,6 +37,7 @@
       @separate-vocals="handleSeparateVocals"
       @auto-assign-speaker="handleAutoAssignSpeaker"
       @batch-speaker="handleBatchSpeaker"
+      @asr-recognize="handleASRRecognize"
     />
 
     <!-- 批量操作进度条 -->
@@ -1039,6 +1040,67 @@ const handleUploadVideo = async (file: File) => {
   return false // 阻止默认上传行为
 }
 
+// ASR 自动识别（使用阿里云 FlashRecognizer 同步API）
+const handleASRRecognize = async () => {
+  if (!project.value) {
+    ElMessage.warning('项目信息不存在')
+    return
+  }
+
+  // 检查是否已完成人声分离
+  if (project.value.separation_status !== 'completed') {
+    ElMessage.warning('请先完成人声分离操作')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      'ASR 自动识别将使用阿里云智能语音（FlashRecognizer）识别人声文件，生成带时间戳的字幕。此操作会清空现有的 segment 数据，是否继续？',
+      '确认 ASR 识别',
+      {
+        confirmButtonText: '开始识别',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    const api = (await import('../../utils/api')).default
+
+    // 显示加载提示
+    const loadingInstance = ElMessage({
+      message: '正在识别音频，请稍候...',
+      type: 'info',
+      duration: 0  // 不自动关闭
+    })
+
+    try {
+      const response = await api.post(`/projects/${props.projectId}/asr_recognize/`, {
+        source_language: project.value.source_lang || 'Chinese'
+      })
+
+      // 关闭加载提示
+      loadingInstance.close()
+
+      if (response.data.success) {
+        ElMessage.success(response.data.message || `识别成功！已导入 ${response.data.segments_count} 个字幕段落`)
+
+        // 重新加载数据
+        await refreshData()
+      } else {
+        ElMessage.error(response.data.error || 'ASR 识别失败')
+      }
+    } catch (error: any) {
+      // 关闭加载提示
+      loadingInstance.close()
+
+      console.error('ASR 识别失败', error)
+      const errorMsg = error.response?.data?.error || error.response?.data?.message || 'ASR 识别失败'
+      ElMessage.error(errorMsg)
+    }
+  } catch {
+    // 用户取消
+  }
+}
 
 // 说话人管理
 const handleAutoAssignSpeaker = async () => {

@@ -45,7 +45,15 @@ class UserConfig(models.Model):
         help_text="MiniMax API端点"
     )
 
-    # 阿里云ASR配置
+    # 阿里云DashScope ASR配置
+    dashscope_api_key = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="阿里云DashScope API Key（用于ASR语音识别生成SRT，格式：sk-xxx）"
+    )
+
+    # 阿里云智能语音NLS配置（使用数据库中已存在的字段）
     aliyun_access_key_id = models.CharField(
         max_length=100,
         blank=True,
@@ -62,7 +70,13 @@ class UserConfig(models.Model):
         max_length=100,
         blank=True,
         null=True,
-        help_text="阿里云ASR AppKey"
+        help_text="阿里云智能语音应用Key（APP_KEY）"
+    )
+    aliyun_asr_appkey = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="阿里云ASR应用Key（备用）"
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

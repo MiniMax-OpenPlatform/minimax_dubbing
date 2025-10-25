@@ -85,8 +85,9 @@ class UserConfigView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
-        config, created = self.request.user.config.get_or_create(
-            defaults={'user': self.request.user}
+        from .models import UserConfig
+        config, created = UserConfig.objects.get_or_create(
+            user=self.request.user
         )
         return config
 

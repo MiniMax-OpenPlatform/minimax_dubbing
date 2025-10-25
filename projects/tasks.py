@@ -488,3 +488,335 @@ def start_vocal_separation_task(project_id: int):
 
     logger.info(f"人声分离任务已启动（后台线程）: 项目ID={project_id}")
     return f"vocal_separation_{project_id}"
+
+
+# ==================== ASR识别任务 ====================
+
+class ASRRecognizeTask:
+    """ASR识别任务类"""
+
+    def __init__(self, task_id: str, project_id: int, dashscope_api_key: str, source_language: str):
+        self.task_id = task_id
+        self.project_id = project_id
+        self.dashscope_api_key = dashscope_api_key
+        self.source_language = source_language
+
+        # 进度状态
+        self.status = 'pending'  # pending, running, completed, failed, cancelled
+        self.progress_percentage = 0
+        self.current_step = ''
+
+        # 时间统计
+        self.start_time = None
+        self.end_time = None
+
+        # 结果信息
+        self.segments_count = 0
+        self.total_duration = 0
+
+        # 错误信息
+        self.error_message = None
+
+        # 控制标志
+        self.should_stop = False
+        self.thread = None
+
+    def start(self):
+        """启动异步ASR识别任务"""
+        logger.info(f"[Task {self.task_id}] start() 方法被调用")
+
+        if self.status != 'pending':
+            logger.warning(f"[Task {self.task_id}] 任务状态不是pending: {self.status}")
+            return False
+
+        logger.info(f"[Task {self.task_id}] 设置状态为running")
+        self.status = 'running'
+        self.start_time = timezone.now()
+
+        logger.info(f"[Task {self.task_id}] 创建线程...")
+        # 在新线程中执行识别
+        self.thread = threading.Thread(target=self._execute_recognition)
+        self.thread.daemon = True
+
+        logger.info(f"[Task {self.task_id}] 启动线程...")
+        self.thread.start()
+
+        logger.info(f"[Task {self.task_id}] ASR识别任务已启动")
+        return True
+
+    def stop(self):
+        """停止识别任务"""
+        self.should_stop = True
+        if self.status == 'running':
+            self.status = 'cancelled'
+            logger.info(f"[Task {self.task_id}] ASR识别任务已取消")
+
+    def _execute_recognition(self):
+        """执行ASR识别的内部方法"""
+        try:
+            from .models import Project
+            from segments.models import Segment
+            from services.asr import RecognitionASRService
+            from system_monitor.models import TaskMonitor
+            from django.db import transaction
+            import os
+
+            # 更新进度: 准备阶段
+            self.current_step = '正在准备识别任务...'
+            self.progress_percentage = 5
+
+            # 创建任务监控记录
+            project = Project.objects.get(id=self.project_id)
+            monitor, created = TaskMonitor.objects.get_or_create(
+                task_id=self.task_id,
+                defaults={
+                    'task_type': 'asr_recognize',
+                    'project_id': self.project_id,
+                    'project_name': project.name,
+                    'total_segments': 0,
+                    'start_time': timezone.now(),
+                    'status': 'running'
+                }
+            )
+
+            if not created:
+                monitor.status = 'running'
+                monitor.start_time = timezone.now()
+                monitor.save()
+
+            # 更新进度: 检查文件
+            self.current_step = '正在检查人声文件...'
+            self.progress_percentage = 10
+            monitor.current_segment_text = self.current_step
+            monitor.save()
+
+            # 获取人声文件路径
+            if not project.vocal_audio_path:
+                raise ValueError('未找到人声分离后的音频文件')
+
+            vocals_path = project.vocal_audio_path.path
+            if not os.path.exists(vocals_path):
+                raise ValueError(f'人声文件不存在: {vocals_path}')
+
+            logger.info(f"[Task {self.task_id}] 人声文件路径: {vocals_path}")
+
+            # 更新进度: 初始化ASR服务
+            self.current_step = '正在初始化ASR服务...'
+            self.progress_percentage = 20
+            monitor.current_segment_text = self.current_step
+            monitor.save()
+
+            asr_service = RecognitionASRService(api_key=self.dashscope_api_key)
+
+            # 映射语言代码
+            language_code_map = {
+                'Chinese': 'zh',
+                'Chinese,Yue': 'yue',
+                'English': 'en',
+                'Japanese': 'ja',
+                'Korean': 'ko',
+                'Spanish': 'es',
+                'French': 'fr',
+                'German': 'de',
+                'Russian': 'ru',
+                'Portuguese': 'pt',
+                'Italian': 'it',
+                'Arabic': 'ar',
+                'Turkish': 'tr',
+                'Vietnamese': 'vi',
+                'Thai': 'th',
+                'Indonesian': 'id',
+                'Malay': 'ms',
+                'Hindi': 'hi',
+                'Filipino': 'fil',
+            }
+            language_code = language_code_map.get(self.source_language, 'zh')
+            language_hints = [language_code]
+
+            # 检查是否需要停止
+            if self.should_stop:
+                return
+
+            # 更新进度: 调用ASR识别
+            self.current_step = f'正在识别音频 (语言: {language_code})...'
+            self.progress_percentage = 30
+            monitor.current_segment_text = self.current_step
+            monitor.save()
+
+            logger.info(f"[Task {self.task_id}] 开始ASR识别: {vocals_path}")
+
+            # 调用ASR服务识别
+            result = asr_service.transcribe_audio(
+                audio_path=vocals_path,
+                language_hints=language_hints
+            )
+
+            if not result['success']:
+                raise ValueError(f"ASR识别失败: {result.get('error')}")
+
+            # 检查是否需要停止
+            if self.should_stop:
+                return
+
+            # 更新进度: 导入segments
+            self.current_step = '正在导入识别结果...'
+            self.progress_percentage = 70
+            monitor.current_segment_text = self.current_step
+            monitor.save()
+
+            logger.info(f"[Task {self.task_id}] 识别完成，共{len(result['segments'])}个段落")
+
+            # 清空现有segments并导入新的
+            with transaction.atomic():
+                project.segments.all().delete()
+
+                for seg_data in result['segments']:
+                    Segment.objects.create(
+                        project=project,
+                        sequence=seg_data['index'],
+                        start_time=seg_data['start_time'],
+                        end_time=seg_data['end_time'],
+                        original_text=seg_data['text'],
+                        translated_text='',
+                        speaker='',
+                        voice_id=''
+                    )
+
+            # 更新项目状态
+            project.status = 'ready'
+            project.save(update_fields=['status', 'updated_at'])
+
+            # 保存结果信息
+            self.segments_count = len(result['segments'])
+            self.total_duration = result['total_duration']
+
+            # 更新进度: 完成
+            self.status = 'completed'
+            self.progress_percentage = 100
+            self.current_step = '识别完成'
+            self.end_time = timezone.now()
+
+            # 更新监控记录
+            monitor.status = 'completed'
+            monitor.end_time = timezone.now()
+            monitor.total_segments = self.segments_count
+            monitor.completed_segments = self.segments_count
+            monitor.current_segment_text = f'已识别{self.segments_count}个段落'
+            monitor.save()
+
+            logger.info(f"[Task {self.task_id}] ASR识别完成: {self.segments_count}个段落")
+
+        except Exception as e:
+            self.status = 'failed'
+            self.error_message = str(e)
+
+            # 更新监控记录为失败状态
+            try:
+                from system_monitor.models import TaskMonitor
+                monitor = TaskMonitor.objects.get(task_id=self.task_id)
+                monitor.status = 'failed'
+                monitor.error_message = str(e)
+                monitor.end_time = timezone.now()
+                monitor.save()
+            except Exception:
+                pass
+
+            logger.error(f"[Task {self.task_id}] ASR识别失败: {str(e)}", exc_info=True)
+
+    def get_progress_info(self) -> Dict[str, Any]:
+        """获取进度信息"""
+        return {
+            'task_id': self.task_id,
+            'project_id': self.project_id,
+            'status': self.status,
+            'progress_percentage': self.progress_percentage,
+            'current_step': self.current_step,
+            'segments_count': self.segments_count,
+            'total_duration': self.total_duration,
+            'start_time': self.start_time.isoformat() if self.start_time else None,
+            'end_time': self.end_time.isoformat() if self.end_time else None,
+            'error_message': self.error_message
+        }
+
+
+class ASRRecognizeTaskManager:
+    """ASR识别任务管理器"""
+
+    def __init__(self):
+        self.tasks: Dict[str, ASRRecognizeTask] = {}
+        self._lock = threading.Lock()
+
+    def create_task(self, project_id: int, dashscope_api_key: str, source_language: str) -> str:
+        """创建新的ASR识别任务"""
+        task_id = f"asr_{project_id}_{int(time.time())}"
+
+        with self._lock:
+            # 停止同一项目的其他ASR任务
+            self.stop_project_tasks(project_id)
+
+            # 创建新任务
+            task = ASRRecognizeTask(task_id, project_id, dashscope_api_key, source_language)
+            self.tasks[task_id] = task
+
+            logger.info(f"创建ASR识别任务: {task_id}, 项目{project_id}")
+            return task_id
+
+    def start_task(self, task_id: str) -> bool:
+        """启动任务"""
+        with self._lock:
+            task = self.tasks.get(task_id)
+            if not task:
+                return False
+
+            return task.start()
+
+    def stop_task(self, task_id: str) -> bool:
+        """停止任务"""
+        with self._lock:
+            task = self.tasks.get(task_id)
+            if task:
+                task.stop()
+                return True
+            return False
+
+    def stop_project_tasks(self, project_id: int):
+        """停止指定项目的所有ASR任务"""
+        with self._lock:
+            for task in self.tasks.values():
+                if task.project_id == project_id and task.status == 'running':
+                    task.stop()
+
+    def get_task_progress(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """获取任务进度"""
+        with self._lock:
+            task = self.tasks.get(task_id)
+            if task:
+                return task.get_progress_info()
+            return None
+
+    def get_project_tasks(self, project_id: int) -> list:
+        """获取项目的所有ASR任务"""
+        with self._lock:
+            return [
+                task.get_progress_info()
+                for task in self.tasks.values()
+                if task.project_id == project_id
+            ]
+
+    def cleanup_completed_tasks(self):
+        """清理已完成的任务"""
+        with self._lock:
+            completed_tasks = [
+                task_id for task_id, task in self.tasks.items()
+                if task.status in ['completed', 'failed', 'cancelled']
+                and task.end_time
+                and (timezone.now() - task.end_time).total_seconds() > 3600  # 1小时后清理
+            ]
+
+            for task_id in completed_tasks:
+                del self.tasks[task_id]
+                logger.info(f"清理已完成ASR任务: {task_id}")
+
+
+# 全局ASR任务管理器实例
+asr_task_manager = ASRRecognizeTaskManager()

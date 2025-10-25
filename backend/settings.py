@@ -77,7 +77,10 @@ else:
 # 开发模式下允许所有origins（仅用于开发）
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
+
 CORS_ALLOW_CREDENTIALS = True
+
+# 允许所有请求头（开发环境）
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -92,6 +95,25 @@ CORS_ALLOW_HEADERS = [
     'x-group-id',
     'x-api-key',
 ]
+
+# 允许所有HTTP方法
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# 暴露的响应头
+CORS_EXPOSE_HEADERS = [
+    'content-type',
+    'x-api-key',
+]
+
+# CORS预检请求缓存时间（设为0强制每次检查）
+CORS_PREFLIGHT_MAX_AGE = 0
 
 ROOT_URLCONF = 'backend.urls'
 
