@@ -15,7 +15,8 @@
           <p><strong>2. 建议上传2分钟以内视频</strong>测试验证</p>
           <p><strong>3. ASR和自动分配说话人依赖阿里api</strong>，请在"账户设置"中配置阿里云api_key</p>
           <p><strong>4. 当前自动分配说话人功能使用了人脸识别与聚类，VLM+LLM等模型</strong>，准确度仍在优化中</p>
-          <p><strong>5. 功能在持续迭代</strong>，请及时更新</p>
+          <p><strong>5. 批量TTS采用了翻译优化+TTS语速调节相结合的办法做时间戳对齐</strong>，可以在项目配置里调整speed阈值</p>
+          <p><strong>6. 功能在持续迭代</strong>，请及时更新</p>
         </div>
       </el-alert>
 
