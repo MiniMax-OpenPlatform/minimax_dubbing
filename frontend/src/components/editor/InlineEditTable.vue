@@ -165,6 +165,7 @@
       <el-table-column label="操作" width="170" fixed="right">
         <template #default="{ row }">
           <div class="row-actions grid">
+            <!-- 第一行: 重译、缩短、加长 -->
             <div class="button-row">
               <el-button
                 size="small"
@@ -176,25 +177,6 @@
               >
                 {{ row.translated_text ? '重译' : '翻译' }}
               </el-button>
-              <el-button
-                size="small"
-                @click="generateTTS(row)"
-                :disabled="!row.translated_text"
-                :loading="row._ttsLoading"
-                class="action-btn-small"
-              >
-                TTS
-              </el-button>
-              <el-button
-                size="small"
-                @click="playAudio(row.translated_audio_url)"
-                :disabled="!row.translated_audio_url"
-                class="action-btn-small"
-              >
-                播放
-              </el-button>
-            </div>
-            <div class="button-row">
               <el-button
                 size="small"
                 @click="shortenTranslation(row)"
@@ -214,6 +196,27 @@
                 加长
               </el-button>
             </div>
+            <!-- 第二行: 播放、TTS -->
+            <div class="button-row">
+              <el-button
+                size="small"
+                @click="playAudio(row.translated_audio_url)"
+                :disabled="!row.translated_audio_url"
+                class="action-btn-small"
+              >
+                播放
+              </el-button>
+              <el-button
+                size="small"
+                @click="generateTTS(row)"
+                :disabled="!row.translated_text"
+                :loading="row._ttsLoading"
+                class="action-btn-small"
+              >
+                TTS
+              </el-button>
+            </div>
+            <!-- 第三行: 增加、删除 -->
             <div class="button-row">
               <el-button
                 size="small"
