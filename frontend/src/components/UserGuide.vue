@@ -11,10 +11,10 @@
           <div style="font-size: 18px; font-weight: bold;">⚠️ 重要提醒</div>
         </template>
         <div class="notice-content">
-          <p><strong style="font-size: 15px; color: #e6a23c;">1. 当前为测试demo</strong><span style="font-size: 14px;">，不提供高并发访问，可能会排队或停服维护。商业使用建议自行部署：</span><el-link href="https://github.com/MiniMax-OpenPlatform/minimax_dubbing" target="_blank" type="primary" style="font-size: 14px;">https://github.com/MiniMax-OpenPlatform/minimax_dubbing</el-link></p>
-          <p><strong style="font-size: 15px; color: #e6a23c;">2. 建议上传2分钟以内音频</strong><span style="font-size: 14px;">测试验证</span></p>
-          <p><strong style="font-size: 15px; color: #e6a23c;">3. ASR和自动分配说话人依赖阿里api</strong><span style="font-size: 14px;">，请在"账户设置"中配置阿里云api_key</span></p>
-          <p><strong style="font-size: 15px; color: #e6a23c;">4. 功能在持续迭代</strong><span style="font-size: 14px;">，请及时更新</span></p>
+          <p><strong style="font-size: 15px; color: #000;">1. 当前为测试demo</strong><span style="font-size: 14px; color: #000;">，不提供高并发访问，可能会排队或停服维护。商业使用建议自行部署：</span><el-link href="https://github.com/MiniMax-OpenPlatform/minimax_dubbing" target="_blank" type="primary" style="font-size: 14px;">https://github.com/MiniMax-OpenPlatform/minimax_dubbing</el-link></p>
+          <p><strong style="font-size: 15px; color: #000;">2. 建议上传2分钟以内音频</strong><span style="font-size: 14px; color: #000;">测试验证</span></p>
+          <p><strong style="font-size: 15px; color: #000;">3. ASR和自动分配说话人依赖阿里api</strong><span style="font-size: 14px; color: #000;">，请在"账户设置"中配置阿里云api_key</span></p>
+          <p><strong style="font-size: 15px; color: #000;">4. 功能在持续迭代</strong><span style="font-size: 14px; color: #000;">，请及时更新</span></p>
         </div>
       </el-alert>
 
