@@ -380,7 +380,7 @@
       <el-card class="section-card" shadow="hover">
         <template #header>
           <div class="card-header">
-            <el-icon><Keyboard /></el-icon>
+            <el-icon><Pointer /></el-icon>
             <span>快捷操作</span>
           </div>
         </template>
@@ -448,7 +448,7 @@
 </template>
 
 <script setup lang="ts">
-import { VideoCamera, Tools, Monitor, Microphone, QuestionFilled, Setting, Keyboard, MagicStick } from '@element-plus/icons-vue'
+import { VideoCamera, Tools, Monitor, Microphone, QuestionFilled, Setting, Pointer, MagicStick } from '@element-plus/icons-vue'
 </script>
 
 <style scoped>
