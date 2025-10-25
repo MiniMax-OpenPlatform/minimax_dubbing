@@ -781,7 +781,7 @@ const initTimestampEdit = (row: Segment, field: 'start_time' | 'end_time') => {
 .button-row {
   display: flex;
   gap: 4px;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .action-btn-small {
