@@ -774,6 +774,7 @@ const initTimestampEdit = (row: Segment, field: 'start_time' | 'end_time') => {
 .row-actions.grid {
   display: flex;
   flex-direction: column;
+  align-items: flex-start !important;
   gap: 3px !important;
   padding: 2px 10px !important;
 }
@@ -781,7 +782,7 @@ const initTimestampEdit = (row: Segment, field: 'start_time' | 'end_time') => {
 .button-row {
   display: flex;
   gap: 4px;
-  justify-content: flex-start;
+  justify-content: flex-start !important;
 }
 
 .action-btn-small {
