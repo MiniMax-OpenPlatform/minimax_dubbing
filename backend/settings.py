@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'system_monitor',
     'voices',
     'voice_cloning',
+    'speakers',  # 新增：说话人识别
 ]
 
 MIDDLEWARE = [

@@ -11,3 +11,12 @@ demucs==4.0.*
 dashscope==1.24.*
 librosa==0.10.*
 aliyun-python-sdk-core==2.16.*
+
+# 说话人识别依赖 (Speaker Diarization)
+# 注意: torch和torchvision已在系统中安装(torch 2.8.0),无需重复安装
+# torch>=2.2.0
+# torchvision>=0.17.0
+facenet-pytorch>=2.5.0
+opencv-python>=4.10.0
+scikit-learn>=1.5.0
+# numpy已作为其他包的依赖自动安装

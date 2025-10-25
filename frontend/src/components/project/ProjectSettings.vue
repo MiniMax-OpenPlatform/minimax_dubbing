@@ -2,229 +2,219 @@
   <el-dialog
     title="项目设置"
     :model-value="visible"
-    width="600px"
+    width="900px"
     @close="$emit('close')"
     @update:model-value="$emit('close')"
   >
-    <el-form
-      ref="settingsForm"
-      :model="formData"
-      :rules="rules"
-      label-width="120px"
-    >
-      <el-form-item label="项目名称" prop="name">
-        <el-input v-model="formData.name" placeholder="请输入项目名称" />
-      </el-form-item>
+    <el-tabs v-model="activeTab" type="border-card">
+      <!-- Tab 1: 基础设置 -->
+      <el-tab-pane label="基础设置" name="basic">
+        <el-form
+          ref="settingsForm"
+          :model="formData"
+          :rules="rules"
+          label-width="120px"
+        >
+          <el-form-item label="项目名称" prop="name">
+            <el-input v-model="formData.name" placeholder="请输入项目名称" />
+          </el-form-item>
 
-      <el-form-item label="项目描述" prop="description">
-        <el-input
-          v-model="formData.description"
-          type="textarea"
-          :rows="3"
-          placeholder="请输入项目描述"
-        />
-      </el-form-item>
-
-      <el-form-item label="源语言" prop="source_lang">
-        <el-select v-model="formData.source_lang" placeholder="请选择源语言" filterable>
-          <el-option label="中文" value="Chinese" />
-          <el-option label="粤语" value="Chinese,Yue" />
-          <el-option label="英语" value="English" />
-          <el-option label="阿拉伯语" value="Arabic" />
-          <el-option label="俄语" value="Russian" />
-          <el-option label="西班牙语" value="Spanish" />
-          <el-option label="法语" value="French" />
-          <el-option label="葡萄牙语" value="Portuguese" />
-          <el-option label="德语" value="German" />
-          <el-option label="土耳其语" value="Turkish" />
-          <el-option label="荷兰语" value="Dutch" />
-          <el-option label="乌克兰语" value="Ukrainian" />
-          <el-option label="越南语" value="Vietnamese" />
-          <el-option label="印尼语" value="Indonesian" />
-          <el-option label="日语" value="Japanese" />
-          <el-option label="意大利语" value="Italian" />
-          <el-option label="韩语" value="Korean" />
-          <el-option label="泰语" value="Thai" />
-          <el-option label="波兰语" value="Polish" />
-          <el-option label="罗马尼亚语" value="Romanian" />
-          <el-option label="希腊语" value="Greek" />
-          <el-option label="捷克语" value="Czech" />
-          <el-option label="芬兰语" value="Finnish" />
-          <el-option label="印地语" value="Hindi" />
-          <el-option label="保加利亚语" value="Bulgarian" />
-          <el-option label="丹麦语" value="Danish" />
-          <el-option label="希伯来语" value="Hebrew" />
-          <el-option label="马来语" value="Malay" />
-          <el-option label="波斯语" value="Persian" />
-          <el-option label="斯洛伐克语" value="Slovak" />
-          <el-option label="瑞典语" value="Swedish" />
-          <el-option label="克罗地亚语" value="Croatian" />
-          <el-option label="菲律宾语" value="Filipino" />
-          <el-option label="匈牙利语" value="Hungarian" />
-          <el-option label="挪威语" value="Norwegian" />
-          <el-option label="斯洛文尼亚语" value="Slovenian" />
-          <el-option label="加泰罗尼亚语" value="Catalan" />
-          <el-option label="尼诺斯克语" value="Nynorsk" />
-          <el-option label="泰米尔语" value="Tamil" />
-          <el-option label="阿非利卡语" value="Afrikaans" />
-        </el-select>
-      </el-form-item>
-
-      <el-form-item label="目标语言" prop="target_lang">
-        <el-select v-model="formData.target_lang" placeholder="请选择目标语言" filterable>
-          <el-option label="中文" value="Chinese" />
-          <el-option label="粤语" value="Chinese,Yue" />
-          <el-option label="英语" value="English" />
-          <el-option label="阿拉伯语" value="Arabic" />
-          <el-option label="俄语" value="Russian" />
-          <el-option label="西班牙语" value="Spanish" />
-          <el-option label="法语" value="French" />
-          <el-option label="葡萄牙语" value="Portuguese" />
-          <el-option label="德语" value="German" />
-          <el-option label="土耳其语" value="Turkish" />
-          <el-option label="荷兰语" value="Dutch" />
-          <el-option label="乌克兰语" value="Ukrainian" />
-          <el-option label="越南语" value="Vietnamese" />
-          <el-option label="印尼语" value="Indonesian" />
-          <el-option label="日语" value="Japanese" />
-          <el-option label="意大利语" value="Italian" />
-          <el-option label="韩语" value="Korean" />
-          <el-option label="泰语" value="Thai" />
-          <el-option label="波兰语" value="Polish" />
-          <el-option label="罗马尼亚语" value="Romanian" />
-          <el-option label="希腊语" value="Greek" />
-          <el-option label="捷克语" value="Czech" />
-          <el-option label="芬兰语" value="Finnish" />
-          <el-option label="印地语" value="Hindi" />
-          <el-option label="保加利亚语" value="Bulgarian" />
-          <el-option label="丹麦语" value="Danish" />
-          <el-option label="希伯来语" value="Hebrew" />
-          <el-option label="马来语" value="Malay" />
-          <el-option label="波斯语" value="Persian" />
-          <el-option label="斯洛伐克语" value="Slovak" />
-          <el-option label="瑞典语" value="Swedish" />
-          <el-option label="克罗地亚语" value="Croatian" />
-          <el-option label="菲律宾语" value="Filipino" />
-          <el-option label="匈牙利语" value="Hungarian" />
-          <el-option label="挪威语" value="Norwegian" />
-          <el-option label="斯洛文尼亚语" value="Slovenian" />
-          <el-option label="加泰罗尼亚语" value="Catalan" />
-          <el-option label="尼诺斯克语" value="Nynorsk" />
-          <el-option label="泰米尔语" value="Tamil" />
-          <el-option label="阿非利卡语" value="Afrikaans" />
-        </el-select>
-      </el-form-item>
-
-      <el-form-item label="角色数量" prop="num_speakers">
-        <el-input-number
-          v-model="formData.num_speakers"
-          :min="2"
-          :max="10"
-          :step="1"
-          controls-position="right"
-        />
-        <div class="num-speakers-hint">
-          <small>设置对话中的角色数量（2-10个），用于LLM自动分配说话人。设置后点击"自动分配说话人"按钮，LLM将根据对话内容自动识别并命名角色。</small>
-        </div>
-      </el-form-item>
-
-      <el-form-item label="角色音色配置">
-        <div class="voice-config-section">
-          <div v-for="(mapping, index) in formData.voice_mappings" :key="index" class="voice-mapping-row">
+          <el-form-item label="项目描述" prop="description">
             <el-input
-              v-model="mapping.speaker"
-              placeholder="角色名称（如: 说话人1, 旁白）"
-              style="width: 180px;"
+              v-model="formData.description"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入项目描述"
             />
-            <span class="arrow">→</span>
+          </el-form-item>
+
+          <el-form-item label="源语言" prop="source_lang">
+            <el-select v-model="formData.source_lang" placeholder="请选择源语言" filterable>
+              <el-option label="中文" value="Chinese" />
+              <el-option label="粤语" value="Chinese,Yue" />
+              <el-option label="英语" value="English" />
+              <el-option label="阿拉伯语" value="Arabic" />
+              <el-option label="俄语" value="Russian" />
+              <el-option label="西班牙语" value="Spanish" />
+              <el-option label="法语" value="French" />
+              <el-option label="葡萄牙语" value="Portuguese" />
+              <el-option label="德语" value="German" />
+              <el-option label="土耳其语" value="Turkish" />
+              <el-option label="荷兰语" value="Dutch" />
+              <el-option label="乌克兰语" value="Ukrainian" />
+              <el-option label="越南语" value="Vietnamese" />
+              <el-option label="印尼语" value="Indonesian" />
+              <el-option label="日语" value="Japanese" />
+              <el-option label="意大利语" value="Italian" />
+              <el-option label="韩语" value="Korean" />
+              <el-option label="泰语" value="Thai" />
+              <el-option label="波兰语" value="Polish" />
+              <el-option label="罗马尼亚语" value="Romanian" />
+              <el-option label="希腊语" value="Greek" />
+              <el-option label="捷克语" value="Czech" />
+              <el-option label="芬兰语" value="Finnish" />
+              <el-option label="印地语" value="Hindi" />
+              <el-option label="保加利亚语" value="Bulgarian" />
+              <el-option label="丹麦语" value="Danish" />
+              <el-option label="希伯来语" value="Hebrew" />
+              <el-option label="马来语" value="Malay" />
+              <el-option label="波斯语" value="Persian" />
+              <el-option label="斯洛伐克语" value="Slovak" />
+              <el-option label="瑞典语" value="Swedish" />
+              <el-option label="克罗地亚语" value="Croatian" />
+              <el-option label="菲律宾语" value="Filipino" />
+              <el-option label="匈牙利语" value="Hungarian" />
+              <el-option label="挪威语" value="Norwegian" />
+              <el-option label="斯洛文尼亚语" value="Slovenian" />
+              <el-option label="加泰罗尼亚语" value="Catalan" />
+              <el-option label="尼诺斯克语" value="Nynorsk" />
+              <el-option label="泰米尔语" value="Tamil" />
+              <el-option label="阿非利卡语" value="Afrikaans" />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item label="目标语言" prop="target_lang">
+            <el-select v-model="formData.target_lang" placeholder="请选择目标语言" filterable>
+              <el-option label="中文" value="Chinese" />
+              <el-option label="粤语" value="Chinese,Yue" />
+              <el-option label="英语" value="English" />
+              <el-option label="阿拉伯语" value="Arabic" />
+              <el-option label="俄语" value="Russian" />
+              <el-option label="西班牙语" value="Spanish" />
+              <el-option label="法语" value="French" />
+              <el-option label="葡萄牙语" value="Portuguese" />
+              <el-option label="德语" value="German" />
+              <el-option label="土耳其语" value="Turkish" />
+              <el-option label="荷兰语" value="Dutch" />
+              <el-option label="乌克兰语" value="Ukrainian" />
+              <el-option label="越南语" value="Vietnamese" />
+              <el-option label="印尼语" value="Indonesian" />
+              <el-option label="日语" value="Japanese" />
+              <el-option label="意大利语" value="Italian" />
+              <el-option label="韩语" value="Korean" />
+              <el-option label="泰语" value="Thai" />
+              <el-option label="波兰语" value="Polish" />
+              <el-option label="罗马尼亚语" value="Romanian" />
+              <el-option label="希腊语" value="Greek" />
+              <el-option label="捷克语" value="Czech" />
+              <el-option label="芬兰语" value="Finnish" />
+              <el-option label="印地语" value="Hindi" />
+              <el-option label="保加利亚语" value="Bulgarian" />
+              <el-option label="丹麦语" value="Danish" />
+              <el-option label="希伯来语" value="Hebrew" />
+              <el-option label="马来语" value="Malay" />
+              <el-option label="波斯语" value="Persian" />
+              <el-option label="斯洛伐克语" value="Slovak" />
+              <el-option label="瑞典语" value="Swedish" />
+              <el-option label="克罗地亚语" value="Croatian" />
+              <el-option label="菲律宾语" value="Filipino" />
+              <el-option label="匈牙利语" value="Hungarian" />
+              <el-option label="挪威语" value="Norwegian" />
+              <el-option label="斯洛文尼亚语" value="Slovenian" />
+              <el-option label="加泰罗尼亚语" value="Catalan" />
+              <el-option label="尼诺斯克语" value="Nynorsk" />
+              <el-option label="泰米尔语" value="Tamil" />
+              <el-option label="阿非利卡语" value="Afrikaans" />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item label="角色音色配置">
+            <div class="voice-config-section">
+              <div v-for="(mapping, index) in formData.voice_mappings" :key="index" class="voice-mapping-row">
+                <el-input
+                  v-model="mapping.speaker"
+                  placeholder="角色名称（如: 说话人1, 旁白）"
+                  style="width: 180px;"
+                />
+                <span class="arrow">→</span>
+                <el-input
+                  v-model="mapping.voice_id"
+                  placeholder="音色ID（如: male-qn-qingse）"
+                  style="width: 200px;"
+                />
+                <el-button
+                  type="danger"
+                  size="small"
+                  @click="removeSpeakerMapping(index)"
+                  :disabled="formData.voice_mappings.length <= 1"
+                >
+                  删除
+                </el-button>
+              </div>
+              <el-button
+                type="primary"
+                size="small"
+                @click="addSpeakerMapping"
+                style="margin-top: 8px;"
+              >
+                添加角色音色映射
+              </el-button>
+            </div>
+          </el-form-item>
+
+          <el-form-item label="TTS模型" prop="tts_model">
+            <el-select v-model="formData.tts_model" placeholder="请选择TTS模型">
+              <el-option label="speech-2.5-hd-preview (推荐)" value="speech-2.5-hd-preview" />
+              <el-option label="speech-2.5-turbo-preview" value="speech-2.5-turbo-preview" />
+              <el-option label="speech-02-hd" value="speech-02-hd" />
+              <el-option label="speech-02-turbo" value="speech-02-turbo" />
+              <el-option label="speech-01-hd" value="speech-01-hd" />
+              <el-option label="speech-01-turbo" value="speech-01-turbo" />
+            </el-select>
+            <div class="model-hint">
+              <small>TTS模型用于语音合成，推荐使用speech-2.5-hd-preview获得最佳质量。</small>
+            </div>
+          </el-form-item>
+
+          <el-form-item label="最大加速倍率" prop="max_speed">
+            <el-slider
+              v-model="formData.max_speed"
+              :min="1.2"
+              :max="2.0"
+              :step="0.1"
+              :precision="1"
+              show-input
+              show-input-controls
+              :input-size="'small'"
+            />
+            <div class="max-speed-hint">
+              <small>
+                TTS时间戳对齐时允许的最大语速倍率。较低的值可获得更自然的语音质量，但可能导致更多段落无法对齐。
+                <br />
+                推荐值：1.6（平衡音质与成功率）| 保守值：1.2-1.4 | 激进值：1.8-2.0
+              </small>
+            </div>
+          </el-form-item>
+
+          <el-form-item label="翻译专有词表">
             <el-input
-              v-model="mapping.voice_id"
-              placeholder="音色ID（如: male-qn-qingse）"
-              style="width: 200px;"
+              v-model="formData.custom_vocabulary"
+              type="textarea"
+              :rows="4"
+              placeholder="请输入专有词汇，每行一个，格式：原词|译词&#10;例如：&#10;AI|人工智能&#10;API|应用程序接口&#10;Machine Learning|机器学习"
             />
-            <el-button
-              type="danger"
-              size="small"
-              @click="removeSpeakerMapping(index)"
-              :disabled="formData.voice_mappings.length <= 1"
-            >
-              删除
-            </el-button>
-          </div>
-          <el-button
-            type="primary"
-            size="small"
-            @click="addSpeakerMapping"
-            style="margin-top: 8px;"
-          >
-            添加角色音色映射
-          </el-button>
-        </div>
-      </el-form-item>
+            <div class="vocabulary-hint">
+              <small>格式说明：每行一个词汇，使用"|"分隔原词和译词。这些词汇在翻译时会被优先使用。</small>
+            </div>
+          </el-form-item>
+        </el-form>
+      </el-tab-pane>
 
-      <el-form-item label="TTS模型" prop="tts_model">
-        <el-select v-model="formData.tts_model" placeholder="请选择TTS模型">
-          <el-option label="speech-2.5-hd-preview (推荐)" value="speech-2.5-hd-preview" />
-          <el-option label="speech-2.5-turbo-preview" value="speech-2.5-turbo-preview" />
-          <el-option label="speech-02-hd" value="speech-02-hd" />
-          <el-option label="speech-02-turbo" value="speech-02-turbo" />
-          <el-option label="speech-01-hd" value="speech-01-hd" />
-          <el-option label="speech-01-turbo" value="speech-01-turbo" />
-        </el-select>
-        <div class="model-hint">
-          <small>TTS模型用于语音合成，推荐使用speech-2.5-hd-preview获得最佳质量。</small>
-        </div>
-      </el-form-item>
-
-      <el-form-item label="最大加速倍率" prop="max_speed">
-        <el-slider
-          v-model="formData.max_speed"
-          :min="1.2"
-          :max="2.0"
-          :step="0.1"
-          :precision="1"
-          show-input
-          show-input-controls
-          :input-size="'small'"
-        />
-        <div class="max-speed-hint">
-          <small>
-            TTS时间戳对齐时允许的最大语速倍率。较低的值可获得更自然的语音质量，但可能导致更多段落无法对齐。
-            <br />
-            推荐值：1.6（平衡音质与成功率）| 保守值：1.2-1.4 | 激进值：1.8-2.0
-          </small>
-        </div>
-      </el-form-item>
-
-      <el-form-item label="翻译专有词表">
-        <el-input
-          v-model="formData.custom_vocabulary"
-          type="textarea"
-          :rows="4"
-          placeholder="请输入专有词汇，每行一个，格式：原词|译词&#10;例如：&#10;AI|人工智能&#10;API|应用程序接口&#10;Machine Learning|机器学习"
-        />
-        <div class="vocabulary-hint">
-          <small>格式说明：每行一个词汇，使用"|"分隔原词和译词。这些词汇在翻译时会被优先使用。</small>
-        </div>
-      </el-form-item>
-
-      <el-form-item label="背景信息" prop="background_info">
-        <el-input
-          v-model="formData.background_info"
-          type="textarea"
-          :rows="3"
-          placeholder="请输入对话背景信息，例如：有6个人，3个工人，1个保安，1个助理，一个总裁"
-        />
-        <div class="background-info-hint">
-          <small>背景信息将辅助LLM进行说话人自动分配，建议简要描述角色数量、身份等关键信息。</small>
-        </div>
-      </el-form-item>
-    </el-form>
+      <!-- Tab 2: 说话人档案 -->
+      <el-tab-pane label="说话人档案" name="speakers">
+        <SpeakerProfiles :project="project" />
+      </el-tab-pane>
+    </el-tabs>
 
     <template #footer>
       <span class="dialog-footer">
         <el-button @click="$emit('close')">取消</el-button>
-        <el-button type="primary" @click="handleSave" :loading="saving">
+        <el-button
+          v-if="activeTab === 'basic'"
+          type="primary"
+          @click="handleSave"
+          :loading="saving"
+        >
           保存设置
         </el-button>
       </span>
@@ -235,6 +225,7 @@
 <script setup lang="ts">
 import { ref, watch, reactive } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
+import SpeakerProfiles from './SpeakerProfiles.vue'
 
 interface SpeakerVoiceMapping {
   speaker: string
@@ -248,16 +239,15 @@ interface ProjectSettings {
   target_lang: string
   tts_model: string
   max_speed: number
-  num_speakers: number
   voice_mappings: SpeakerVoiceMapping[]
   custom_vocabulary: string
-  background_info: string
 }
 
 const props = defineProps<{
   visible: boolean
   project: any
   saving?: boolean
+  initialTab?: 'basic' | 'speakers'  // 初始激活的Tab页
 }>()
 
 const emit = defineEmits<{
@@ -265,6 +255,7 @@ const emit = defineEmits<{
   save: [settings: ProjectSettings]
 }>()
 
+const activeTab = ref('basic')
 const settingsForm = ref<FormInstance>()
 
 // 表单数据
@@ -275,15 +266,13 @@ const formData = reactive<ProjectSettings>({
   target_lang: '',
   tts_model: 'speech-2.5-hd-preview',
   max_speed: 2.0,
-  num_speakers: 2,
   voice_mappings: [
     { speaker: 'SPEAKER_00', voice_id: 'female-tianmei' },
     { speaker: '说话人1', voice_id: '' },
     { speaker: '说话人2', voice_id: '' },
     { speaker: '旁白', voice_id: '' }
   ],
-  custom_vocabulary: '',
-  background_info: ''
+  custom_vocabulary: ''
 })
 
 // 表单验证规则
@@ -316,7 +305,6 @@ watch(() => props.project, (newProject) => {
     formData.target_lang = newProject.target_lang || ''
     formData.tts_model = newProject.tts_model || 'speech-2.5-hd-preview'
     formData.max_speed = newProject.max_speed != null ? newProject.max_speed : 2.0
-    formData.num_speakers = newProject.num_speakers != null ? newProject.num_speakers : 2
 
     // 解析角色音色映射
     if (newProject.voice_mappings && Array.isArray(newProject.voice_mappings)) {
@@ -359,11 +347,16 @@ watch(() => props.project, (newProject) => {
     } else {
       formData.custom_vocabulary = ''
     }
-
-    // 设置背景信息
-    formData.background_info = newProject.background_info || ''
   }
 }, { immediate: true })
+
+// 监听对话框可见性和初始Tab，控制激活的Tab页
+watch(() => props.visible, (newVisible) => {
+  if (newVisible) {
+    // 对话框打开时，根据initialTab prop设置激活的Tab
+    activeTab.value = props.initialTab || 'basic'
+  }
+})
 
 // 角色音色映射管理
 const addSpeakerMapping = () => {

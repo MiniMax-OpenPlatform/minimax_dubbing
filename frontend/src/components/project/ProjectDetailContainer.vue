@@ -97,6 +97,7 @@
       :visible="showSettings"
       :project="project"
       :saving="settingsSaving"
+      :initial-tab="settingsInitialTab"
       @close="showSettings = false"
       @save="saveProjectSettings"
     />
@@ -155,6 +156,7 @@ const batchProgress = useBatchProgress()
 // 本地状态
 const settingsSaving = ref(false)
 const showSettings = ref(false)
+const settingsInitialTab = ref<'basic' | 'speakers'>('basic')
 const selectedSegments = ref<Segment[]>([])
 
 // 任务ID存储
@@ -1183,132 +1185,30 @@ const handleSynthesizeVideo = async () => {
 
 
 
-// 说话人管理
+// 说话人管理 - 引导用户到新的说话人识别系统
 const handleAutoAssignSpeaker = async () => {
-  try {
-    if (!project.value) {
-      ElMessage.warning('项目信息不存在')
-      return
-    }
-
-    // 显示确认对话框
-    const numSpeakers = project.value.num_speakers || 2
-    await ElMessageBox.confirm(
-      `将使用LLM分析对话内容自动分配说话人（共${numSpeakers}个角色）。LLM会根据对话内容自动识别并命名角色，此操作会覆盖现有的说话人设置，是否继续？`,
-      '自动分配说话人',
-      {
-        confirmButtonText: '开始分配',
-        cancelButtonText: '取消',
-        type: 'info',
-      }
-    )
-
-    try {
-      // 动态导入API模块
-      const api = (await import('../../utils/api')).default
-
-      // 调用后端自动分配说话人API（异步模式）
-      const response = await api.post(`/projects/${props.projectId}/auto_assign_speakers/`)
-
-      if (response.data.success && response.data.task_id) {
-        const { task_id, total_segments } = response.data
-
-        ElMessage.success(response.data.message || `自动分配说话人任务已启动，共 ${total_segments} 个段落`)
-
-        // 显示加载提示
-        const loading = ElLoading.service({
-          lock: true,
-          text: '正在调用LLM分析对话内容...',
-          background: 'rgba(0, 0, 0, 0.7)'
-        })
-
-        // 开始轮询进度
-        const pollProgress = async () => {
-          try {
-            const progressResponse = await api.get(`/projects/${props.projectId}/auto_assign_speakers_progress/`, {
-              params: { task_id }
-            })
-
-            if (progressResponse.data.success) {
-              const progress = progressResponse.data.progress
-
-              // 更新加载提示文本
-              if (progress.current_step) {
-                loading.setText(progress.current_step)
-              }
-
-              // 检查任务状态
-              if (progress.status === 'completed') {
-                loading.close()
-                clearInterval(pollingInterval)
-
-                // 等待用户确认后再刷新数据
-                await ElMessageBox.alert(
-                  `成功更新${progress.completed}个段落的说话人信息`,
-                  '自动分配说话人完成',
-                  {
-                    confirmButtonText: '确定',
-                    type: 'success'
-                  }
-                )
-
-                // 刷新数据以显示更新后的说话人信息
-                refreshData()
-              } else if (progress.status === 'failed') {
-                loading.close()
-                clearInterval(pollingInterval)
-
-                ElMessageBox.alert(
-                  `任务失败：${progress.error_message || '未知错误'}`,
-                  '自动分配说话人失败',
-                  {
-                    confirmButtonText: '确定',
-                    type: 'error'
-                  }
-                )
-              }
-            } else {
-              // 任务不存在或已过期
-              loading.close()
-              clearInterval(pollingInterval)
-
-              ElMessageBox.alert(
-                '任务不存在或已过期，请稍后重试',
-                '查询任务失败',
-                {
-                  confirmButtonText: '确定',
-                  type: 'warning'
-                }
-              )
-            }
-          } catch (error) {
-            console.error('获取进度失败', error)
-            // 继续轮询，不因为单次失败就停止
-          }
-        }
-
-        // 立即获取一次进度，然后每2秒轮询一次
-        await pollProgress()
-        const pollingInterval = setInterval(pollProgress, 2000)
-      } else {
-        ElMessage.error(response.data.error || '自动分配说话人失败')
-      }
-    } catch (apiError: any) {
-      if (apiError.response?.data?.error) {
-        ElMessage.error(apiError.response.data.error)
-      } else {
-        ElMessage.error('自动分配说话人失败，请稍后重试')
-      }
-      console.error('自动分配说话人API调用失败:', apiError)
-    }
-
-  } catch (error) {
-    // 用户取消或其他错误
-    if (error !== 'cancel') {
-      console.error('自动分配说话人失败', error)
-      ElMessage.error('自动分配说话人失败')
-    }
+  if (!project.value) {
+    ElMessage.warning('项目信息不存在')
+    return
   }
+
+  if (!project.value.video_file_path) {
+    ElMessage.warning('请先上传视频文件，说话人识别需要检测视频中的人脸')
+    return
+  }
+
+  // 设置初始Tab为说话人档案
+  settingsInitialTab.value = 'speakers'
+
+  // 打开项目设置对话框
+  showSettings.value = true
+
+  // 显示提示信息
+  ElMessage.info({
+    message: '已为您打开"说话人档案"页面。点击"开始说话人识别"按钮，系统将使用人脸检测+VLM命名+LLM分配技术自动识别视频中的说话人。',
+    duration: 4000,
+    showClose: true
+  })
 }
 
 // 获取项目中配置的说话人选项

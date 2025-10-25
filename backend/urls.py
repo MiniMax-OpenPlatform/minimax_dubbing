@@ -14,6 +14,7 @@ urlpatterns = [
     path('api/', include('projects.urls')),
     path('api/', include('segments.urls')),
     path('api/logs/', include('logs.urls')),
+    path('api/speakers/', include('speakers.urls')),
     path('', include('voices.urls')),
     path('', include('voice_cloning.urls')),
 ]
