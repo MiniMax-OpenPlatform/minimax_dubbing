@@ -74,7 +74,6 @@
       <template #header>
         <div class="card-header">
           <span>阿里云api_key</span>
-          <el-tag size="small" type="info">用于语音识别和翻译</el-tag>
         </div>
       </template>
 
@@ -103,7 +102,7 @@
         <el-form-item label="AccessKey ID" prop="accessKeyId">
           <el-input
             v-model="aliyunForm.accessKeyId"
-            placeholder="输入阿里云 AccessKey ID"
+            placeholder="输入阿里云 AccessKey ID（需授权 AliyunNLSFullAccess）"
             clearable
           />
         </el-form-item>
