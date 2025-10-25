@@ -31,11 +31,16 @@
 
 **AI增值**：内置智能对齐算法，根据TTS生成的音频时长自动优化字幕时间轴。算法会智能延长或缩短时间戳，保持语句间的自然停顿，确保配音与画面完美同步，省去99%的手动调时工作。
 
-### 4️⃣ AI智能说话人识别
+### 4️⃣ AI智能说话人识别（多模态技术）
 
 **传统方式**：手动逐条标注每句对话的说话人，耗时且易出错。
 
-**AI增值**：利用MiniMax大语言模型分析对话上下文，自动识别并命名说话人角色，还能根据剧情为角色生成合适的名称。一键自动分配，将几小时的标注工作缩短至几分钟，同时支持人工矫正，准确率正在不断迭代提升，敬请期待。
+**AI增值**：采用**人脸检测 + VLM命名 + LLM分配**的三阶段智能识别技术：
+1. **人脸检测与聚类**：使用FaceNet和DBSCAN算法从视频中检测并聚类人脸
+2. **VLM智能命名**：利用Qwen-VL多模态模型分析人脸图像和对话内容，为每个说话人生成姓名、角色、性别、外貌特征和性格分析
+3. **LLM精准分配**：使用大语言模型根据对话上下文将字幕精准分配给对应说话人
+
+一键自动完成，将几小时的标注工作缩短至几分钟，识别结果包含说话人档案、代表图片和详细分析，准确率高且支持人工矫正。
 
 ---
 
@@ -50,8 +55,9 @@
 ### AI驱动功能
 - **🤖 批量翻译**：AI批量翻译，实时进度追踪
 - **🎙️ 语音合成(TTS)**：将翻译文本转换为自然流畅的语音
-- **👥 自动说话人分配**：基于LLM的智能角色识别与分配
-- **⚡ 实时进度**：批量操作的实时进度监控
+- **👥 智能说话人识别**：人脸检测+VLM命名+LLM分配的多模态识别系统
+- **🎭 说话人档案**：自动生成说话人姓名、角色、外貌、性格分析
+- **⚡ 实时进度**：批量操作的实时进度监控，错误信息固定显示
 
 ### 高级音频处理
 - **🎵 音频拼接**：将分段音频合并为完整音轨
@@ -71,7 +77,11 @@
 - **前端**: Vue 3 + TypeScript + Element Plus + Vite
 - **后端**: Django 5.2.6 + Django REST Framework
 - **数据库**: SQLite (开发环境) / PostgreSQL (生产环境)
-- **AI集成**: MiniMax API 用于翻译和TTS
+- **AI集成**:
+  - MiniMax API - 翻译和TTS
+  - Qwen-VL (DashScope) - 视觉语言模型说话人命名
+  - Qwen LLM - 说话人字幕分配
+- **计算机视觉**: FaceNet + MTCNN (人脸检测) + DBSCAN (聚类)
 
 ### 项目结构
 ```
@@ -80,12 +90,19 @@ minimax_translation/
 ├── projects/                   # 项目管理应用
 ├── segments/                   # 片段管理应用
 ├── authentication/             # 认证系统
+├── speakers/                   # 说话人识别系统 (NEW)
 ├── system_monitor/             # 任务监控和系统配置
 ├── services/                   # 业务逻辑和AI集成
 │   ├── algorithms/             # 时间戳对齐算法
 │   ├── business/               # 业务逻辑服务
 │   ├── clients/                # 外部API客户端
-│   └── parsers/                # 文件格式解析器
+│   ├── parsers/                # 文件格式解析器
+│   └── speaker_diarization/    # 说话人识别pipeline (NEW)
+│       ├── face_detector.py    # 人脸检测
+│       ├── clusterer.py        # 人脸聚类
+│       ├── vlm_naming.py       # VLM说话人命名
+│       ├── llm_assignment.py   # LLM字幕分配
+│       └── pipeline.py         # 完整流程编排
 ├── frontend/                   # Vue 3应用
 │   ├── src/
 │   │   ├── components/         # Vue组件
@@ -97,7 +114,34 @@ minimax_translation/
 
 ## 🚀 快速开始
 
-### ⚡ 超快速安装（2分钟）
+### 📦 推荐：使用虚拟环境安装（3分钟）
+
+使用虚拟环境可以隔离项目依赖，避免与系统Python包冲突：
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/MiniMax-OpenPlatform/minimax_dubbing.git
+cd minimax_dubbing
+
+# 2. 创建并激活虚拟环境
+python3 -m venv venv
+source venv/bin/activate  # Linux/Mac
+# Windows系统使用: venv\Scripts\activate
+
+# 3. 安装后端依赖
+pip install -r requirements.txt
+
+# 4. 安装前端依赖
+cd frontend && npm install && cd ..
+
+# 5. 初始化数据库和管理员账号
+python3 manage.py migrate
+python3 manage.py init_system
+```
+
+### ⚡ 或者：直接安装（2分钟）
+
+如果不想使用虚拟环境，可以直接安装：
 
 ```bash
 # 1. 克隆仓库
@@ -115,10 +159,15 @@ python3 manage.py init_system
 
 ### 🚀 启动服务
 
+> 💡 **注意**: 如果使用虚拟环境，启动前需先激活虚拟环境: `source venv/bin/activate`
+
 #### 方法1: 两个终端窗口 (推荐)
 
 **终端1 - 启动后端服务:**
 ```bash
+# 如果使用虚拟环境，先激活
+source venv/bin/activate  # Linux/Mac，Windows使用 venv\Scripts\activate
+
 cd minimax_translation
 python3 manage.py runserver 0.0.0.0:5172
 ```
@@ -134,6 +183,9 @@ npm run dev
 如果只有一个终端，可以将后端放到后台运行：
 
 ```bash
+# 如果使用虚拟环境，先激活
+source venv/bin/activate  # Linux/Mac，Windows使用 venv\Scripts\activate
+
 cd minimax_translation
 
 # 1. 后台启动后端服务
@@ -159,6 +211,8 @@ sudo apt install screen  # Ubuntu/Debian
 
 # 启动后端会话
 screen -S backend
+# 如果使用虚拟环境，先激活
+source venv/bin/activate  # Linux/Mac
 cd minimax_translation
 python3 manage.py runserver 0.0.0.0:5172
 # 按 Ctrl+A 然后按 D 退出screen
@@ -205,14 +259,18 @@ cd minimax_translation
 
 #### 2. Backend Setup
 ```bash
+# (推荐) 创建并激活虚拟环境
+python3 -m venv venv
+source venv/bin/activate  # Linux/Mac，Windows使用 venv\Scripts\activate
+
 # Install Python dependencies
 pip install -r requirements.txt
 
 # Setup database
 python3 manage.py migrate
 
-# Create admin user (optional)
-python3 manage.py createsuperuser
+# Initialize system (creates admin user automatically)
+python3 manage.py init_system
 ```
 
 #### 3. Frontend Setup
@@ -235,6 +293,9 @@ nano .env
 
 **终端1 - 后端服务:**
 ```bash
+# 如果使用虚拟环境，先激活
+source venv/bin/activate  # Linux/Mac，Windows使用 venv\Scripts\activate
+
 cd minimax_translation
 python3 manage.py runserver 0.0.0.0:5172
 ```
@@ -260,19 +321,21 @@ npm run dev
 
 ### Basic Workflow
 
-1. **Create Project**: Upload SRT file or create empty project
-2. **Configure Voices**: Set up speaker-to-voice mappings in project settings
-3. **Auto Assign Speakers**: Use AI to automatically detect and assign speakers
+1. **Create Project**: Upload video file and SRT file (or use ASR to generate subtitles)
+2. **Auto Speaker Recognition**: AI automatically detects faces, names speakers, and assigns dialogues
+3. **Configure Voices**: Review and adjust speaker-to-voice mappings in project settings
 4. **Batch Translate**: Translate all segments using AI
-5. **Generate TTS**: Create audio for translated text
+5. **Generate TTS**: Create audio for translated text with aligned timestamps
 6. **Preview & Export**: Preview concatenated audio and export results
 
 ### Key Features Guide
 
-#### Auto Speaker Assignment
-- Analyzes dialogue content using LLM
-- Automatically assigns speakers based on conversation context
-- Requires at least 2 speakers configured in project settings
+#### Auto Speaker Recognition (New Multi-Modal AI)
+- **Face Detection & Clustering**: Uses FaceNet and DBSCAN to identify unique faces in video
+- **VLM Intelligent Naming**: Qwen-VL analyzes face images and dialogue to generate speaker profiles (name, role, gender, appearance, personality)
+- **LLM Subtitle Assignment**: Uses large language model to assign each subtitle to the correct speaker based on context
+- **Auto Voice Mapping**: Automatically creates speaker-to-voice mappings based on gender and role
+- **Result Review**: View speaker profiles with representative images and detailed analysis
 
 #### Batch Operations
 - **Translation**: Bulk translate all segments with progress tracking
@@ -308,10 +371,15 @@ curl -H "X-API-KEY: your-api-key" http://localhost:5172/api/projects/
 ### Key Endpoints
 - `GET /api/projects/` - List projects
 - `POST /api/projects/upload_srt/` - Upload SRT file
+- `POST /api/projects/{id}/upload_video/` - Upload video file
+- `POST /api/projects/{id}/separate_vocals/` - Separate vocals from video
+- `POST /api/projects/{id}/asr_recognize/` - Auto-generate subtitles using ASR
+- `POST /speakers/tasks/` - Start speaker recognition task
+- `GET /speakers/tasks/{task_id}/progress/` - Get speaker recognition progress
 - `POST /api/projects/{id}/batch_translate/` - Start batch translation
 - `POST /api/projects/{id}/batch_tts/` - Start batch TTS
-- `POST /api/projects/{id}/auto_assign_speakers/` - Auto assign speakers
 - `POST /api/projects/{id}/concatenate_audio/` - Concatenate audio
+- `POST /api/projects/{id}/synthesize_video/` - Synthesize final video with translated audio
 
 ## 🧪 Testing
 
