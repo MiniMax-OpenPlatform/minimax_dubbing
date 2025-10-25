@@ -105,9 +105,7 @@
             placeholder="输入阿里云 AccessKey ID"
             clearable
           />
-          <template #extra>
-            <span style="font-size: 12px; color: #909399;">需授权 AliyunNLSFullAccess</span>
-          </template>
+          <div style="font-size: 12px; color: #909399; margin-top: 4px;">需授权 AliyunNLSFullAccess</div>
         </el-form-item>
 
         <el-form-item label="AccessKey Secret" prop="accessKeySecret">
