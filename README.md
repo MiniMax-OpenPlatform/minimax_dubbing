@@ -6,7 +6,7 @@
 
 本方案试图用AI完成说话人自动识别，时间戳自动对齐，自动翻译优化等，提升视频翻译的效率。
 
-![Python](https://img.shields.io/badge/Python-3.10+-blue)
+![Python](https://img.shields.io/badge/Python-3.10.12-blue)
 ![Vue](https://img.shields.io/badge/Vue-3.0+-green)
 ![Django](https://img.shields.io/badge/Django-5.2+-orange)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
@@ -246,7 +246,7 @@ screen -S frontend -X quit
 > ⚠️ **重要**: 必须同时运行两个服务才能正常访问！前端在5173端口，后端在5172端口。
 
 ### 📋 Prerequisites
-- Python 3.10+
+- Python 3.10+ （开发环境：3.10.12）
 - Node.js 16+
 - npm
 
