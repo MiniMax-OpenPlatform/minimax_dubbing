@@ -669,7 +669,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ### 💬 加入微信技术交流群
 
-欢迎扫码加入我们的微信技术交流群，与开发者和用户一起讨论：
+欢迎扫码加入我们的微信技术交流群，共同探索视频翻译的技术边界：
 
 <div align="center">
   <img src="./20251023-162139.jpg" alt="微信技术交流群" width="300"/>
