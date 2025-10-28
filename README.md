@@ -4,7 +4,7 @@
 
 > 🎙️ 基于Vue 3 + Django的AI智能配音系统
 
-一个专业的视频配音与翻译平台，集成MiniMax AI API，支持批量翻译、AI语音合成、智能配音等功能。
+本方案试图用AI完成说话人自动识别，时间戳自动对齐，自动翻译优化等，提升视频翻译的效率。
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![Vue](https://img.shields.io/badge/Vue-3.0+-green)
