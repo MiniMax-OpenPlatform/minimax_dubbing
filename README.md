@@ -114,7 +114,57 @@ minimax_translation/
 
 ## 🚀 快速开始
 
-### 📦 推荐：使用虚拟环境安装（3分钟）
+### 🐳 方式一：Docker部署（推荐，最简单！）
+
+使用Docker可以一键部署整个系统，无需手动安装依赖，适合生产环境和快速体验。
+
+#### 使用Docker Compose（推荐）
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/MiniMax-OpenPlatform/minimax_dubbing.git
+cd minimax_dubbing
+
+# 2. 创建数据目录
+mkdir -p data/media data/db data/logs
+
+# 3. 构建并启动容器
+docker-compose up -d --build
+
+# 4. 查看日志
+docker-compose logs -f
+```
+
+#### 使用Docker命令
+
+```bash
+# 1. 构建镜像
+docker build -t minimax_dubbing:latest .
+
+# 2. 运行容器
+docker run -d \
+  --name minimax_dubbing \
+  -p 5172:5172 \
+  -p 5173:5173 \
+  -v $(pwd)/data/media:/app/media \
+  -v $(pwd)/data/db:/app \
+  -v $(pwd)/data/logs:/app/logs \
+  --restart unless-stopped \
+  minimax_dubbing:latest
+```
+
+#### 访问系统
+
+- **前端界面**: http://localhost:5173
+- **后端API**: http://localhost:5172/api/
+- **管理后台**: http://localhost:5172/admin/
+- **默认管理员**: 用户名 `admin`，密码 `admin123`
+
+> 📖 详细的Docker部署文档请参考：[DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md)
+
+---
+
+### 📦 方式二：使用虚拟环境安装（3分钟）
 
 使用虚拟环境可以隔离项目依赖，避免与系统Python包冲突：
 
@@ -141,9 +191,9 @@ python3 manage.py init_system   # 创建管理员账号（admin/admin123）
 
 > ⚠️ **重要提示**: `migrate` 命令必须执行，否则会导致数据库字段缺失，保存配置时出现 500 错误！
 
-### ⚡ 或者：直接安装（2分钟）
+### ⚡ 方式三：直接安装（2分钟）
 
-如果不想使用虚拟环境，可以直接安装：
+如果不想使用Docker或虚拟环境，可以直接安装：
 
 ```bash
 # 1. 克隆仓库

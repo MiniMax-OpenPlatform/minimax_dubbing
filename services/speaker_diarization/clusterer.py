@@ -44,8 +44,8 @@ class FaceClusterer:
         """
         logger.info(f"开始聚类 {len(embeddings)} 个人脸特征...")
 
-        # DBSCAN聚类
-        clustering = DBSCAN(eps=self.eps, min_samples=self.min_samples, metric='cosine')
+        # DBSCAN聚类（使用所有CPU核心并行计算距离矩阵）
+        clustering = DBSCAN(eps=self.eps, min_samples=self.min_samples, metric='cosine', n_jobs=-1)
         labels = clustering.fit_predict(embeddings)
 
         # 统计聚类结果
