@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    'django_crontab',  # 定时任务
     'authentication',
     'projects',
     'segments',
@@ -301,3 +302,12 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30分钟超时
+
+# django-crontab配置
+# 定时任务：每天凌晨3点执行数据清理
+CRONJOBS = [
+    ('0 3 * * *', 'django.core.management.call_command', ['cleanup_old_data'], {}, '>> /tmp/cleanup_old_data.log 2>&1'),
+]
+
+# Crontab日志文件位置
+CRONTAB_COMMAND_SUFFIX = '2>&1'

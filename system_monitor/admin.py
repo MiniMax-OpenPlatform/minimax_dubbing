@@ -21,17 +21,33 @@ class SystemConfigAdmin(admin.ModelAdmin):
             'fields': (
                 'batch_translate_request_interval',
                 'max_concurrent_translate_tasks',
-                'task_timeout_minutes'
+                'task_timeout_minutes',
+                'batch_tts_request_interval',
+                'max_concurrent_tts_tasks'
             ),
-            'description': '控制批量翻译任务的执行频率和并发数量'
+            'description': '控制批量翻译和TTS任务的执行频率和并发数量'
         }),
-        ('监控和清理', {
+        ('任务监控和清理', {
             'fields': (
                 'enable_detailed_logging',
                 'auto_cleanup_completed_tasks',
                 'cleanup_interval_hours'
             ),
-            'description': '任务监控和自动清理设置'
+            'description': '任务监控和TaskMonitor记录清理设置'
+        }),
+        ('数据自动清理 ⚠️', {
+            'fields': (
+                'enable_auto_cleanup_data',
+                'cleanup_projects_after_days',
+                'cleanup_users_after_days',
+                'cleanup_execution_time'
+            ),
+            'description': '<strong style="color: red;">⚠️ 重要：启用后将定期自动删除不活跃的项目和用户数据，此操作不可逆！</strong><br>'
+                          '- 项目清理：删除N天未更新的项目及其所有关联数据（段落、音频文件等）<br>'
+                          '- 用户清理：删除N天未登录的普通用户及其所有数据（保留超级管理员）<br>'
+                          '- 执行时间：每天在指定时间自动执行清理（建议凌晨时段）<br>'
+                          '<strong>使用前请先运行命令测试：python manage.py cleanup_old_data --dry-run</strong>',
+            'classes': ('wide',)
         }),
         ('时间信息', {
             'fields': ('created_at', 'updated_at'),

@@ -17,6 +17,13 @@
           <p><strong>4. 当前自动分配说话人功能使用了人脸识别与聚类，VLM+LLM等模型</strong>，准确度仍在优化中</p>
           <p><strong>5. 批量TTS采用了翻译优化+TTS语速调节相结合的办法做时间戳对齐</strong>，可以在项目配置里调整speed阈值</p>
           <p><strong>6. 功能在持续迭代</strong>，请及时更新</p>
+          <p style="color: #e6a23c;"><strong>🗑️ 7. 数据自动清理策略</strong>：为优化存储空间，系统支持自动清理不活跃数据（默认关闭）：</p>
+          <ul style="margin-left: 20px; color: #e6a23c;">
+            <li><strong>过期项目</strong>：1天未更新的项目及其所有数据（视频、音频、字幕等）将被删除</li>
+            <li><strong>不活跃用户</strong>：7天未登录的普通用户及其所有数据将被删除（超级管理员不受影响）</li>
+            <li><strong>数据不可恢复</strong>：请及时导出重要项目的翻译结果和字幕文件</li>
+            <li><strong>管理后台配置</strong>：访问 <el-link :href="adminUrl" target="_blank" type="warning">管理后台</el-link> 查看和调整清理策略</li>
+          </ul>
         </div>
       </el-alert>
 
@@ -349,6 +356,40 @@
             <li>背景音音量：默认0.3（30%）</li>
           </ul>
         </div>
+
+        <div class="faq-item">
+          <h4>Q: 如何访问管理后台？</h4>
+          <p>A: 管理后台用于配置系统参数和查看清理策略：</p>
+          <ul>
+            <li><strong>访问地址：</strong><el-link :href="adminUrl" target="_blank" type="primary">{{ adminUrl }}</el-link></li>
+            <li><strong>默认账号：</strong>admin</li>
+            <li><strong>默认密码：</strong>admin123（首次部署后请及时修改）</li>
+            <li><strong>主要功能：</strong>配置数据清理策略、调整API并发参数、查看任务监控等</li>
+            <li><strong>注意：</strong>管理后台运行在后端服务（5172端口），需要后端服务正常运行</li>
+          </ul>
+        </div>
+
+        <div class="faq-item">
+          <h4>Q: 如何查看数据清理策略或手动清理数据？</h4>
+          <p>A: 数据清理有两种方式：</p>
+          <ul>
+            <li><strong>方式1：管理后台配置</strong>
+              <ul style="margin-top: 8px;">
+                <li>访问 <el-link :href="adminUrl" target="_blank" type="primary">管理后台</el-link></li>
+                <li>进入"系统配置 (System Config)"</li>
+                <li>找到"数据自动清理 ⚠️"部分查看和修改策略</li>
+                <li>可配置：启用/禁用、清理天数、执行时间</li>
+              </ul>
+            </li>
+            <li><strong>方式2：命令行手动清理</strong>（需要SSH访问服务器）
+              <ul style="margin-top: 8px;">
+                <li>预览将要删除的数据：<code>python manage.py cleanup_old_data --dry-run</code></li>
+                <li>执行实际清理：<code>python manage.py cleanup_old_data</code></li>
+                <li>自定义天数：<code>python manage.py cleanup_old_data --projects-days=3 --users-days=14</code></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
       </el-card>
 
       <!-- 技术规格 -->
@@ -462,7 +503,15 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { VideoCamera, Tools, Monitor, Microphone, QuestionFilled, Setting, Pointer, MagicStick } from '@element-plus/icons-vue'
+
+// 管理后台URL
+const adminUrl = computed(() => {
+  // 使用当前页面的协议和主机，端口改为5172
+  const { protocol, hostname } = window.location
+  return `${protocol}//${hostname}:5172/admin/`
+})
 </script>
 
 <style scoped>
@@ -799,6 +848,17 @@ import { VideoCamera, Tools, Monitor, Microphone, QuestionFilled, Setting, Point
 strong {
   color: #303133;
   font-weight: 600;
+}
+
+/* 代码样式 */
+code {
+  background-color: #f4f4f5;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  color: #e6a23c;
 }
 
 /* 响应式 */

@@ -430,6 +430,140 @@ curl -H "X-API-KEY: your-api-key" http://localhost:5172/api/projects/
 - `POST /api/projects/{id}/concatenate_audio/` - Concatenate audio
 - `POST /api/projects/{id}/synthesize_video/` - Synthesize final video with translated audio
 
+## 🗑️ 数据清理策略 (Data Cleanup Policy)
+
+### ⚠️ 重要说明
+
+为了优化存储空间和系统性能，本系统支持自动清理不活跃的项目和用户数据。**此功能默认关闭**，启用前请仔细阅读以下说明。
+
+### 清理规则
+
+系统会定期（每天凌晨3点）自动清理以下数据：
+
+#### 1️⃣ 过期项目清理
+- **触发条件**：项目最后更新时间超过 N 天（默认1天）
+- **清理范围**：
+  - ✅ 项目记录（Project）
+  - ✅ 所有翻译段落（Segments）
+  - ✅ 说话人识别数据（SpeakerDiarizationTask、SpeakerProfile）
+  - ✅ 所有关联媒体文件（视频、音频、字幕、人脸图片等）
+- **影响**：项目及其所有数据将被永久删除，无法恢复
+
+#### 2️⃣ 不活跃用户清理
+- **触发条件**：用户最后登录时间超过 N 天（默认7天）
+- **保护策略**：**仅删除普通用户**，超级管理员（`is_superuser=True`）永不删除
+- **清理范围**：
+  - ✅ 用户账号及配置（User、UserConfig）
+  - ✅ 用户的所有项目及关联数据
+  - ✅ 用户的所有语音克隆记录（VoiceCloneRecord）
+  - ✅ 用户的语音库记录（Voice）
+  - ✅ 所有关联媒体文件
+- **影响**：用户及其所有数据将被永久删除，无法恢复
+
+### 配置方法
+
+#### 方式1：管理后台配置（推荐）
+
+1. 访问管理后台：`http://your-ip:5172/admin/`
+2. 进入 **系统配置（System Config）**
+3. 找到 **"数据自动清理 ⚠️"** 部分
+4. 配置以下参数：
+   - `启用数据自动清理`：开启/关闭自动清理（默认关闭）
+   - `项目清理天数`：项目多少天未更新后删除（默认1天，范围1-365天）
+   - `用户清理天数`：用户多少天未登录后删除（默认7天，范围1-365天）
+   - `清理执行时间`：每天执行清理的时间（默认03:00，建议凌晨时段）
+
+#### 方式2：命令行手动执行
+
+```bash
+# 预览将要删除的数据（推荐先执行此命令）
+python manage.py cleanup_old_data --dry-run
+
+# 执行实际清理（使用系统配置的天数）
+python manage.py cleanup_old_data
+
+# 自定义清理天数
+python manage.py cleanup_old_data --projects-days=3 --users-days=14
+
+# 仅清理项目
+python manage.py cleanup_old_data --only-projects
+
+# 仅清理用户
+python manage.py cleanup_old_data --only-users
+```
+
+### 启用自动清理
+
+1. **安装依赖**（如果尚未安装）：
+```bash
+pip install django-crontab
+```
+
+2. **执行数据库迁移**（添加清理配置字段）：
+```bash
+python manage.py migrate
+```
+
+3. **安装定时任务**：
+```bash
+python manage.py crontab add
+```
+
+4. **验证定时任务**：
+```bash
+python manage.py crontab show
+# 应该显示：0 3 * * * ...cleanup_old_data...
+```
+
+5. **在管理后台启用清理功能**
+
+### 管理定时任务
+
+```bash
+# 查看已安装的定时任务
+python manage.py crontab show
+
+# 移除所有定时任务
+python manage.py crontab remove
+
+# 重新安装定时任务（修改配置后）
+python manage.py crontab add
+```
+
+### 最佳实践建议
+
+1. **首次启用前务必测试**：
+   ```bash
+   python manage.py cleanup_old_data --dry-run
+   ```
+
+2. **建议配置**：
+   - 开发/测试环境：项目3天，用户14天
+   - 生产环境（演示系统）：项目1天，用户7天
+   - 生产环境（正式服务）：根据实际需求调整，或禁用自动清理
+
+3. **定期备份数据库**（生产环境必须）：
+   ```bash
+   # SQLite备份
+   cp db.sqlite3 db.sqlite3.backup.$(date +%Y%m%d)
+
+   # 或使用Django命令导出
+   python manage.py dumpdata > backup_$(date +%Y%m%d).json
+   ```
+
+4. **监控清理日志**：
+   - 日志位置：`/tmp/cleanup_old_data.log`
+   - 系统日志：通过管理后台 "日志管理" 查看
+
+### 风险提示
+
+⚠️ **数据删除不可逆**！启用自动清理前请确保：
+- [ ] 已在测试环境验证清理逻辑
+- [ ] 已使用 `--dry-run` 预览清理效果
+- [ ] 已配置合理的清理天数
+- [ ] 已建立数据库备份机制（生产环境）
+- [ ] 用户已知晓数据保留策略
+
 ## 🧪 Testing
 
 ### Backend Tests

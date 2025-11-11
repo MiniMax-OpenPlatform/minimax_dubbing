@@ -66,6 +66,33 @@ class SystemConfig(models.Model):
         help_text="自动清理任务的间隔时间，范围：1-168小时"
     )
 
+    # 数据自动清理配置
+    enable_auto_cleanup_data = models.BooleanField(
+        default=False,
+        verbose_name="启用数据自动清理",
+        help_text="定期清理不活跃的项目和用户数据（谨慎开启）"
+    )
+
+    cleanup_projects_after_days = models.IntegerField(
+        default=1,
+        validators=[MinValueValidator(1), MaxValueValidator(365)],
+        verbose_name="项目清理天数",
+        help_text="删除N天未更新的项目及其所有关联数据，范围：1-365天"
+    )
+
+    cleanup_users_after_days = models.IntegerField(
+        default=7,
+        validators=[MinValueValidator(1), MaxValueValidator(365)],
+        verbose_name="用户清理天数",
+        help_text="删除N天未登录的普通用户及其所有数据（不删除超级管理员），范围：1-365天"
+    )
+
+    cleanup_execution_time = models.TimeField(
+        default='03:00:00',
+        verbose_name="清理执行时间",
+        help_text="每天执行数据清理的时间（建议凌晨时段）"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
 
