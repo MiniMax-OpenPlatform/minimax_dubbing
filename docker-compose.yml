@@ -20,8 +20,7 @@ services:
     # Volumes for persistent data
     volumes:
       - ./data/media:/app/media
-      - ./data/db:/app
-      - ./data/logs:/app/logs
+      - ./data/db.sqlite3:/app/db.sqlite3
       - model_cache:/root/.cache/torch
 
     # tmpfs for performance (uses 10% of system memory = 200GB)

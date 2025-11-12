@@ -351,6 +351,7 @@ def separate_vocals_sync(project_id: int):
     from django.core.files import File
     from services.audio_separator import DemucsSeparator
     from services.audio_separator.utils import extract_audio_from_video
+    from services.utils.memory_monitor import MemoryMonitor, log_memory_status
 
     try:
         # 获取项目
@@ -387,17 +388,23 @@ def separate_vocals_sync(project_id: int):
 
         # 3. 初始化Demucs分离器
         logger.info(f"[步骤3] 初始化Demucs分离器...")
+
+        # 记录内存状态
+        log_memory_status("[人声分离] 开始前 ")
+
         separator = DemucsSeparator(device='cpu', model='htdemucs_ft')
 
         if not separator.is_available():
             raise RuntimeError("Demucs未正确安装，请检查依赖")
 
-        # 4. 执行人声分离
+        # 4. 执行人声分离（使用内存监控）
         logger.info(f"[步骤4] 开始人声分离（这可能需要几分钟）...")
         output_dir = os.path.join(audio_dir, 'separated')
         os.makedirs(output_dir, exist_ok=True)
 
-        result = separator.separate(original_audio_path, output_dir)
+        # 使用内存监控上下文管理器
+        with MemoryMonitor(task_name="Demucs人声分离"):
+            result = separator.separate(original_audio_path, output_dir)
 
         logger.info(f"[步骤4] 人声分离完成")
         logger.info(f"  人声: {result['vocals']}")

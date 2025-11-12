@@ -17,19 +17,60 @@ logger = logging.getLogger(__name__)
 class DemucsSeparator(BaseSeparator):
     """使用Demucs模型的音频分离器"""
 
-    def __init__(self, device: str = 'cpu', model: str = 'htdemucs'):
+    def __init__(self, device: str = 'cpu', model: str = 'htdemucs', jobs: Optional[int] = None):
         """
         初始化Demucs分离器
 
         Args:
             device: 设备类型 'cpu' 或 'cuda'
             model: 模型名称，htdemucs为标准高质量模型
+            jobs: 并行任务数，None时自动检测
         """
         super().__init__(device)
         self.model = model
         self.shifts = 1  # CPU优化：减少shifts（默认10）
         self.segment = None  # 使用默认值
-        self.jobs = 4  # 多进程数量
+
+        # 自动检测最佳jobs值
+        if jobs is None:
+            self.jobs = self._auto_detect_jobs()
+        else:
+            self.jobs = jobs
+
+        logger.info(f"Demucs配置: model={self.model}, device={self.device}, jobs={self.jobs}")
+
+    def _auto_detect_jobs(self) -> int:
+        """
+        自动检测最佳jobs值
+
+        Returns:
+            推荐的jobs值
+        """
+        try:
+            import psutil
+
+            # 获取物理CPU核心数
+            cpu_count = psutil.cpu_count(logical=False) or 4
+
+            # 获取可用内存（GB）
+            mem_gb = psutil.virtual_memory().available / (1024**3)
+
+            # 根据内存限制jobs（每job约2GB，保留30%内存）
+            mem_limited_jobs = int(mem_gb * 0.7 / 2)
+
+            # 取较小值，并限制在[1, 16]范围（超过16收益递减）
+            optimal_jobs = max(1, min(cpu_count, mem_limited_jobs, 16))
+
+            logger.info(f"资源检测: CPU={cpu_count}核, 可用内存={mem_gb:.1f}GB, 推荐jobs={optimal_jobs}")
+
+            return optimal_jobs
+
+        except ImportError:
+            logger.warning("psutil未安装，使用默认jobs=4")
+            return 4
+        except Exception as e:
+            logger.warning(f"自动检测jobs失败: {e}，使用默认jobs=4")
+            return 4
 
     def is_available(self) -> bool:
         """检查Demucs是否可用"""
@@ -69,12 +110,14 @@ class DemucsSeparator(BaseSeparator):
                 '-n', self.model,
                 '--two-stems', 'vocals',  # 只分离人声和伴奏
                 '-d', self.device,
+                '-j', str(self.jobs),  # 多进程并行加速
                 '-o', output_dir,
                 audio_path
             ]
 
             # 执行分离
             logger.info(f"执行命令: {' '.join(command)}")
+            logger.info(f"使用 {self.jobs} 个并行进程进行人声分离（预计加速 {min(self.jobs, 8)}x）")
 
             process = subprocess.Popen(
                 command,

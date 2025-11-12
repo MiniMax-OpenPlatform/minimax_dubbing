@@ -41,6 +41,44 @@ class FaceDetector:
         self.facenet = InceptionResnetV1(pretrained='vggface2').eval().to(self.device)
         logger.info("模型加载完成")
 
+    def _auto_detect_batch_size(self) -> int:
+        """
+        自动检测最佳batch_size
+
+        Returns:
+            推荐的batch_size值
+        """
+        try:
+            import psutil
+
+            # 获取可用内存（GB）
+            available_mem_gb = psutil.virtual_memory().available / (1024**3)
+
+            # 保守策略：为系统和其他任务预留50%内存
+            safe_mem_gb = available_mem_gb * 0.5
+
+            # 每batch约5MB（160MB/32）
+            mem_per_batch_mb = 5
+            max_batch_size = int((safe_mem_gb * 1024) / mem_per_batch_mb)
+
+            # 限制在合理范围内（2的幂次，便于内存对齐）
+            candidates = [8, 16, 32, 64, 128, 256]
+            for size in reversed(candidates):
+                if size <= max_batch_size:
+                    logger.info(f"自适应batch_size: {size} (可用内存: {available_mem_gb:.1f}GB)")
+                    return size
+
+            # 最小值
+            logger.info(f"自适应batch_size: 8 (可用内存: {available_mem_gb:.1f}GB，使用最小值)")
+            return 8
+
+        except ImportError:
+            logger.warning("psutil未安装，使用默认batch_size=32")
+            return 32
+        except Exception as e:
+            logger.warning(f"自动检测batch_size失败: {e}，使用默认batch_size=32")
+            return 32
+
     def extract_frames_for_face_detection(
         self,
         video_path: str,
@@ -229,19 +267,23 @@ class FaceDetector:
 
         return all_faces, filter_stats
 
-    def extract_face_embeddings(self, faces: List[Dict], batch_size: int = 32) -> Tuple[np.ndarray, List[Dict]]:
+    def extract_face_embeddings(self, faces: List[Dict], batch_size: Optional[int] = None) -> Tuple[np.ndarray, List[Dict]]:
         """
-        提取人脸特征向量（批处理版本）
+        提取人脸特征向量（批处理版本，自适应batch_size）
 
         Args:
             faces: 人脸数据列表
-            batch_size: 批量大小，默认32（CPU优化）
+            batch_size: 批量大小，None时自动检测
 
         Returns:
             (embeddings, faces_with_embeddings)
             embeddings: (N, 512) numpy数组
             faces_with_embeddings: 带有embedding的人脸列表
         """
+        # 自动检测batch_size
+        if batch_size is None:
+            batch_size = self._auto_detect_batch_size()
+
         logger.info(f"开始提取 {len(faces)} 张人脸的特征向量（批处理模式，batch_size={batch_size}）...")
 
         embeddings_list = []
