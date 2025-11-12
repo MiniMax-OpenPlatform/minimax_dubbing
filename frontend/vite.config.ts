@@ -5,6 +5,7 @@ import { resolve } from 'path'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue()],
+  base: '/dubbing/', // 设置基础路径
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src')
@@ -12,7 +13,7 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0', // 允许外部访问
-    port: 5173, 
+    port: 5173,
     allowedHosts: ['solutions.minimaxi.com']
   }
 })
