@@ -11,11 +11,16 @@ const getApiBaseUrl = () => {
   // 自动检测当前域名和端口
   const protocol = window.location.protocol
   const hostname = window.location.hostname
+  const currentPort = window.location.port
 
-  // 开发环境默认后端端口5172，生产环境使用相同域名
-  const port = hostname === 'localhost' || hostname === '127.0.0.1' ? ':5172' : ':5172'
-
-  return `${protocol}//${hostname}${port}/api`
+  // 开发环境：直连后端 5172 端口
+  // 生产环境：使用当前端口（由 nginx 代理到后端）
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return `${protocol}//${hostname}:5172/api`
+  } else {
+    // 生产环境使用相对路径，让 nginx 代理
+    return `/api`
+  }
 }
 
 // 创建axios实例
