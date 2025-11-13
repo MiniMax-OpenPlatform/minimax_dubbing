@@ -33,6 +33,11 @@ services:
       - DJANGO_SETTINGS_MODULE=backend.settings
       - DEBUG=False
       - ALLOWED_HOSTS=*
+      # Network proxy configuration for runtime
+      - http_proxy=http://pac-internal.xaminim.com:3129
+      - https_proxy=http://pac-internal.xaminim.com:3129
+      - ftp_proxy=http://pac-internal.xaminim.com:3129
+      - no_proxy=localhost,127.0.0.1,*.xaminim.com,10.0.0.0/8
 
     # Health check
     healthcheck:
