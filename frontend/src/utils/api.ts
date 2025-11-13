@@ -14,12 +14,13 @@ const getApiBaseUrl = () => {
   const currentPort = window.location.port
 
   // 开发环境：直连后端 5172 端口
-  // 生产环境：使用当前端口（由 nginx 代理到后端）
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return `${protocol}//${hostname}:5172/api`
   } else {
-    // 生产环境使用相对路径，让 nginx 代理
-    return `/api`
+    // 生产环境：使用当前端口，由 nginx 代理到后端
+    // 必须包含端口号，否则相对路径 /api 会丢失端口
+    const port = currentPort ? `:${currentPort}` : ''
+    return `${protocol}//${hostname}${port}/api`
   }
 }
 
