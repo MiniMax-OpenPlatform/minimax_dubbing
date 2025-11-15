@@ -22,3 +22,4 @@ facenet-pytorch>=2.5.0
 opencv-python>=4.10.0
 scikit-learn>=1.5.0
 # numpy已作为其他包的依赖自动安装
+psutil>=5.9.0
