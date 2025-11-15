@@ -39,6 +39,52 @@ class DemucsSeparator(BaseSeparator):
 
         logger.info(f"Demucs配置: model={self.model}, device={self.device}, jobs={self.jobs}")
 
+    def _get_container_cpu_limit(self) -> int:
+        """
+        获取容器 CPU 限制（优先读取 cgroup，否则使用 psutil）
+
+        Returns:
+            容器可用的 CPU 核心数
+        """
+        # 尝试 cgroup v2 (新版 Docker)
+        try:
+            with open('/sys/fs/cgroup/cpu.max') as f:
+                content = f.read().strip()
+                quota, period = content.split()
+                quota = int(quota)
+                period = int(period)
+
+            if quota > 0 and period > 0:
+                cpu_limit = quota // period
+                logger.info(f"检测到容器 CPU 限制: {cpu_limit} 核 (cgroup v2)")
+                return cpu_limit
+        except (FileNotFoundError, ValueError, PermissionError) as e:
+            logger.debug(f"无法读取 cgroup v2 CPU 限制: {e}")
+
+        # 尝试 cgroup v1 (旧版 Docker)
+        try:
+            with open('/sys/fs/cgroup/cpu/cpu.cfs_quota_us') as f:
+                quota = int(f.read().strip())
+            with open('/sys/fs/cgroup/cpu/cpu.cfs_period_us') as f:
+                period = int(f.read().strip())
+
+            if quota > 0 and period > 0:
+                cpu_limit = quota // period
+                logger.info(f"检测到容器 CPU 限制: {cpu_limit} 核 (cgroup v1)")
+                return cpu_limit
+        except (FileNotFoundError, ValueError, PermissionError) as e:
+            logger.debug(f"无法读取 cgroup v1 CPU 限制: {e}")
+
+        # 如果无法读取 cgroup，使用 psutil（物理核心数）
+        try:
+            import psutil
+            cpu_count = psutil.cpu_count(logical=False) or 4
+            logger.info(f"使用物理 CPU 核心数: {cpu_count} 核 (psutil)")
+            return cpu_count
+        except Exception as e:
+            logger.warning(f"CPU 检测失败: {e}，使用默认值 4")
+            return 4
+
     def _auto_detect_jobs(self) -> int:
         """
         自动检测最佳jobs值
@@ -49,8 +95,8 @@ class DemucsSeparator(BaseSeparator):
         try:
             import psutil
 
-            # 获取物理CPU核心数
-            cpu_count = psutil.cpu_count(logical=False) or 4
+            # 获取容器实际可用的 CPU 核心数（而非宿主机 CPU）
+            cpu_count = self._get_container_cpu_limit()
 
             # 获取可用内存（GB）
             mem_gb = psutil.virtual_memory().available / (1024**3)
@@ -58,7 +104,7 @@ class DemucsSeparator(BaseSeparator):
             # 根据内存限制jobs（每job约2GB，保留30%内存）
             mem_limited_jobs = int(mem_gb * 0.7 / 2)
 
-            # 取较小值，并限制在[1, 16]范围（超过16收益递减）
+            # 取较小值，并限制在合理范围（超过16收益递减）
             optimal_jobs = max(1, min(cpu_count, mem_limited_jobs, 16))
 
             logger.info(f"资源检测: CPU={cpu_count}核, 可用内存={mem_gb:.1f}GB, 推荐jobs={optimal_jobs}")
@@ -119,6 +165,19 @@ class DemucsSeparator(BaseSeparator):
             logger.info(f"执行命令: {' '.join(command)}")
             logger.info(f"使用 {self.jobs} 个并行进程进行人声分离（预计加速 {min(self.jobs, 8)}x）")
 
+            # 设置环境变量限制每个进程的线程数，避免线程爆炸
+            # 计算每个进程应使用的线程数 = CPU核心数 / jobs数
+            cpu_count = self._get_container_cpu_limit()
+            threads_per_process = max(1, cpu_count // self.jobs)
+
+            env = os.environ.copy()
+            env['OMP_NUM_THREADS'] = str(threads_per_process)
+            env['MKL_NUM_THREADS'] = str(threads_per_process)
+            env['OPENBLAS_NUM_THREADS'] = str(threads_per_process)
+            env['NUMEXPR_NUM_THREADS'] = str(threads_per_process)
+
+            logger.info(f"线程限制: 每个进程 {threads_per_process} 线程 (CPU={cpu_count}, jobs={self.jobs})")
+
             # 使用非阻塞方式读取输出
             import threading
             import queue
@@ -134,6 +193,7 @@ class DemucsSeparator(BaseSeparator):
 
             process = subprocess.Popen(
                 command,
+                env=env,  # 传递环境变量
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 universal_newlines=True,
