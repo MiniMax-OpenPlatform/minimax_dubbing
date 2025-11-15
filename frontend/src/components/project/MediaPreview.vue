@@ -84,27 +84,7 @@ import { ElMessage } from 'element-plus'
 import VideoPlayer from '../VideoPlayer.vue'
 import BasicAudioPlayer from '../audio/BasicAudioPlayer.vue'
 import AudioWaveform from '../audio/AudioWaveform.vue'
-
-// 动态获取后端基础URL用于媒体文件
-const getBackendBaseUrl = () => {
-  const protocol = window.location.protocol
-  const hostname = window.location.hostname
-  const currentPort = window.location.port
-
-  // 本地开发环境：直连后端 5172 端口
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return `${protocol}//${hostname}:5172`
-  }
-
-  // 生产环境：使用 /dubbing 前缀
-  if (currentPort && currentPort !== '80' && currentPort !== '443') {
-    return `${protocol}//${hostname}:${currentPort}/dubbing`
-  } else {
-    return `/dubbing`
-  }
-}
-
-const BACKEND_BASE_URL = getBackendBaseUrl()
+import { getMediaUrl } from '@/utils/api'
 
 interface Segment {
   id: number
@@ -189,7 +169,7 @@ const mediaOptions = computed<MediaOption[]>(() => {
     {
       key: 'translated_audio',
       label: '翻译音频',
-      url: props.concatenatedAudioUrl,
+      url: props.concatenatedAudioUrl ? getMediaUrl(props.concatenatedAudioUrl) : null,
       available: !!props.concatenatedAudioUrl,
       priority: 1,
       type: 'audio'
@@ -197,7 +177,7 @@ const mediaOptions = computed<MediaOption[]>(() => {
     {
       key: 'original_video',
       label: '原始视频',
-      url: props.project?.video_url ? `${BACKEND_BASE_URL}${props.project.video_url}` : null,
+      url: props.project?.video_url ? getMediaUrl(props.project.video_url) : null,
       available: !!props.project?.video_url,
       priority: 2,
       type: 'video'
@@ -205,7 +185,7 @@ const mediaOptions = computed<MediaOption[]>(() => {
     {
       key: 'original_audio',
       label: '原始音频（人声）',
-      url: props.project?.audio_url ? `${BACKEND_BASE_URL}${props.project.audio_url}` : null,
+      url: props.project?.audio_url ? getMediaUrl(props.project.audio_url) : null,
       available: !!props.project?.audio_url,
       priority: 3,
       type: 'audio'
@@ -213,7 +193,7 @@ const mediaOptions = computed<MediaOption[]>(() => {
     {
       key: 'translated_video',
       label: '翻译视频',
-      url: props.project?.final_video_url ? `${BACKEND_BASE_URL}${props.project.final_video_url}` : null,
+      url: props.project?.final_video_url ? getMediaUrl(props.project.final_video_url) : null,
       available: !!props.project?.final_video_url,
       priority: 4,
       type: 'video'
@@ -221,7 +201,7 @@ const mediaOptions = computed<MediaOption[]>(() => {
     {
       key: 'background_audio',
       label: '背景音',
-      url: props.project?.background_audio_url ? `${BACKEND_BASE_URL}${props.project.background_audio_url}` : null,
+      url: props.project?.background_audio_url ? getMediaUrl(props.project.background_audio_url) : null,
       available: !!props.project?.background_audio_url,
       priority: 5,
       type: 'audio'
@@ -229,7 +209,7 @@ const mediaOptions = computed<MediaOption[]>(() => {
     {
       key: 'mixed_audio',
       label: '混合音频',
-      url: props.project?.mixed_audio_url ? `${BACKEND_BASE_URL}${props.project.mixed_audio_url}` : null,
+      url: props.project?.mixed_audio_url ? getMediaUrl(props.project.mixed_audio_url) : null,
       available: !!props.project?.mixed_audio_url,
       priority: 6,
       type: 'audio'
