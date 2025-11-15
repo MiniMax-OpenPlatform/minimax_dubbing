@@ -79,103 +79,98 @@ No deployment needed - try all features online now!
 - **Database**: SQLite (development) / PostgreSQL (production)
 - **AI Integration**: MiniMax API for translation and TTS
 
-### Project Structure
-```
-minimax_dubbing/
-├── backend/                    # Django configuration and core settings
-├── projects/                   # Project management app
-├── segments/                   # Segment management app
-├── authentication/             # Authentication system
-├── system_monitor/             # Task monitoring and system config
-├── services/                   # Business logic and AI integrations
-│   ├── algorithms/             # Timestamp alignment algorithms
-│   ├── business/               # Business logic services
-│   ├── clients/                # External API clients
-│   └── parsers/                # File format parsers
-├── frontend/                   # Vue 3 application
-│   ├── src/
-│   │   ├── components/         # Vue components
-│   │   ├── composables/        # Vue 3 composition functions
-│   │   ├── utils/              # Utility functions
-│   │   └── stores/             # Pinia state management
-└── api_example/                # API usage examples
-```
-
 ## 🚀 Quick Start
 
-### ⚡ Super Quick Setup (2 minutes)
+### 🐳 Docker Deployment (One-Click Setup)
+
+Use Docker to deploy the entire system with one command, no manual dependency installation required.
+
+#### Method 1: Docker Compose (Recommended)
 
 ```bash
 # 1. Clone repository
 git clone https://github.com/MiniMax-OpenPlatform/minimax_dubbing.git
 cd minimax_dubbing
 
-# 2. Install dependencies
-pip install -r requirements.txt
-cd frontend && npm install && cd ..
+# 2. Create data directories
+mkdir -p data/media data/db data/logs
 
-# 3. Initialize database and admin account
-python3 manage.py migrate
-python3 manage.py init_system
+# 3. Build and start containers
+docker-compose up -d --build
+
+# 4. View logs
+docker-compose logs -f
 ```
 
-### 🚀 Start Services
-
-#### Method 1: Two Terminal Windows (Recommended)
-
-**Terminal 1 - Start Backend:**
-```bash
-cd minimax_dubbing
-python3 manage.py runserver 0.0.0.0:5172
-```
-
-**Terminal 2 - Start Frontend:**
-```bash
-cd minimax_dubbing/frontend
-npm run dev
-```
-
-#### Method 2: Single Terminal (Background Mode)
+#### Method 2: Docker Command
 
 ```bash
-cd minimax_dubbing
+# 1. Build image
+docker build -t minimax_dubbing:latest .
 
-# 1. Start backend in background
-nohup python3 manage.py runserver 0.0.0.0:5172 > backend.log 2>&1 &
+# 2. Run container
+docker run -d \
+  --name minimax_dubbing \
+  -p 5173:5173 \
+  -v $(pwd)/data/media:/app/media \
+  -v $(pwd)/data/db:/app \
+  -v $(pwd)/data/logs:/app/logs \
+  --restart unless-stopped \
+  minimax_dubbing:latest
 
-# 2. Start frontend
-cd frontend && npm run dev
+# 3. View container logs
+docker logs -f minimax_dubbing
 ```
 
-**Access Points 🎉**
-- **Frontend**: http://localhost:5173/ (local) or http://YOUR_IP:5173/ (external)
-- **Backend API**: http://localhost:5172/api/ (local) or http://YOUR_IP:5172/api/ (external)
+#### Access System
+
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:5172/api/
 - **Admin Panel**: http://localhost:5172/admin/
+- **Default Admin**: Username `admin`, Password `admin123`
 
-> ⚠️ **Important**: Both services must run simultaneously! Frontend on port 5173, backend on port 5172.
+> 💡 **Tip**: Change the admin password after first login
 
-### 📋 Prerequisites
-- Python 3.10+
-- Node.js 16+
-- FFmpeg
+#### Container Management
+
+```bash
+# Stop container
+docker-compose down
+# or
+docker stop minimax_dubbing
+
+# Restart container
+docker-compose restart
+# or
+docker restart minimax_dubbing
+
+# Check container status
+docker-compose ps
+# or
+docker ps
+```
 
 ## 📖 Usage
 
 ### Basic Workflow
 
 1. **Create Project**: Upload SRT file or create empty project
-2. **Configure Voices**: Set up speaker-to-voice mappings in project settings
-3. **Auto Assign Speakers**: Use AI to automatically detect and assign speakers
-4. **Batch Translate**: Translate all segments using AI
-5. **Generate TTS**: Create audio for translated text
-6. **Preview & Export**: Preview concatenated audio and export results
+2. **Vocal Separation**: Separate vocals from background music
+3. **Speaker Recognition**: AI automatically detects and assigns speakers
+4. **Configure Voices**: Set up speaker-to-voice mappings in project settings
+5. **Batch Translate**: Translate all segments using AI
+6. **Generate TTS**: Create audio for translated text with timestamp alignment
+7. **Concatenate Audio**: Merge segment audio into complete track
+8. **Synthesize Video**: Generate final video with translated audio
 
 ### Key Features Guide
 
-#### Auto Speaker Assignment
-- Analyzes dialogue content using LLM
-- Automatically assigns speakers based on conversation context
-- Requires at least 2 speakers configured in project settings
+#### Auto Speaker Recognition
+- **Face Detection & Clustering**: Uses FaceNet and DBSCAN to identify unique faces
+- **VLM Speaker Profiling**: Qwen-VL analyzes faces and generates speaker profiles
+- **LLM Subtitle Assignment**: Large language model assigns subtitles to speakers
+- **Auto Voice Mapping**: Automatically creates voice mappings based on gender/role
+- **Result Review**: View speaker profiles with images and detailed analysis
 
 #### Batch Operations
 - **Translation**: Bulk translate all segments with progress tracking
@@ -189,16 +184,57 @@ cd frontend && npm run dev
 
 ## ⚙️ Configuration
 
-### Environment Variables
-Create a `.env` file in the project root:
-```env
-DEBUG=True
-SECRET_KEY=your-secret-key-here
-ALLOWED_HOSTS=localhost,127.0.0.1
-```
+### API Key Setup
 
-### MiniMax API Setup
-Register your account at [MiniMax Open Platform](https://platform.minimaxi.com/) to get your API credentials.
+After logging in, configure API keys in the "User Settings" page:
+
+- **MiniMax API**: For translation and TTS
+- **DashScope API**: For Qwen-VL and Qwen LLM (speaker recognition)
+- **Alibaba Cloud NLS**: For ASR speech recognition (optional)
+
+> 💡 Register at [MiniMax Open Platform](https://platform.minimaxi.com/) to get API credentials
+
+### Admin Configuration
+
+Access http://localhost:5172/admin/ for system configuration:
+
+- **Data Cleanup Policy**: Configure automatic cleanup of inactive projects/users (disabled by default)
+- **Concurrency Parameters**: Adjust API concurrent request limits
+- **Task Monitoring**: View background task execution status
+
+## 🔧 FAQ
+
+### Q: How to access the admin panel?
+
+**A**: Visit http://localhost:5172/admin/ and login with default credentials `admin` / `admin123`. Change password after first login.
+
+### Q: Batch TTS fails?
+
+**A**: Ensure:
+- All segments have translations
+- Voice mapping is configured in project settings
+- MiniMax API key is configured in user settings
+
+### Q: ASR recognition is inaccurate?
+
+**A**: Suggestions:
+- Ensure good vocal separation quality
+- Check project source language setting is correct
+- Manually edit recognition results
+
+### Q: How to adjust TTS speech rate?
+
+**A**: System automatically adjusts speech rate based on original subtitle duration. You can set max speed limit in project config (default 1.3x).
+
+### Q: How to adjust volume during video synthesis?
+
+**A**: When clicking "Synthesize Video", you can set:
+- Translated audio volume: default 1.0 (100%)
+- Background music volume: default 0.3 (30%)
+
+### Q: Will data be automatically cleaned up?
+
+**A**: System supports automatic cleanup, but it's **disabled by default**. You can enable and configure cleanup policy in admin "System Config".
 
 ## 🤝 Contributing
 
