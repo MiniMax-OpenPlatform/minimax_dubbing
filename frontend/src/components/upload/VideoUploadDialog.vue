@@ -239,8 +239,14 @@ const startUpload = async (file: File) => {
     // 构建完整的上传URL
     const uploadUrl = `/projects/${props.projectId}/upload_video/`
 
-    // 从api实例获取基础配置
-    const baseURL = api.defaults.baseURL || 'http://localhost:5172/api'
+    // 从api实例获取基础配置，回退到本地开发默认值
+    const baseURL = api.defaults.baseURL || (() => {
+      const protocol = window.location.protocol
+      const hostname = window.location.hostname
+      return hostname === 'localhost' || hostname === '127.0.0.1'
+        ? `${protocol}//${hostname}:5172/api`
+        : `/dubbing/api`
+    })()
     const fullUrl = baseURL + uploadUrl
 
     // 设置请求

@@ -707,10 +707,23 @@ const playLocalAudio = async (filePath: string, recordId?: number, audioType?: s
   // 如果是完整URL，直接播放
   if (filePath.startsWith('http')) {
     audioUrl = filePath
+  } else if (filePath.startsWith('/dubbing/media/')) {
+    // 如果已经是 /dubbing/media/ 格式，直接使用
+    audioUrl = filePath
   } else {
     // 如果是相对路径，构建完整URL
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://10.11.17.19:5172'
-    audioUrl = `${baseUrl}/media/${filePath}`
+    const protocol = window.location.protocol
+    const hostname = window.location.hostname
+
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      // 本地开发环境
+      const cleanPath = filePath.startsWith('/') ? filePath.slice(1) : filePath
+      audioUrl = `${protocol}//${hostname}:5172/${cleanPath}`
+    } else {
+      // 生产环境
+      const cleanPath = filePath.startsWith('/media/') ? filePath.replace('/media/', '') : filePath
+      audioUrl = `/dubbing/media/${cleanPath}`
+    }
   }
 
   // 生成唯一的音频ID

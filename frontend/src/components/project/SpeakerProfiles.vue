@@ -185,10 +185,38 @@ const loadLatestTask = async () => {
 
 // 获取media文件的完整URL（指向后端服务器）
 const getMediaUrl = (path: string) => {
+  if (!path) return ''
+
+  // 如果已经是完整URL，直接返回
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path
+  }
+
   const protocol = window.location.protocol
   const hostname = window.location.hostname
-  const port = hostname === 'localhost' || hostname === '127.0.0.1' ? ':5172' : ':5172'
-  return `${protocol}//${hostname}${port}/media/${path}`
+
+  // 本地开发环境：直连后端 5172 端口
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    const cleanPath = path.startsWith('/') ? path.slice(1) : path
+    return `${protocol}//${hostname}:5172/${cleanPath}`
+  }
+
+  // 生产环境：媒体文件通过 /dubbing/media/ 访问
+  if (path.startsWith('/dubbing/media/')) {
+    return path
+  }
+
+  // 如果是旧格式 /media/xxx，转换为新格式
+  if (path.startsWith('/media/')) {
+    return path.replace('/media/', '/dubbing/media/')
+  }
+
+  // 其他情况，添加 /dubbing/media/ 前缀
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path
+  if (cleanPath.startsWith('media/')) {
+    return `/dubbing/${cleanPath}`
+  }
+  return `/dubbing/media/${cleanPath}`
 }
 
 // 组件挂载时加载结果

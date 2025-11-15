@@ -20,8 +20,19 @@ export const SEGMENT_STATUS_MAP = {
 const getApiBaseUrl = () => {
   const protocol = window.location.protocol
   const hostname = window.location.hostname
-  const port = hostname === 'localhost' || hostname === '127.0.0.1' ? ':5172' : ':5172'
-  return `${protocol}//${hostname}${port}/api`
+  const currentPort = window.location.port
+
+  // 本地开发环境：直连后端 5172 端口
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return `${protocol}//${hostname}:5172/api`
+  }
+
+  // 生产环境：API 通过 /dubbing/api/ 访问
+  if (currentPort && currentPort !== '80' && currentPort !== '443') {
+    return `${protocol}//${hostname}:${currentPort}/dubbing/api`
+  } else {
+    return `/dubbing/api`
+  }
 }
 
 export const API_BASE_URL = getApiBaseUrl()

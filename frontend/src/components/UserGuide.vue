@@ -508,9 +508,18 @@ import { VideoCamera, Tools, Monitor, Microphone, QuestionFilled, Setting, Point
 
 // 管理后台URL
 const adminUrl = computed(() => {
-  // 使用当前页面的协议和主机，端口改为5172
-  const { protocol, hostname } = window.location
-  return `${protocol}//${hostname}:5172/admin/`
+  // 自动适配本地开发和生产环境
+  const protocol = window.location.protocol
+  const hostname = window.location.hostname
+  const currentPort = window.location.port
+
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return `${protocol}//${hostname}:5172/admin/`
+  } else if (currentPort && currentPort !== '80' && currentPort !== '443') {
+    return `${protocol}//${hostname}:${currentPort}/dubbing/admin/`
+  } else {
+    return `/dubbing/admin/`
+  }
 })
 </script>
 

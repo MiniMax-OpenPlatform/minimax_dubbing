@@ -56,9 +56,20 @@ const navigateTo = (view: string) => {
 
 const openAdminPage = () => {
   // 打开Django后台管理页面
+  // 使用统一的URL工具函数，自动适配本地开发和生产环境
   const protocol = window.location.protocol
   const hostname = window.location.hostname
-  const adminUrl = `${protocol}//${hostname}:5172/admin/`
+  const currentPort = window.location.port
+
+  let adminUrl
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    adminUrl = `${protocol}//${hostname}:5172/admin/`
+  } else if (currentPort && currentPort !== '80' && currentPort !== '443') {
+    adminUrl = `${protocol}//${hostname}:${currentPort}/dubbing/admin/`
+  } else {
+    adminUrl = `/dubbing/admin/`
+  }
+
   window.open(adminUrl, '_blank')
   logger.addLog('info', '打开Django后台管理页面', 'Navigation')
 }

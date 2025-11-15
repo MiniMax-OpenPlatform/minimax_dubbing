@@ -89,8 +89,19 @@ import AudioWaveform from '../audio/AudioWaveform.vue'
 const getBackendBaseUrl = () => {
   const protocol = window.location.protocol
   const hostname = window.location.hostname
-  const port = hostname === 'localhost' || hostname === '127.0.0.1' ? ':5172' : ':5172'
-  return `${protocol}//${hostname}${port}`
+  const currentPort = window.location.port
+
+  // 本地开发环境：直连后端 5172 端口
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return `${protocol}//${hostname}:5172`
+  }
+
+  // 生产环境：使用 /dubbing 前缀
+  if (currentPort && currentPort !== '80' && currentPort !== '443') {
+    return `${protocol}//${hostname}:${currentPort}/dubbing`
+  } else {
+    return `/dubbing`
+  }
 }
 
 const BACKEND_BASE_URL = getBackendBaseUrl()

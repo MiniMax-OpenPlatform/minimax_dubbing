@@ -112,5 +112,81 @@ api.interceptors.response.use(
   }
 )
 
+// 获取后端基础URL（用于访问 /admin、/media 等非API路径）
+export const getBackendBaseUrl = () => {
+  const protocol = window.location.protocol
+  const hostname = window.location.hostname
+  const currentPort = window.location.port
+
+  // 本地开发环境：直连后端 5172 端口
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return `${protocol}//${hostname}:5172`
+  }
+
+  // 生产环境：使用 /dubbing 前缀
+  if (currentPort && currentPort !== '80' && currentPort !== '443') {
+    // 有自定义端口，直接访问容器
+    return `${protocol}//${hostname}:${currentPort}/dubbing`
+  } else {
+    // 标准端口，通过外部反向代理
+    return `/dubbing`
+  }
+}
+
+// 获取媒体文件完整URL
+export const getMediaUrl = (path: string) => {
+  if (!path) return ''
+
+  // 如果已经是完整URL，直接返回
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path
+  }
+
+  const protocol = window.location.protocol
+  const hostname = window.location.hostname
+
+  // 本地开发环境：直连后端 5172 端口
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    // path 可能是 /media/xxx 或 media/xxx
+    const cleanPath = path.startsWith('/') ? path.slice(1) : path
+    return `${protocol}//${hostname}:5172/${cleanPath}`
+  }
+
+  // 生产环境：媒体文件通过 /dubbing/media/ 访问
+  // Django 返回的 path 已经是 /dubbing/media/xxx 格式（因为 MEDIA_URL='/dubbing/media/'）
+  // 所以直接返回即可
+  if (path.startsWith('/dubbing/media/')) {
+    return path
+  }
+
+  // 如果是旧格式 /media/xxx，转换为新格式
+  if (path.startsWith('/media/')) {
+    return path.replace('/media/', '/dubbing/media/')
+  }
+
+  // 其他情况，添加 /dubbing/media/ 前缀
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path
+  return `/dubbing/media/${cleanPath}`
+}
+
+// 获取管理后台URL
+export const getAdminUrl = () => {
+  const protocol = window.location.protocol
+  const hostname = window.location.hostname
+  const currentPort = window.location.port
+
+  // 本地开发环境：直连后端 5172 端口
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return `${protocol}//${hostname}:5172/admin/`
+  }
+
+  // 生产环境：通过 /dubbing/admin/ 访问
+  if (currentPort && currentPort !== '80' && currentPort !== '443') {
+    return `${protocol}//${hostname}:${currentPort}/dubbing/admin/`
+  } else {
+    return `/dubbing/admin/`
+  }
+}
+
 export { api }
 export default api
