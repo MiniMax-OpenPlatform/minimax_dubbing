@@ -119,23 +119,65 @@ class DemucsSeparator(BaseSeparator):
             logger.info(f"执行命令: {' '.join(command)}")
             logger.info(f"使用 {self.jobs} 个并行进程进行人声分离（预计加速 {min(self.jobs, 8)}x）")
 
+            # 使用非阻塞方式读取输出
+            import threading
+            import queue
+
+            def read_output(pipe, output_queue, prefix):
+                """在单独线程中读取输出"""
+                try:
+                    for line in pipe:
+                        if line.strip():
+                            output_queue.put((prefix, line.strip()))
+                finally:
+                    pipe.close()
+
             process = subprocess.Popen(
                 command,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                universal_newlines=True
+                universal_newlines=True,
+                bufsize=1  # 行缓冲
             )
 
-            # 实时输出日志
-            for line in process.stderr:
-                if line.strip():
-                    logger.info(f"Demucs: {line.strip()}")
+            # 创建输出队列和读取线程
+            output_queue = queue.Queue()
+            stderr_thread = threading.Thread(
+                target=read_output,
+                args=(process.stderr, output_queue, "Demucs")
+            )
+            stdout_thread = threading.Thread(
+                target=read_output,
+                args=(process.stdout, output_queue, "Demucs[OUT]")
+            )
 
-            process.wait()
+            stderr_thread.daemon = True
+            stdout_thread.daemon = True
+            stderr_thread.start()
+            stdout_thread.start()
+
+            # 实时输出日志并等待进程结束
+            while process.poll() is None:
+                try:
+                    prefix, line = output_queue.get(timeout=0.1)
+                    logger.info(f"{prefix}: {line}")
+                except queue.Empty:
+                    pass
+
+            # 输出剩余的日志
+            while not output_queue.empty():
+                try:
+                    prefix, line = output_queue.get_nowait()
+                    logger.info(f"{prefix}: {line}")
+                except queue.Empty:
+                    break
+
+            # 等待读取线程结束
+            stderr_thread.join(timeout=1)
+            stdout_thread.join(timeout=1)
 
             if process.returncode != 0:
-                error_msg = process.stderr.read() if process.stderr else "未知错误"
-                raise RuntimeError(f"Demucs分离失败: {error_msg}")
+                raise RuntimeError(f"Demucs分离失败，返回码: {process.returncode}")
 
             # 查找生成的文件
             # Demucs输出结构: output_dir/{model}/{audio_filename}/vocals.wav 和 no_vocals.wav
