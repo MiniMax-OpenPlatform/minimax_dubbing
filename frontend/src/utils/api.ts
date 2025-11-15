@@ -25,14 +25,15 @@ const getApiBaseUrl = () => {
   }
 
   // 生产环境策略：
-  // 如果访问地址有非标准端口（如 :5173），说明直接访问容器，使用容器内 nginx 代理
-  // 如果是标准端口（无端口号，即 80/443），说明通过外部反向代理，直接访问后端 5172
+  // API 路径统一使用 /dubbing/api，这样外部反向代理只需要配置 /dubbing/ 一个路径
+  // 容器内 nginx 会将 /dubbing/api/ 重写为 /api/ 后代理到后端
   if (currentPort && currentPort !== '80' && currentPort !== '443') {
-    // 有自定义端口（如 5173），通过当前端口访问，由容器内 nginx 代理到 5172
-    return `${protocol}//${hostname}:${currentPort}/api`
+    // 有自定义端口（如 :5173），直接访问容器
+    return `${protocol}//${hostname}:${currentPort}/dubbing/api`
   } else {
-    // 无端口或标准端口，直接访问后端 5172 端口（适用于外部反向代理未配置 /api 的场景）
-    return `${protocol}//${hostname}:5172/api`
+    // 标准端口（80/443），通过外部反向代理
+    // 外部反向代理只需配置: location /dubbing/ { proxy_pass http://container:5173/dubbing/; }
+    return `/dubbing/api`
   }
 }
 
