@@ -11,8 +11,8 @@
           <div style="font-size: 18px; font-weight: bold;">⚠️ 重要提醒</div>
         </template>
         <div class="notice-content">
-          <p><strong>1. 当前为测试demo</strong>，不提供高并发访问，可能会排队或停服维护。商业使用建议自行部署：<el-link href="https://github.com/MiniMax-OpenPlatform/minimax_dubbing" target="_blank" type="primary">https://github.com/MiniMax-OpenPlatform/minimax_dubbing</el-link></p>
-          <p><strong>2. 建议上传2分钟以内视频</strong>测试验证</p>
+          <p><strong>1. 当前为测试demo，不提供高并发访问，可能会排队或停服维护。</strong>商业使用建议自行部署：<el-link href="https://github.com/MiniMax-OpenPlatform/minimax_dubbing" target="_blank" type="primary">https://github.com/MiniMax-OpenPlatform/minimax_dubbing</el-link></p>
+          <p><strong>2. 建议上传&lt;2分钟&amp;&lt;100M的视频</strong>测试验证</p>
           <p><strong>3. ASR和自动分配说话人依赖阿里api</strong>，请在"账户设置"中配置阿里云api_key</p>
           <p><strong>4. 当前自动分配说话人功能使用了人脸识别与聚类，VLM+LLM等模型</strong>，准确度仍在优化中</p>
           <p><strong>5. 批量TTS采用了翻译优化+TTS语速调节相结合的办法做时间戳对齐</strong>，可以在项目配置里调整speed阈值</p>
@@ -20,9 +20,8 @@
           <p style="color: #e6a23c;"><strong>🗑️ 7. 数据自动清理策略</strong>：为优化存储空间，系统支持自动清理不活跃数据（默认关闭）：</p>
           <ul style="margin-left: 20px; color: #e6a23c;">
             <li><strong>过期项目</strong>：1天未更新的项目及其所有数据（视频、音频、字幕等）将被删除</li>
-            <li><strong>不活跃用户</strong>：7天未登录的普通用户及其所有数据将被删除（超级管理员不受影响）</li>
+            <li><strong>不活跃用户</strong>：7天未登录的用户及其所有数据将被删除</li>
             <li><strong>数据不可恢复</strong>：请及时导出重要项目的翻译结果和字幕文件</li>
-            <li><strong>管理后台配置</strong>：访问 <el-link :href="adminUrl" target="_blank" type="warning">管理后台</el-link> 查看和调整清理策略</li>
           </ul>
         </div>
       </el-alert>
