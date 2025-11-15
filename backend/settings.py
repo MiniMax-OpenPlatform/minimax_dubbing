@@ -160,7 +160,10 @@ MINIMAX_TTS_BASE_URL = os.getenv('MINIMAX_TTS_BASE_URL', 'https://api.minimax.ch
 MINIMAX_API_URL = os.getenv('MINIMAX_API_URL', 'https://api.minimaxi.com/v1/text/chatcompletion_v2')
 
 # 文件上传配置
-MEDIA_URL = '/media/'
+# Media files configuration
+# Use /dubbing/media/ for production reverse proxy compatibility
+# Container nginx handles both /media/ (direct access) and /dubbing/media/ (via proxy)
+MEDIA_URL = '/dubbing/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # 静态文件配置
