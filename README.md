@@ -6,6 +6,12 @@
 
 本方案试图用AI完成说话人自动识别，时间戳自动对齐，自动翻译优化等，提升视频翻译的效率。
 
+## 🌐 在线体验
+
+**立即体验:** [https://solution.minimaxi.com/dubbing/](https://solution.minimaxi.com/dubbing/)
+
+无需部署，在线试用完整功能！
+
 ![Python](https://img.shields.io/badge/Python-3.10.12-blue)
 ![Vue](https://img.shields.io/badge/Vue-3.0+-green)
 ![Django](https://img.shields.io/badge/Django-5.2+-orange)

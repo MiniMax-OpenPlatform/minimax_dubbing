@@ -6,6 +6,12 @@ English | [简体中文](./README.md)
 
 A professional video dubbing and translation platform integrated with MiniMax AI API, supporting batch translation, AI voice synthesis, and intelligent dubbing.
 
+## 🌐 Try It Online
+
+**Live Demo:** [https://solution.minimaxi.com/dubbing/](https://solution.minimaxi.com/dubbing/)
+
+No deployment needed - try all features online now!
+
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![Vue](https://img.shields.io/badge/Vue-3.0+-green)
 ![Django](https://img.shields.io/badge/Django-5.2+-orange)
