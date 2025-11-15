@@ -3,24 +3,36 @@ import { ElMessage } from 'element-plus'
 
 // 动态获取API基础URL
 const getApiBaseUrl = () => {
-  // 优先使用环境变量
+  // 方案1: 优先使用构建时环境变量
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL
   }
 
-  // 自动检测当前域名和端口
+  // 方案2: 运行时环境变量（通过 window 对象注入）
+  // 使用方式：在 index.html 中添加 <script>window.API_BASE_URL='https://domain.com:5172/api'</script>
+  if ((window as any).API_BASE_URL) {
+    return (window as any).API_BASE_URL
+  }
+
+  // 方案3: 自动检测
   const protocol = window.location.protocol
   const hostname = window.location.hostname
   const currentPort = window.location.port
 
-  // 开发环境：直连后端 5172 端口
+  // 本地开发环境：直连后端 5172 端口
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return `${protocol}//${hostname}:5172/api`
+  }
+
+  // 生产环境策略：
+  // 如果访问地址有非标准端口（如 :5173），说明直接访问容器，使用容器内 nginx 代理
+  // 如果是标准端口（无端口号，即 80/443），说明通过外部反向代理，直接访问后端 5172
+  if (currentPort && currentPort !== '80' && currentPort !== '443') {
+    // 有自定义端口（如 5173），通过当前端口访问，由容器内 nginx 代理到 5172
+    return `${protocol}//${hostname}:${currentPort}/api`
   } else {
-    // 生产环境：使用当前端口，由 nginx 代理到后端
-    // 必须包含端口号，否则相对路径 /api 会丢失端口
-    const port = currentPort ? `:${currentPort}` : ''
-    return `${protocol}//${hostname}${port}/api`
+    // 无端口或标准端口，直接访问后端 5172 端口（适用于外部反向代理未配置 /api 的场景）
+    return `${protocol}//${hostname}:5172/api`
   }
 }
 
