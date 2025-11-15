@@ -133,14 +133,11 @@ RUN mkdir -p /app/media \
     /var/log/supervisor \
     /var/log/nginx
 
-# Copy Nginx configuration
-COPY docker/nginx.conf /etc/nginx/sites-available/minimax_dubbing
-RUN ln -sf /etc/nginx/sites-available/minimax_dubbing /etc/nginx/sites-enabled/default
+# Copy Nginx configuration (replace main config entirely)
+COPY docker/nginx.conf /etc/nginx/nginx.conf
 
 # Optimize Nginx worker processes for container environment
-RUN sed -i 's/worker_processes auto;/worker_processes 8;/' /etc/nginx/nginx.conf && \
-    sed -i '/worker_processes/a worker_rlimit_nofile 65535;' /etc/nginx/nginx.conf && \
-    sed -i 's/worker_connections [0-9]*;/worker_connections 4096;/' /etc/nginx/nginx.conf
+RUN sed -i 's/worker_connections 1024;/worker_connections 4096;/' /etc/nginx/nginx.conf
 
 # Copy supervisor configuration
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
