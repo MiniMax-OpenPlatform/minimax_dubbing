@@ -83,10 +83,7 @@
 - **前端**: Vue 3 + TypeScript + Element Plus + Vite
 - **后端**: Django 5.2.6 + Django REST Framework
 - **数据库**: SQLite (开发环境) / PostgreSQL (生产环境)
-- **AI集成**:
-  - MiniMax API - 翻译和TTS
-  - Qwen-VL (DashScope) - 视觉语言模型说话人命名
-  - Qwen LLM - 说话人字幕分配
+- **AI集成**: MiniMax API - 翻译和TTS
 - **计算机视觉**: FaceNet + MTCNN (人脸检测) + DBSCAN (聚类)
 
 ## 🚀 快速开始
@@ -199,7 +196,6 @@ docker ps
 登录系统后，在"账户设置"页面配置以下API密钥：
 
 - **MiniMax API**: 用于翻译和TTS语音合成
-- **DashScope API**: 用于Qwen-VL和Qwen LLM（说话人识别）
 - **阿里云NLS**: 用于ASR语音识别（可选）
 
 > 💡 在 [MiniMax开放平台](https://platform.minimaxi.com/) 注册获取API凭证

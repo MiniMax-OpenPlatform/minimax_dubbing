@@ -78,6 +78,7 @@ No deployment needed - try all features online now!
 - **Backend**: Django 5.2.6 + Django REST Framework
 - **Database**: SQLite (development) / PostgreSQL (production)
 - **AI Integration**: MiniMax API for translation and TTS
+- **Computer Vision**: FaceNet + MTCNN (face detection) + DBSCAN (clustering)
 
 ## 🚀 Quick Start
 
@@ -189,7 +190,6 @@ docker ps
 After logging in, configure API keys in the "User Settings" page:
 
 - **MiniMax API**: For translation and TTS
-- **DashScope API**: For Qwen-VL and Qwen LLM (speaker recognition)
 - **Alibaba Cloud NLS**: For ASR speech recognition (optional)
 
 > 💡 Register at [MiniMax Open Platform](https://platform.minimaxi.com/) to get API credentials
